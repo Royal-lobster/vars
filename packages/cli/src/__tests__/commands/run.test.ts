@@ -66,6 +66,18 @@ describe("vars run", () => {
     expect(buildRunEnv(join(tmpDir, ".vars"), "prod", key).PORT).toBe("8080");
   });
 
+  it("rejects values that fail schema validation", () => {
+    writeFileSync(
+      join(tmpDir, ".vars"),
+      [
+        "PORT  z.coerce.number().int().min(1024)",
+        "  @default = not-a-number",
+      ].join("\n"),
+    );
+
+    expect(() => buildRunEnv(join(tmpDir, ".vars"), "dev", key)).toThrow();
+  });
+
   it("omits undefined optional values", () => {
     writeFileSync(
       join(tmpDir, ".vars"),

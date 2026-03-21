@@ -3,11 +3,11 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import {
-  parse,
-  decrypt,
   isEncrypted,
-  resolveValue,
+  loadVars,
+  extractValue,
 } from "@vars/core";
+import type { LoadOptions } from "@vars/core";
 import { buildContext, requireKey, getKeyFromEnv } from "../utils/context.js";
 import { hideVarsFile } from "./hide.js";
 import * as output from "../utils/output.js";
@@ -111,21 +111,15 @@ export function buildRunEnv(
   env: string,
   key: Buffer | null,
 ): Record<string, string | undefined> {
-  const content = readFileSync(filePath, "utf8");
-  const parsed = parse(content, filePath);
+  const options: LoadOptions = { env };
+  if (key) options.key = key;
+
+  const validated = loadVars(filePath, options);
   const result: Record<string, string | undefined> = {};
 
-  for (const variable of parsed.variables) {
-    const raw = resolveValue(variable, env);
-    if (raw === undefined) continue;
-
-    let value = raw;
-    if (isEncrypted(value)) {
-      if (!key) throw new Error(`Encrypted value found for ${variable.name} but no key available.`);
-      value = decrypt(value, key);
-    }
-
-    result[variable.name] = value;
+  for (const [name, value] of Object.entries(validated)) {
+    if (value === undefined || value === null) continue;
+    result[name] = extractValue(value);
   }
 
   return result;
