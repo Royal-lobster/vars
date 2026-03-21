@@ -29,17 +29,26 @@ z.enum(["development", "staging", "production"])`,
     label: 'Multi-env',
     title: 'One file, all environments',
     description:
-      'dev, staging, prod — all in one .vars file. No more .env.local, .env.production, .env.staging sprawl.',
+      'dev, staging, prod in one .vars file. No more .env.local, .env.production, .env.staging sprawl.',
     image: '/images/fireflies.webp',
     span: 'narrow',
+    lang: 'vars',
+    code: `PORT  z.coerce.number()
+  @default = 3000
+  @prod    = 8080`,
   },
   {
     label: 'CLI',
     title: 'Powerful tooling',
     description:
-      'init, show, hide, run, gen, check — everything from the command line. Scriptable and CI-friendly.',
+      'Everything from the command line. Scriptable and CI-friendly.',
     image: '/images/aurora.webp',
     span: 'narrow',
+    lang: 'bash',
+    code: `$ vars show     # decrypt, edit
+$ vars hide     # re-encrypt
+$ vars run      # inject & run
+$ vars gen      # typed exports`,
   },
   {
     label: 'Editor Intelligence',
