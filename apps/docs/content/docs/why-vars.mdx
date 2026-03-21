@@ -50,6 +50,8 @@ DATABASE_URL  z.string().url().startsWith("postgres://")
 
 Typed, validated, encrypted. One file.
 
+Need to edit a value? `vars show` decrypts with your PIN. Make your change, then `vars hide` encrypts it back. The decrypted file is gitignored by default, and an optional pre-commit hook runs `hide` automatically — so plaintext never touches a commit.
+
 ## Ready?
 
 [Get started in under 5 minutes →](/docs)

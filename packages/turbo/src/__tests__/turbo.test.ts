@@ -3,7 +3,7 @@ import { checkAll, diffApps, discoverWorkspaceVarsFiles, genAll } from "../index
 
 // Mock @vars/core
 vi.mock("@vars/core", () => ({
-	loadEnvx: vi.fn(),
+	loadVars: vi.fn(),
 	generateTypes: vi.fn(),
 	parse: vi.fn(),
 	resolveExtends: vi.fn(),
@@ -30,9 +30,9 @@ vi.mock("node:path", async () => {
 });
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { generateTypes, loadEnvx, parse } from "@vars/core";
+import { generateTypes, loadVars, parse } from "@vars/core";
 
-const mockLoadEnvx = vi.mocked(loadEnvx);
+const mockLoadVars = vi.mocked(loadVars);
 const mockGenerateTypes = vi.mocked(generateTypes);
 const mockParse = vi.mocked(parse);
 const mockExistsSync = vi.mocked(existsSync);
@@ -111,7 +111,7 @@ describe("@vars/turbo", () => {
 				}
 				return [] as unknown as ReturnType<typeof readdirSync>;
 			});
-			mockLoadEnvx.mockReturnValue({ PORT: 3000 });
+			mockLoadVars.mockReturnValue({ PORT: 3000 });
 
 			const results = checkAll("/fake/root");
 			expect(Array.isArray(results)).toBe(true);
@@ -135,7 +135,7 @@ describe("@vars/turbo", () => {
 				return "";
 			});
 			mockReaddirSync.mockReturnValue([] as unknown as ReturnType<typeof readdirSync>);
-			mockLoadEnvx.mockImplementation(() => {
+			mockLoadVars.mockImplementation(() => {
 				throw new Error("Validation failed");
 			});
 

@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { extractValue, loadEnvx, readKeyFile, regenerateIfStale } from "@vars/core";
+import { extractValue, loadVars, readKeyFile, regenerateIfStale } from "@vars/core";
 import type { Plugin } from "vite";
 
 export interface VarsOptions {
@@ -37,7 +37,7 @@ export function varsPlugin(options: VarsOptions = {}): Plugin {
 		if (key) loadOptions.key = key;
 
 		try {
-			return loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+			return loadVars(envFilePath, loadOptions as { env?: string; key?: string });
 		} catch (err) {
 			throw new Error(`[@vars/vite] Failed to load ${envFile}: ${(err as Error).message}`);
 		}

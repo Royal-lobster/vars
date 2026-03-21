@@ -24,7 +24,7 @@ export { extractValue, readKeyFile, regenerateIfStale } from "./plugin-utils.js"
 export type * from "./types.js";
 export * from "./errors.js";
 
-export function loadEnvx(
+export function loadVars(
   filePath: string,
   options: LoadOptions = {},
 ): Record<string, any> {

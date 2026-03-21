@@ -13,14 +13,14 @@ pnpm add @vars/next
 
 ```ts
 // next.config.ts
-import { withEnvx } from "@vars/next";
+import { withVars } from "@vars/next";
 
-export default withEnvx({
+export default withVars({
   reactStrictMode: true,
 });
 ```
 
-`withEnvx` wraps your existing Next.js config. On every build and `next dev`, it decrypts `.vars/vault.vars`, validates against your Zod schemas, and injects into `process.env`.
+`withVars` wraps your existing Next.js config. On every build and `next dev`, it decrypts `.vars/vault.vars`, validates against your Zod schemas, and injects into `process.env`.
 
 ## Access variables
 
@@ -56,10 +56,10 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
 ## Options
 
-Pass a second argument to `withEnvx`:
+Pass a second argument to `withVars`:
 
 ```ts
-export default withEnvx(
+export default withVars(
   { reactStrictMode: true },
   {
     envFile: ".vars/vault.vars", // path to your vault

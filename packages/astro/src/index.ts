@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { extractValue, loadEnvx, readKeyFile, regenerateIfStale } from "@vars/core";
+import { extractValue, loadVars, readKeyFile, regenerateIfStale } from "@vars/core";
 import type { AstroIntegration } from "astro";
 
 export interface VarsOptions {
@@ -41,7 +41,7 @@ export function varsIntegration(options: VarsOptions = {}): AstroIntegration {
 
 				let resolved: Record<string, unknown>;
 				try {
-					resolved = loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+					resolved = loadVars(envFilePath, loadOptions as { env?: string; key?: string });
 				} catch (err) {
 					throw new Error(`[@vars/astro] Failed to load ${envFile}: ${(err as Error).message}`);
 				}

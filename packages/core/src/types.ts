@@ -45,7 +45,7 @@ export interface EncryptedValue {
   tag: string;
 }
 
-/** Options for loadEnvx() */
+/** Options for loadVars() */
 export interface LoadOptions {
   env?: string;
   key?: string | Buffer;

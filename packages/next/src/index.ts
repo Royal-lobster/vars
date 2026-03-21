@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { extractValue, loadEnvx, readKeyFile, regenerateIfStale } from "@vars/core";
+import { extractValue, loadVars, readKeyFile, regenerateIfStale } from "@vars/core";
 
 export interface VarsOptions {
 	envFile?: string;
@@ -15,11 +15,11 @@ export interface VarsOptions {
  * @example
  * ```ts
  * // next.config.ts
- * import { withEnvx } from '@vars/next'
- * export default withEnvx({ reactStrictMode: true })
+ * import { withVars } from '@vars/next'
+ * export default withVars({ reactStrictMode: true })
  * ```
  */
-export function withEnvx(
+export function withVars(
 	nextConfig: Record<string, unknown> = {},
 	varsOptions: VarsOptions = {},
 ): Record<string, unknown> {
@@ -38,7 +38,7 @@ export function withEnvx(
 
 	let resolved: Record<string, unknown>;
 	try {
-		resolved = loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+		resolved = loadVars(envFilePath, loadOptions as { env?: string; key?: string });
 	} catch (err) {
 		throw new Error(`[@vars/next] Failed to load ${envFile}: ${(err as Error).message}`);
 	}

@@ -3,7 +3,7 @@ import { varsIntegration } from "../index.js";
 
 // Mock @vars/core
 vi.mock("@vars/core", () => ({
-	loadEnvx: vi.fn(),
+	loadVars: vi.fn(),
 	generateTypes: vi.fn(),
 	parse: vi.fn(),
 	extractValue: vi.fn((value: unknown) => {
@@ -21,9 +21,9 @@ vi.mock("@vars/core", () => ({
 	regenerateIfStale: vi.fn(),
 }));
 
-import { extractValue, loadEnvx, readKeyFile, regenerateIfStale } from "@vars/core";
+import { extractValue, loadVars, readKeyFile, regenerateIfStale } from "@vars/core";
 
-const mockLoadEnvx = vi.mocked(loadEnvx);
+const mockLoadVars = vi.mocked(loadVars);
 const mockExtractValue = vi.mocked(extractValue);
 const mockReadKeyFile = vi.mocked(readKeyFile);
 const mockRegenerateIfStale = vi.mocked(regenerateIfStale);
@@ -61,13 +61,13 @@ describe("varsIntegration", () => {
 	});
 
 	it("hooks into astro:config:setup", () => {
-		mockLoadEnvx.mockReturnValue({});
+		mockLoadVars.mockReturnValue({});
 		const integration = varsIntegration();
 		expect(typeof integration.hooks["astro:config:setup"]).toBe("function");
 	});
 
 	it("injects all vars into process.env during config:setup", () => {
-		mockLoadEnvx.mockReturnValue({
+		mockLoadVars.mockReturnValue({
 			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 			PORT: 3000,
 		});
@@ -83,7 +83,7 @@ describe("varsIntegration", () => {
 	});
 
 	it("splits PUBLIC_* vars and adds them to Vite define for client", () => {
-		mockLoadEnvx.mockReturnValue({
+		mockLoadVars.mockReturnValue({
 			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 			PUBLIC_API_URL: { unwrap: () => "https://api.example.com", toString: () => "<redacted>" },
 			PUBLIC_APP_NAME: { unwrap: () => "MyApp", toString: () => "<redacted>" },
@@ -106,7 +106,7 @@ describe("varsIntegration", () => {
 	});
 
 	it("does not call updateConfig when there are no PUBLIC_* vars", () => {
-		mockLoadEnvx.mockReturnValue({
+		mockLoadVars.mockReturnValue({
 			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 		});
 		const integration = varsIntegration();
@@ -119,8 +119,8 @@ describe("varsIntegration", () => {
 		expect(updateConfig).not.toHaveBeenCalled();
 	});
 
-	it("accepts VarsOptions and passes them to loadEnvx", () => {
-		mockLoadEnvx.mockReturnValue({});
+	it("accepts VarsOptions and passes them to loadVars", () => {
+		mockLoadVars.mockReturnValue({});
 		const integration = varsIntegration({
 			envFile: "custom.vars",
 			env: "staging",
@@ -131,14 +131,14 @@ describe("varsIntegration", () => {
 			updateConfig: (config: Record<string, unknown>) => void;
 		}) => void;
 		setupHook({ config: {}, updateConfig: vi.fn() });
-		expect(mockLoadEnvx).toHaveBeenCalledWith(
+		expect(mockLoadVars).toHaveBeenCalledWith(
 			expect.stringContaining("custom.vars"),
 			expect.objectContaining({ env: "staging", key: "test-key" }),
 		);
 	});
 
 	it("calls regenerateIfStale during config:setup", () => {
-		mockLoadEnvx.mockReturnValue({});
+		mockLoadVars.mockReturnValue({});
 		const integration = varsIntegration();
 		const setupHook = integration.hooks["astro:config:setup"] as (options: {
 			config: Record<string, unknown>;

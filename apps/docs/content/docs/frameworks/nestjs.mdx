@@ -11,15 +11,15 @@ pnpm add @vars/nestjs
 
 ## Configure
 
-Import `EnvxModule` in your root `AppModule`:
+Import `VarsModule` in your root `AppModule`:
 
 ```ts title="app.module.ts"
 import { Module } from "@nestjs/common";
-import { EnvxModule } from "@vars/nestjs";
+import { VarsModule } from "@vars/nestjs";
 
 @Module({
   imports: [
-    EnvxModule.forRoot({ env: "production" }),
+    VarsModule.forRoot({ env: "production" }),
   ],
 })
 export class AppModule {}
@@ -56,7 +56,7 @@ constructor(@Inject(VARS) private env: Env) {}
 ## Options
 
 ```ts
-EnvxModule.forRoot({
+VarsModule.forRoot({
   envFile: ".vars/vault.vars", // path to vault file
   env: "production",           // which environment to load
   key: "your-key",             // decryption key (omit to use key file)
@@ -73,7 +73,7 @@ In CI and production, set `VARS_KEY` as a secret and don't ship the key file.
 
 ## Tips
 
-- `EnvxModule` is global. Import it once in `AppModule` and every service can inject `VARS` without re-importing anything.
+- `VarsModule` is global. Import it once in `AppModule` and every service can inject `VARS` without re-importing anything.
 - NestJS is server-only, so there's no client/server split to worry about.
 - If the vault can't be decrypted (wrong key, missing file), `forRoot` throws at startup. Your app won't boot with bad vars.
 - vars loads the vault synchronously, so `forRoot` is all you need. No async setup required.
