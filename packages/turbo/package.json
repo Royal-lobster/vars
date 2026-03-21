@@ -15,6 +15,7 @@
 	"scripts": {
 		"build": "tsup",
 		"test": "vitest run",
+		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit",
 		"clean": "rm -rf dist"
 	},
@@ -22,6 +23,7 @@
 		"@vars/core": "workspace:*"
 	},
 	"devDependencies": {
+		"@types/node": "^25.5.0",
 		"tsup": "^8.3.0",
 		"vitest": "^3.0.0",
 		"typescript": "^5.7.0"
