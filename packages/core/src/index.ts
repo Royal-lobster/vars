@@ -20,6 +20,7 @@ export { resolveExtends } from "./extends.js";
 export { generateTypes } from "./codegen.js";
 export { createMasterKey, encryptMasterKey, decryptMasterKey } from "./keymanager.js";
 export { storeKey, retrieveKey, clearKey } from "./keychain.js";
+export { extractValue, readKeyFile, regenerateIfStale } from "./plugin-utils.js";
 export type * from "./types.js";
 export * from "./errors.js";
 

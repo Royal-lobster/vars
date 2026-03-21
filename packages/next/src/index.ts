@@ -1,5 +1,68 @@
-// @vars/next — Next.js integration
-// Implementation added in Plan 3
-export function withEnvx(nextConfig: Record<string, unknown> = {}) {
-	return nextConfig;
+import { resolve } from "node:path";
+import { extractValue, loadEnvx, readKeyFile, regenerateIfStale } from "@vars/core";
+
+export interface VarsOptions {
+	envFile?: string;
+	env?: string;
+	key?: string;
+}
+
+/**
+ * Wraps a Next.js config with vars integration.
+ * Decrypts .vars, validates with Zod, injects into process.env,
+ * and splits NEXT_PUBLIC_* vars for client bundle.
+ *
+ * @example
+ * ```ts
+ * // next.config.ts
+ * import { withEnvx } from '@vars/next'
+ * export default withEnvx({ reactStrictMode: true })
+ * ```
+ */
+export function withEnvx(
+	nextConfig: Record<string, unknown> = {},
+	varsOptions: VarsOptions = {},
+): Record<string, unknown> {
+	const envFile = varsOptions.envFile ?? ".vars";
+	const env = varsOptions.env ?? process.env.VARS_ENV ?? "development";
+	const key = varsOptions.key ?? process.env.VARS_KEY ?? readKeyFile(envFile);
+
+	const envFilePath = resolve(process.cwd(), envFile);
+
+	// 1. Auto-regenerate env.generated.ts if .vars changed
+	regenerateIfStale(envFilePath, envFile);
+
+	// 2. Load, decrypt, and validate
+	const loadOptions: Record<string, unknown> = { env };
+	if (key) loadOptions.key = key;
+
+	let resolved: Record<string, unknown>;
+	try {
+		resolved = loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+	} catch (err) {
+		throw new Error(`[@vars/next] Failed to load ${envFile}: ${(err as Error).message}`);
+	}
+
+	// 3. Inject all vars into process.env
+	const clientEnv: Record<string, string> = {};
+
+	for (const [name, value] of Object.entries(resolved)) {
+		const raw = extractValue(value);
+		process.env[name] = raw;
+
+		// 4. Collect NEXT_PUBLIC_* for client bundle
+		if (name.startsWith("NEXT_PUBLIC_")) {
+			clientEnv[name] = raw;
+		}
+	}
+
+	// 5. Merge into Next.js config
+	const existingEnv = (nextConfig.env as Record<string, string>) ?? {};
+
+	return {
+		...nextConfig,
+		...(Object.keys(clientEnv).length > 0 || Object.keys(existingEnv).length > 0
+			? { env: { ...existingEnv, ...clientEnv } }
+			: {}),
+	};
 }
