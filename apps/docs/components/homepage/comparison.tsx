@@ -2,34 +2,34 @@ import { Badge } from '@/components/ui/badge';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 import { VarsDynamicCodeBlock } from './vars-codeblock';
 
-const ENV_CODE = `# No encryption, no types, no validation
-DATABASE_URL=postgres://admin:password123@prod.db.com/mydb
-API_KEY=sk_live_abc123def456ghi789
-STRIPE_SECRET=sk_live_51J3...keep_scrolling
+const ENV_CODE = `# .env.development
+DATABASE_URL=postgres://localhost:5432/myapp
+API_KEY=dev_abc123def456ghi789
 PORT=3000
-LOG_LEVEL=debug
-DEBUG=false  # string or boolean? who knows
-NODE_ENV=production
-REDIS_URL=redis://default:pass@cache.internal:6379
 
-# Now copy-paste all of this into:
-#   .env.local, .env.staging, .env.production
-# And pray they stay in sync...
-# Oh, and share new secrets via Slack DMs 🙃`;
+# .env.production  (don't commit this!)
+DATABASE_URL=postgres://admin:s3cret@prod.db.com/myapp
+API_KEY=prod_xyz987uvw654rst321
+PORT=8080
+
+# .env.staging  (copy-paste from prod, change 2 things)
+DATABASE_URL=postgres://admin:s3cret@staging.db.com/myapp
+API_KEY=stg_lmn456opq789rst012
+PORT=8080`;
 
 const VARS_CODE = `DATABASE_URL  z.string().url()
-  @dev   = enc:v1:aes256gcm:7f3a...
-  @prod  = enc:v1:aes256gcm:e8d1...
+  @dev  = postgres://localhost:5432/myapp
+  @stg  = enc:v1:aes256gcm:a3b4c5...
+  @prod = enc:v1:aes256gcm:e8d1f0...
 
-API_KEY  z.string().min(32)
-  @description "Primary API key"
-  @owner       backend-team
-  @expires     2026-09-01
-  @prod  = enc:v1:aes256gcm:9c2b...
+API_KEY  z.string().min(20)
+  @dev  = dev_abc123def456ghi789
+  @stg  = enc:v1:aes256gcm:f6g7h8...
+  @prod = enc:v1:aes256gcm:9c2b4f...
 
-// Cross-variable constraint
-@refine env.LOG_LEVEL !== "debug" || env.DEBUG === true
-  "DEBUG must be true when LOG_LEVEL is debug"`;
+PORT  z.coerce.number().min(1024)
+  @default = 3000
+  @prod    = 8080`;
 
 const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-xs [&_pre]:!leading-[1.9]';
 
@@ -64,12 +64,12 @@ export function Comparison() {
 
           <div className="grid grid-cols-2 gap-3 px-5 py-5">
             {[
-              'Plaintext passwords in git',
-              'No type safety',
-              'No schema validation',
-              'Secrets shared via DMs',
-              'Env drift across stages',
-              'Runtime crashes on typos',
+              'Plaintext secrets on disk',
+              'Three files to keep in sync',
+              'No types or validation',
+              'Shared via Slack DMs',
+              'Copy-paste between envs',
+              'Hope nobody commits prod',
             ].map((problem) => (
               <div key={problem} className="flex items-start gap-2 text-xs text-red-400/50">
                 <span className="mt-0.5 text-red-500/40">✕</span>
@@ -97,12 +97,12 @@ export function Comparison() {
 
           <div className="grid grid-cols-2 gap-3 px-5 py-5">
             {[
-              'AES-256-GCM encrypted',
-              'Zod type safety',
-              'Build-time validation',
-              'Safe to commit & share',
-              'All envs in one file',
-              'AI-safe by design',
+              'Encrypted, safe to commit',
+              'One file, all environments',
+              'Zod schemas validate values',
+              'Clone the repo, enter PIN',
+              'Dev plaintext, prod encrypted',
+              'Types generated for you',
             ].map((benefit) => (
               <div key={benefit} className="flex items-start gap-2 text-xs text-green-400/70">
                 <span className="mt-0.5 text-green-500">✓</span>
