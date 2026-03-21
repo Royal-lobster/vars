@@ -102,7 +102,7 @@ export function Comparison() {
               'One file, all environments',
               'Zod schemas validate values',
               'Clone the repo, enter PIN',
-              'Dev plaintext, prod encrypted',
+              'Always encrypted, unlock to edit',
               'Types generated for you',
             ].map((benefit) => (
               <div key={benefit} className="flex items-start gap-2.5 text-sm text-green-400/90">
