@@ -1,7 +1,7 @@
 import { defineCommand } from "citty";
 import { readFileSync, writeFileSync } from "node:fs";
-import { encrypt, parse, retrieveKey } from "@vars/core";
-import { buildContext, getMasterKeyFromEnv } from "../utils/context.js";
+import { encrypt, parse } from "@vars/core";
+import { buildContext, requireKey } from "../utils/context.js";
 import * as output from "../utils/output.js";
 import { promptText } from "../utils/prompt.js";
 
@@ -83,12 +83,3 @@ export function addVariable(
   writeFileSync(filePath, newContent);
 }
 
-async function requireKey(): Promise<Buffer> {
-  const envKey = getMasterKeyFromEnv();
-  if (envKey) return envKey;
-
-  const keychainKey = await retrieveKey();
-  if (keychainKey) return keychainKey;
-
-  throw new Error("No key available. Run 'vars unlock' first, or set VARS_KEY env var.");
-}

@@ -1,11 +1,10 @@
 import { defineCommand } from "citty";
 import { readFileSync } from "node:fs";
-import { encrypt, isEncrypted, retrieveKey } from "@vars/core";
-import { buildContext, getMasterKeyFromEnv } from "../utils/context.js";
+import { encrypt, isEncrypted } from "@vars/core";
+import { buildContext, requireKey } from "../utils/context.js";
+import { ENV_VALUE_LINE } from "../utils/patterns.js";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import * as output from "../utils/output.js";
-
-const ENV_VALUE_LINE = /^([ \t]+@[\w-]+[ \t]+=[ \t]+)(.+)$/;
 
 export default defineCommand({
   meta: {
@@ -60,14 +59,3 @@ export function hideVarsFile(filePath: string, key: Buffer): void {
   atomicWriteFileSync(filePath, encryptedLines.join("\n"));
 }
 
-async function requireKey(): Promise<Buffer> {
-  const envKey = getMasterKeyFromEnv();
-  if (envKey) return envKey;
-
-  const keychainKey = await retrieveKey();
-  if (keychainKey) return keychainKey;
-
-  throw new Error(
-    "No encryption key available. Run 'vars unlock' first, or set VARS_KEY env var.",
-  );
-}

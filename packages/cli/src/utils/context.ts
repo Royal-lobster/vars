@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
+import { retrieveKey } from "@vars/core";
 
 export interface CliContext {
   varsFilePath: string;
@@ -91,4 +92,20 @@ export function getMasterKeyFromEnv(): Buffer | null {
     return Buffer.from(envKey, "base64");
   }
   return null;
+}
+
+/**
+ * Resolve the encryption key from available sources.
+ * Priority: VARS_KEY env var > OS keychain > error.
+ */
+export async function requireKey(): Promise<Buffer> {
+  const envKey = getMasterKeyFromEnv();
+  if (envKey) return envKey;
+
+  const keychainKey = await retrieveKey();
+  if (keychainKey) return keychainKey;
+
+  throw new Error(
+    "No key available. Run 'vars unlock' first, or set VARS_KEY env var.",
+  );
 }

@@ -10,10 +10,9 @@ import {
   isEncrypted,
 } from "@vars/core";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
+import { ENV_VALUE_LINE } from "../utils/patterns.js";
 import * as output from "../utils/output.js";
 import { promptPIN } from "../utils/prompt.js";
-
-const ENV_VALUE_LINE = /^([ \t]+@[\w-]+[ \t]+=[ \t]+)(.+)$/;
 
 export default defineCommand({
   meta: {

@@ -1,7 +1,8 @@
 import { defineCommand } from "citty";
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { parse, isEncrypted } from "@vars/core";
+import { findVarsFile } from "../utils/context.js";
 import * as output from "../utils/output.js";
 import pc from "picocolors";
 
@@ -55,7 +56,7 @@ export default defineCommand({
 export function runDoctorChecks(cwd: string): DoctorCheck[] {
   const checks: DoctorCheck[] = [];
 
-  const varsPath = join(cwd, ".vars");
+  const varsPath = findVarsFile(cwd) ?? join(cwd, ".vars");
   if (existsSync(varsPath)) {
     checks.push({
       name: "vars-file",
@@ -73,7 +74,8 @@ export function runDoctorChecks(cwd: string): DoctorCheck[] {
     return checks;
   }
 
-  const keyPath = join(cwd, ".vars.key");
+  const varsDir = dirname(varsPath);
+  const keyPath = join(varsDir, ".vars.key");
   if (existsSync(keyPath)) {
     checks.push({
       name: "key-file",
@@ -90,7 +92,7 @@ export function runDoctorChecks(cwd: string): DoctorCheck[] {
     });
   }
 
-  const gitignorePath = join(cwd, ".gitignore");
+  const gitignorePath = join(varsDir, ".gitignore");
   if (existsSync(gitignorePath)) {
     const gitignore = readFileSync(gitignorePath, "utf8");
     if (gitignore.includes(".vars.key")) {

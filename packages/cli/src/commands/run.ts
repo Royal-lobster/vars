@@ -6,9 +6,8 @@ import {
   decrypt,
   isEncrypted,
   resolveValue,
-  retrieveKey,
 } from "@vars/core";
-import { buildContext, getMasterKeyFromEnv } from "../utils/context.js";
+import { buildContext, requireKey } from "../utils/context.js";
 import * as output from "../utils/output.js";
 
 export default defineCommand({
@@ -92,14 +91,3 @@ export function buildRunEnv(
   return result;
 }
 
-async function requireKey(): Promise<Buffer> {
-  const envKey = getMasterKeyFromEnv();
-  if (envKey) return envKey;
-
-  const keychainKey = await retrieveKey();
-  if (keychainKey) return keychainKey;
-
-  throw new Error(
-    "No decryption key available. Run 'vars unlock' first, or set VARS_KEY env var.",
-  );
-}

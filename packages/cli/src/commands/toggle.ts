@@ -1,12 +1,11 @@
 import { defineCommand } from "citty";
 import { readFileSync } from "node:fs";
-import { isEncrypted, retrieveKey } from "@vars/core";
-import { buildContext, getMasterKeyFromEnv } from "../utils/context.js";
+import { isEncrypted } from "@vars/core";
+import { buildContext, requireKey } from "../utils/context.js";
+import { ENV_VALUE_LINE_VALUE_ONLY } from "../utils/patterns.js";
 import { showVarsFile } from "./show.js";
 import { hideVarsFile } from "./hide.js";
 import * as output from "../utils/output.js";
-
-const ENV_VALUE_LINE = /^[ \t]+@[\w-]+[ \t]+=[ \t]+(.+)$/;
 
 export default defineCommand({
   meta: {
@@ -51,7 +50,7 @@ export function toggleVarsFile(filePath: string, key: Buffer): "show" | "hide" {
 
 function detectEncryptedState(content: string): boolean {
   for (const line of content.split("\n")) {
-    const match = line.match(ENV_VALUE_LINE);
+    const match = line.match(ENV_VALUE_LINE_VALUE_ONLY);
     if (match) {
       return isEncrypted(match[1].trim());
     }
@@ -59,14 +58,3 @@ function detectEncryptedState(content: string): boolean {
   return true;
 }
 
-async function requireKey(): Promise<Buffer> {
-  const envKey = getMasterKeyFromEnv();
-  if (envKey) return envKey;
-
-  const keychainKey = await retrieveKey();
-  if (keychainKey) return keychainKey;
-
-  throw new Error(
-    "No key available. Run 'vars unlock' first, or set VARS_KEY env var.",
-  );
-}

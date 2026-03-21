@@ -1,7 +1,7 @@
 import { defineCommand } from "citty";
 import { readFileSync } from "node:fs";
-import { parse, decrypt, isEncrypted, retrieveKey, resolveValue } from "@vars/core";
-import { buildContext, getMasterKeyFromEnv } from "../utils/context.js";
+import { parse, decrypt, isEncrypted, resolveValue } from "@vars/core";
+import { buildContext, requireKey } from "../utils/context.js";
 import * as output from "../utils/output.js";
 import { promptConfirm } from "../utils/prompt.js";
 
@@ -95,12 +95,3 @@ export function buildPushPayload(
   return { variables, env, platform: "" };
 }
 
-async function requireKey(): Promise<Buffer> {
-  const envKey = getMasterKeyFromEnv();
-  if (envKey) return envKey;
-
-  const keychainKey = await retrieveKey();
-  if (keychainKey) return keychainKey;
-
-  throw new Error("No key available. Run 'vars unlock' first, or set VARS_KEY env var.");
-}

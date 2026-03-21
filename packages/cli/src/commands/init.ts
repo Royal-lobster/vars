@@ -124,12 +124,12 @@ export function scanEnvFile(filePath: string): Array<{ name: string; value: stri
  * Infer a Zod schema string from a variable name and sample value.
  */
 export function inferSchema(name: string, value: string): string {
-  if (value === "true" || value === "false" || value === "1" || value === "0") {
-    return "z.coerce.boolean()";
-  }
-
   if (/^\d+$/.test(value) || /^\d+\.\d+$/.test(value)) {
     return "z.coerce.number()";
+  }
+
+  if (value === "true" || value === "false") {
+    return "z.coerce.boolean()";
   }
 
   if (/^https?:\/\//i.test(value) || /^postgres(ql)?:\/\//i.test(value) || /^redis:\/\//i.test(value) || /^mongodb(\+srv)?:\/\//i.test(value)) {
