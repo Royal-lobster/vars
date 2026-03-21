@@ -4,7 +4,7 @@ const ITEMS = [
   { label: 'AES-256-GCM' },
   { label: 'Zod' },
   { label: 'PIN-per-command' },
-  { label: '4 framework plugins' },
+  { label: 'Any framework' },
   { label: 'LSP + VS Code' },
   { label: 'AI-safe by design' },
 ];
@@ -27,7 +27,9 @@ function TickerRow() {
 export function Ticker() {
   return (
     <div className="border-b border-white/[0.06] overflow-hidden py-7">
-      <div className="flex w-max animate-marquee items-center gap-6">
+      <div className="flex w-max animate-marquee items-center gap-6 hover:[animation-play-state:paused]">
+        <TickerRow />
+        <TickerRow />
         <TickerRow />
         <TickerRow />
       </div>
