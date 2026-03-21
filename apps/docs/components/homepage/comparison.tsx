@@ -11,7 +11,6 @@ LOG_LEVEL=debug
 DEBUG=false  # string or boolean? who knows
 NODE_ENV=production
 REDIS_URL=redis://default:pass@cache.internal:6379
-JWT_SECRET=my-super-secret-jwt-key-dont-tell-anyone
 
 # Now copy-paste all of this into:
 #   .env.local, .env.staging, .env.production
