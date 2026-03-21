@@ -36,7 +36,7 @@ describe("vars gen", () => {
     expect(content).toContain('import { z } from "zod"');
     expect(content).toContain("PORT: z.coerce.number().int().min(1024)");
     expect(content).toContain("HOST: z.string()");
-    expect(content).toContain("DEBUG: z.coerce.boolean()");
+    expect(content).toContain("DEBUG: envBoolean()");
     expect(content).toContain("PORT: number");
     expect(content).toContain("HOST: Redacted<string>");
     expect(content).toContain("DEBUG: boolean");

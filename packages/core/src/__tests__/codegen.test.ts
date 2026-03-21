@@ -8,33 +8,54 @@ const fixture = (name: string) =>
   readFileSync(resolve(__dirname, "fixtures", name), "utf8");
 
 describe("codegen", () => {
-  it("generates zero-dependency TypeScript", () => {
+  it("imports zod and @vars/core", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
-    expect(output).not.toContain("import");
-    expect(output).toContain("process.env");
+    expect(output).toContain('import { z } from "zod"');
+    expect(output).toContain('import { Redacted } from "@vars/core"');
   });
 
-  it("generates typed accessors from process.env", () => {
+  it("emits zod schema object with original schema expressions", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
-    expect(output).toContain('read("DATABASE_URL")');
-    expect(output).toContain('toNumber("PORT")');
-    expect(output).toContain('toBoolean("DEBUG")');
+    expect(output).toContain('DATABASE_URL: z.string().url().startsWith("postgres://")');
+    expect(output).toContain("PORT: z.coerce.number().int().min(1024).max(65535)");
+    expect(output).toContain("DATABASE_POOL: z.coerce.number().int().min(1).max(100)");
+  });
+
+  it("replaces z.coerce.boolean() with envBoolean()", () => {
+    const parsed = parse(fixture("basic.vars"));
+    const output = generateTypes(parsed);
+    expect(output).toContain("DEBUG: envBoolean()");
+    expect(output).not.toContain("DEBUG: z.coerce.boolean()");
   });
 
   it("generates Env type with correct types", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
-    expect(output).toContain("DATABASE_URL: string");
+    expect(output).toContain("DATABASE_URL: Redacted<string>");
     expect(output).toContain("PORT: number");
     expect(output).toContain("DEBUG: boolean");
+  });
+
+  it("does not wrap enum types in Redacted", () => {
+    const parsed = parse(fixture("basic.vars"));
+    const output = generateTypes(parsed);
+    // Enum type should be a bare literal union, not Redacted
+    expect(output).toContain('"debug" | "info" | "warn" | "error"');
+    expect(output).not.toContain("Redacted<\"debug\"");
   });
 
   it("marks optional fields with ?", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
-    expect(output).toContain("ANALYTICS_ID?: string");
+    expect(output).toContain("ANALYTICS_ID?: Redacted<string>");
+  });
+
+  it("guards optional string fields against undefined", () => {
+    const parsed = parse(fixture("basic.vars"));
+    const output = generateTypes(parsed);
+    expect(output).toContain("parsed.ANALYTICS_ID != null ? new Redacted(parsed.ANALYTICS_ID) : undefined");
   });
 
   it("includes auto-generated header comment", () => {
@@ -42,5 +63,32 @@ describe("codegen", () => {
     const output = generateTypes(parsed);
     expect(output).toContain("auto-generated");
     expect(output).toContain("do not edit");
+  });
+
+  it("parses env via schema.parse(process.env)", () => {
+    const parsed = parse(fixture("basic.vars"));
+    const output = generateTypes(parsed);
+    expect(output).toContain("schema.parse(");
+    expect(output).toContain("export const env: Env = parseEnv(process.env)");
+  });
+
+  it("generates clientEnv using clientSchema.parse for PUBLIC_ vars", () => {
+    const parsed = parse(
+      [
+        "SECRET_KEY  z.string()",
+        "  @default = shhh",
+        "",
+        "NEXT_PUBLIC_API_URL  z.string().url()",
+        "  @default = https://api.example.com",
+      ].join("\n"),
+    );
+    const output = generateTypes(parsed);
+
+    // Should use clientSchema.parse, not schema.parse for client env
+    expect(output).toContain("clientSchema.parse(input)");
+    expect(output).toContain("export const clientEnv: ClientEnv = parseClientEnv(process.env)");
+
+    // Should NOT parse all vars for client env
+    expect(output).not.toContain("clientEnv: ClientEnv = parseEnv(");
   });
 });
