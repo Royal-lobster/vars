@@ -35,13 +35,22 @@ export function Comparison() {
             </div>
             <div className="p-4 font-mono text-xs leading-[2]">
               {[
-                'DATABASE_URL=postgres://admin:password123@db.example.com/prod',
+                '# No encryption, no types, no validation',
+                'DATABASE_URL=postgres://admin:password123@prod.db.com/mydb',
+                'API_KEY=sk_live_abc123def456ghi789',
                 'PORT=3000',
-                'STRIPE_KEY=sk_live_abc123def456',
+                'LOG_LEVEL=debug',
+                'DEBUG=false  # wait, is this a string or boolean?',
+                '',
+                '# Copy this to .env.staging, .env.production...',
+                '# Share secrets over Slack DMs...',
+                '# Hope nobody commits this to git...',
               ].map((line, i) => (
                 <div key={i} className="flex">
                   <span className="mr-4 shrink-0 w-5 select-none text-right text-neutral-600">{i + 1}</span>
-                  <span className="text-white/60">{line}</span>
+                  <span className={line.startsWith('#') ? 'text-neutral-600 italic' : line === '' ? '' : 'text-white/60'}>
+                    {line || '\u00A0'}
+                  </span>
                 </div>
               ))}
             </div>
@@ -83,45 +92,74 @@ export function Comparison() {
               <div className="h-2 w-2 rounded-full bg-green-500/50" />
               <span className="ml-2 font-mono text-[10px] text-neutral-600">.vars</span>
             </div>
-            <div className="p-4 font-mono text-xs leading-[2]">
+            <div className="p-4 font-mono text-[11px] leading-[1.9]">
               {([
+                // DATABASE_URL with schema + multi-env
                 [
                   { text: 'DATABASE_URL', cls: 'text-green-50 font-semibold' },
-                  { text: ' ', cls: '' },
+                  { text: '  ', cls: '' },
                   { text: 'z.string().url()', cls: 'text-green-500' },
                 ],
                 [
-                  { text: '  @prod', cls: 'text-green-700' },
-                  { text: ' = ', cls: 'text-neutral-600' },
-                  { text: 'enc:v1:aes256gcm:...', cls: 'text-neutral-600' },
-                ],
-                [
-                  { text: 'PORT', cls: 'text-green-50 font-semibold' },
-                  { text: ' ', cls: '' },
-                  { text: 'z.coerce.number()', cls: 'text-green-500' },
-                ],
-                [
-                  { text: '  @default', cls: 'text-green-700' },
-                  { text: ' = ', cls: 'text-neutral-600' },
-                  { text: 'enc:v1:aes256gcm:...', cls: 'text-neutral-600' },
-                ],
-                [
-                  { text: 'STRIPE_KEY', cls: 'text-green-50 font-semibold' },
-                  { text: ' ', cls: '' },
-                  { text: 'z.string().startsWith("sk_")', cls: 'text-green-500' },
+                  { text: '  @dev ', cls: 'text-green-700' },
+                  { text: '  = ', cls: 'text-neutral-600' },
+                  { text: 'enc:v1:aes256gcm:7f3a...', cls: 'text-neutral-600' },
                 ],
                 [
                   { text: '  @prod', cls: 'text-green-700' },
-                  { text: ' = ', cls: 'text-neutral-600' },
-                  { text: 'enc:v1:aes256gcm:...', cls: 'text-neutral-600' },
+                  { text: '  = ', cls: 'text-neutral-600' },
+                  { text: 'enc:v1:aes256gcm:e8d1...', cls: 'text-neutral-600' },
+                ],
+                // blank line
+                [],
+                // API_KEY with metadata
+                [
+                  { text: 'API_KEY', cls: 'text-green-50 font-semibold' },
+                  { text: '  ', cls: '' },
+                  { text: 'z.string().min(32)', cls: 'text-green-500' },
+                ],
+                [
+                  { text: '  @description', cls: 'text-green-800' },
+                  { text: ' "Primary API key"', cls: 'text-green-600/50' },
+                ],
+                [
+                  { text: '  @owner', cls: 'text-green-800' },
+                  { text: '       backend-team', cls: 'text-green-600/50' },
+                ],
+                [
+                  { text: '  @expires', cls: 'text-green-800' },
+                  { text: '     2026-09-01', cls: 'text-green-600/50' },
+                ],
+                [
+                  { text: '  @prod', cls: 'text-green-700' },
+                  { text: '  = ', cls: 'text-neutral-600' },
+                  { text: 'enc:v1:aes256gcm:9c2b...', cls: 'text-neutral-600' },
+                ],
+                // blank line
+                [],
+                // Comment + refinement
+                [
+                  { text: '// Cross-variable constraint', cls: 'text-neutral-600 italic' },
+                ],
+                [
+                  { text: '@refine', cls: 'text-green-400 font-semibold' },
+                  { text: ' (env) =>', cls: 'text-green-500' },
+                ],
+                [
+                  { text: '  env.LOG_LEVEL !== "debug"', cls: 'text-green-500' },
+                ],
+                [
+                  { text: '  || env.DEBUG === true', cls: 'text-green-500' },
                 ],
               ] as { text: string; cls: string }[][]).map((tokens, i) => (
                 <div key={i} className="flex">
                   <span className="mr-4 shrink-0 w-5 select-none text-right text-neutral-600">{i + 1}</span>
                   <span>
-                    {tokens.map((t, j) => (
-                      <span key={j} className={t.cls}>{t.text}</span>
-                    ))}
+                    {tokens.length === 0
+                      ? '\u00A0'
+                      : tokens.map((t, j) => (
+                          <span key={j} className={t.cls}>{t.text}</span>
+                        ))}
                   </span>
                 </div>
               ))}
