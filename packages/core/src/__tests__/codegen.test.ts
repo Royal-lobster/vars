@@ -8,11 +8,15 @@ const fixture = (name: string) =>
   readFileSync(resolve(__dirname, "fixtures", name), "utf8");
 
 describe("codegen", () => {
-  it("imports zod and @vars/core", () => {
+  it("imports zod and inlines Redacted class (no @vars/core import)", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
     expect(output).toContain('import { z } from "zod"');
-    expect(output).toContain('import { Redacted } from "@vars/core"');
+    expect(output).not.toContain('import { Redacted } from "@vars/core"');
+    expect(output).not.toContain("@vars/core");
+    expect(output).toContain("class Redacted<T>");
+    expect(output).toContain("unwrap(): T");
+    expect(output).toContain('Symbol.for("nodejs.util.inspect.custom")');
   });
 
   it("emits zod schema object with original schema expressions", () => {
@@ -69,7 +73,7 @@ describe("codegen", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
     expect(output).toContain("schema.parse(");
-    expect(output).toContain("export const env: Env = parseEnv(process.env)");
+    expect(output).toContain("export const vars: Var = parseVars(process.env)");
   });
 
   it("generates clientEnv using clientSchema.parse for PUBLIC_ vars", () => {
@@ -86,9 +90,9 @@ describe("codegen", () => {
 
     // Should use clientSchema.parse, not schema.parse for client env
     expect(output).toContain("clientSchema.parse(input)");
-    expect(output).toContain("export const clientEnv: ClientEnv = parseClientEnv(process.env)");
+    expect(output).toContain("export const clientVars: ClientVar = parseClientVar(process.env)");
 
     // Should NOT parse all vars for client env
-    expect(output).not.toContain("clientEnv: ClientEnv = parseEnv(");
+    expect(output).not.toContain("clientVars: ClientVar = parseVars(");
   });
 });
