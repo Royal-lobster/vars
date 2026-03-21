@@ -37,7 +37,12 @@ export function withEnvx(
 	const loadOptions: Record<string, unknown> = { env };
 	if (key) loadOptions.key = key;
 
-	const resolved = loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+	let resolved: Record<string, unknown>;
+	try {
+		resolved = loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+	} catch (err) {
+		throw new Error(`[@vars/next] Failed to load ${envFile}: ${(err as Error).message}`);
+	}
 
 	// 3. Inject all vars into process.env
 	const clientEnv: Record<string, string> = {};

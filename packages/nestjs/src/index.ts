@@ -1,18 +1,12 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { loadEnvx } from "@vars/core";
+import { Module, type DynamicModule } from "@nestjs/common";
 
 export interface VarsOptions {
 	envFile?: string;
 	env?: string;
 	key?: string;
-}
-
-export interface DynamicModule {
-	module: typeof EnvxModule;
-	global: boolean;
-	providers: Array<{ provide: symbol; useValue: Record<string, unknown> }>;
-	exports: symbol[];
 }
 
 /**
@@ -57,7 +51,12 @@ export class EnvxModule {
 		const loadOptions: Record<string, unknown> = { env };
 		if (key) loadOptions.key = key;
 
-		const resolved = loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+		let resolved: Record<string, unknown>;
+		try {
+			resolved = loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+		} catch (err) {
+			throw new Error(`[@vars/nestjs] Failed to load ${envFile}: ${(err as Error).message}`);
+		}
 
 		return {
 			module: EnvxModule,

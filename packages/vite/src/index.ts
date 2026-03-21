@@ -1,22 +1,12 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { generateTypes, loadEnvx, parse } from "@vars/core";
+import type { Plugin } from "vite";
 
 export interface VarsOptions {
 	envFile?: string;
 	env?: string;
 	key?: string;
-}
-
-export interface VarsVitePlugin {
-	name: string;
-	config: () => { define: Record<string, string> };
-	configureServer: (server: {
-		watcher: {
-			add: (path: string) => void;
-			on: (event: string, cb: (path: string) => void) => void;
-		};
-	}) => void;
 }
 
 /**
@@ -32,7 +22,7 @@ export interface VarsVitePlugin {
  * })
  * ```
  */
-export function varsPlugin(options: VarsOptions = {}): VarsVitePlugin {
+export function varsPlugin(options: VarsOptions = {}): Plugin {
 	const envFile = options.envFile ?? ".vars";
 	let resolvedVars: Record<string, unknown> = {};
 
@@ -47,7 +37,11 @@ export function varsPlugin(options: VarsOptions = {}): VarsVitePlugin {
 		const loadOptions: Record<string, unknown> = { env };
 		if (key) loadOptions.key = key;
 
-		return loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+		try {
+			return loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+		} catch (err) {
+			throw new Error(`[@vars/vite] Failed to load ${envFile}: ${(err as Error).message}`);
+		}
 	}
 
 	return {
@@ -84,7 +78,7 @@ export function varsPlugin(options: VarsOptions = {}): VarsVitePlugin {
 			server.watcher.on("change", (changedPath: string) => {
 				if (resolve(changedPath) === envFilePath) {
 					resolvedVars = loadVars();
-					// Vite will detect the config change and trigger HMR
+					server.restart(); // Force Vite to re-evaluate config with new define values
 				}
 			});
 		},

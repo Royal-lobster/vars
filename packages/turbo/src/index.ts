@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { generateTypes, loadEnvx, parse } from "@vars/core";
 
 export interface VarsOptions {
@@ -82,7 +82,11 @@ export function checkAll(rootDir: string, options: VarsOptions = {}): CheckResul
 	for (const file of files) {
 		try {
 			const env = options.env ?? process.env.VARS_ENV ?? "development";
-			const key = options.key ?? process.env.VARS_KEY;
+			const keyPath = `${file}.key`;
+			let key = options.key ?? process.env.VARS_KEY;
+			if (!key && existsSync(keyPath)) {
+				key = readFileSync(keyPath, "utf8").trim();
+			}
 			const loadOptions: Record<string, unknown> = { env };
 			if (key) loadOptions.key = key;
 
@@ -112,7 +116,7 @@ export function genAll(rootDir: string): GenResult[] {
 		try {
 			const content = readFileSync(file, "utf8");
 			const parsed = parse(content);
-			const envFile = relative(dirname(file), file);
+			const envFile = basename(file);
 			const generated = generateTypes(parsed, envFile);
 			const generatedPath = resolve(dirname(file), "env.generated.ts");
 

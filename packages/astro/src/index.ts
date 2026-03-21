@@ -1,21 +1,12 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { generateTypes, loadEnvx, parse } from "@vars/core";
+import type { AstroIntegration } from "astro";
 
 export interface VarsOptions {
 	envFile?: string;
 	env?: string;
 	key?: string;
-}
-
-export interface AstroIntegration {
-	name: string;
-	hooks: {
-		"astro:config:setup": (options: {
-			config: Record<string, unknown>;
-			updateConfig: (config: Record<string, unknown>) => void;
-		}) => void;
-	};
 }
 
 /**
@@ -49,7 +40,12 @@ export function varsIntegration(options: VarsOptions = {}): AstroIntegration {
 				const loadOptions: Record<string, unknown> = { env };
 				if (key) loadOptions.key = key;
 
-				const resolved = loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+				let resolved: Record<string, unknown>;
+				try {
+					resolved = loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+				} catch (err) {
+					throw new Error(`[@vars/astro] Failed to load ${envFile}: ${(err as Error).message}`);
+				}
 
 				// Inject all vars into process.env
 				const publicDefines: Record<string, string> = {};
