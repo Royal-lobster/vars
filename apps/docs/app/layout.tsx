@@ -10,6 +10,14 @@ export const metadata = {
   },
   description:
     'Schema-validated, encrypted, multi-environment variables. One .vars file replaces your entire .env workflow.',
+  metadataBase: new URL('https://vars.dev'),
+  openGraph: {
+    siteName: 'vars',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
