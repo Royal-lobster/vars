@@ -11,9 +11,7 @@ const COLUMNS = [
   {
     title: 'Integrations',
     links: [
-      { label: 'Next.js', href: '/docs/frameworks/nextjs' },
-      { label: 'Vite', href: '/docs/frameworks/vite' },
-      { label: 'Astro', href: '/docs/frameworks/astro' },
+      { label: 'Framework Integration', href: '/docs/frameworks' },
     ],
   },
   {

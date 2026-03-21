@@ -1,0 +1,64 @@
+---
+title: Framework Integration
+description: Use vars with any framework — Next.js, Vite, Astro, NestJS, SvelteKit, Nuxt, and more.
+---
+
+## Setup
+
+Wrap your dev and build scripts with `vars run`:
+
+```json title="package.json"
+{
+  "scripts": {
+    "dev": "vars run --env dev -- your-dev-command",
+    "build": "vars run --env prod -- your-build-command"
+  }
+}
+```
+
+`vars run` decrypts `.vars/vault.vars`, validates against your Zod schemas, and sets `process.env` before your framework starts. No adapter packages, no plugins — it works with anything.
+
+If you ran `vars init` in a project with a known framework (Next.js, Vite, Astro, NestJS, SvelteKit, Nuxt), the dev script was wrapped automatically.
+
+## Access variables
+
+Run `npx vars gen` to generate typed exports. The file auto-regenerates when your `.vars` file changes.
+
+```ts
+import { vars } from "#vars";
+
+const db = vars.DATABASE_URL; // Redacted<string>, not string | undefined
+```
+
+`process.env` still works if you prefer — vars injects everything there too. But you lose the type safety.
+
+## Client-side variables
+
+Each framework has its own prefix for variables exposed to the browser:
+
+| Framework | Prefix | Client access |
+|-----------|--------|---------------|
+| Next.js | `NEXT_PUBLIC_*` | `process.env.NEXT_PUBLIC_X` |
+| Vite / SvelteKit | `VITE_*` | `import.meta.env.VITE_X` |
+| Nuxt | `NUXT_PUBLIC_*` | `useRuntimeConfig().public.x` |
+| Astro | `PUBLIC_*` | `import.meta.env.PUBLIC_X` |
+
+Because `vars run` sets `process.env` before the framework starts, prefixed variables get picked up automatically. No extra wiring needed.
+
+Server-only frameworks (NestJS, Express, Fastify) don't need prefixes — all variables are available via `process.env`.
+
+## CI / CD
+
+Set `VARS_KEY` as a secret in your CI environment:
+
+```bash
+VARS_KEY=<your-master-key> vars run --env prod -- npm run build
+```
+
+No PIN prompt in CI — `VARS_KEY` provides the decryption key directly.
+
+## Tips
+
+- Schema failures throw at build time. A bad URL or wrong type breaks before anything ships, not after.
+- Only prefixed variables reach the browser. Everything else is server-only, even if you forget to think about it.
+- In local development, `vars run` prompts for your PIN to decrypt the key file.

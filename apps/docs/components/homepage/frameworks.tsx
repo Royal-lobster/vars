@@ -5,102 +5,20 @@ import {
   SiNestjs,
   SiSvelte,
   SiNuxt,
+  SiRemix,
+  SiExpress,
 } from '@icons-pack/react-simple-icons';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
-import type { ComponentType } from 'react';
 
-const FRAMEWORKS: {
-  name: string;
-  code: string;
-  lang: string;
-  color: string;
-  Icon: ComponentType<{ size?: number; color?: string; className?: string }>;
-  iconColor: string;
-}[] = [
-  {
-    name: 'Next.js',
-    lang: 'json',
-    code: `// package.json
-{
-  "scripts": {
-    "dev": "vars run --env dev -- next dev",
-    "build": "vars run --env prod -- next build"
-  }
-}`,
-    color: 'from-white/5 to-white/[0.02]',
-    Icon: SiNextdotjs,
-    iconColor: '#ffffff',
-  },
-  {
-    name: 'Vite',
-    lang: 'json',
-    code: `// package.json
-{
-  "scripts": {
-    "dev": "vars run --env dev -- vite",
-    "build": "vars run --env prod -- vite build"
-  }
-}`,
-    color: 'from-purple-500/5 to-purple-500/[0.02]',
-    Icon: SiVite,
-    iconColor: '#646CFF',
-  },
-  {
-    name: 'Astro',
-    lang: 'json',
-    code: `// package.json
-{
-  "scripts": {
-    "dev": "vars run --env dev -- astro dev",
-    "build": "vars run --env prod -- astro build"
-  }
-}`,
-    color: 'from-orange-500/5 to-orange-500/[0.02]',
-    Icon: SiAstro,
-    iconColor: '#BC52EE',
-  },
-  {
-    name: 'NestJS',
-    lang: 'json',
-    code: `// package.json
-{
-  "scripts": {
-    "dev": "vars run --env dev -- nest start --watch",
-    "build": "vars run --env prod -- nest build"
-  }
-}`,
-    color: 'from-red-500/5 to-red-500/[0.02]',
-    Icon: SiNestjs,
-    iconColor: '#E0234E',
-  },
-  {
-    name: 'SvelteKit',
-    lang: 'json',
-    code: `// package.json
-{
-  "scripts": {
-    "dev": "vars run --env dev -- vite dev",
-    "build": "vars run --env prod -- vite build"
-  }
-}`,
-    color: 'from-orange-500/5 to-orange-500/[0.02]',
-    Icon: SiSvelte,
-    iconColor: '#FF3E00',
-  },
-  {
-    name: 'Nuxt',
-    lang: 'json',
-    code: `// package.json
-{
-  "scripts": {
-    "dev": "vars run --env dev -- nuxt dev",
-    "build": "vars run --env prod -- nuxt build"
-  }
-}`,
-    color: 'from-green-500/5 to-green-500/[0.02]',
-    Icon: SiNuxt,
-    iconColor: '#00DC82',
-  },
+const ICONS = [
+  SiNextdotjs,
+  SiVite,
+  SiAstro,
+  SiNestjs,
+  SiSvelte,
+  SiNuxt,
+  SiRemix,
+  SiExpress,
 ];
 
 export function Frameworks() {
@@ -111,29 +29,26 @@ export function Frameworks() {
           <h3 className="text-sm font-medium text-white/40">
             Works with any framework
           </h3>
+          <p className="mt-2 text-base text-white/50">
+            Prefix any command. vars handles the rest.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {FRAMEWORKS.map((fw) => (
-            <div
-              key={fw.name}
-              className={`group overflow-hidden rounded-xl border border-white/[0.06] bg-gradient-to-b ${fw.color} transition-all duration-200 hover:-translate-y-1 hover:border-green-500/15 hover:shadow-lg hover:shadow-green-500/[0.03]`}
-            >
-              <div className="flex items-center gap-3 px-5 pt-5 pb-3">
-                <fw.Icon
-                  size={20}
-                  color={fw.iconColor}
-                  className="opacity-80 transition-opacity group-hover:opacity-100"
-                />
-                <span className="text-sm font-medium text-white/70">
-                  {fw.name}
-                </span>
-              </div>
-              <div className="mx-4 [&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11px] [&_pre]:!leading-[1.8]">
-                <DynamicCodeBlock lang={fw.lang} code={fw.code} codeblock={{ keepBackground: false }} />
-              </div>
-              <div className="px-5 pb-4 pt-2" />
-            </div>
+        <div className="mx-auto max-w-[600px] [&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-sm [&_pre]:!leading-[1.8]">
+          <DynamicCodeBlock
+            lang="bash"
+            code={`$ vars run --env dev -- your-dev-command\n✔ Injected 12 variables.`}
+            codeblock={{ keepBackground: false }}
+          />
+        </div>
+
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-8">
+          {ICONS.map((Icon, i) => (
+            <Icon
+              key={i}
+              size={24}
+              className="text-white/40"
+            />
           ))}
         </div>
       </div>
