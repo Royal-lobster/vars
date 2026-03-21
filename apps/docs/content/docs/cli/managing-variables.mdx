@@ -1,0 +1,158 @@
+---
+title: Managing Variables
+description: Day-to-day workflow for adding, editing, and removing variables.
+---
+
+`show`, edit, `hide`. That's it. `add`, `remove`, `ls`, and `toggle` exist for when you'd rather not open the file at all.
+
+---
+
+## show
+
+```bash
+npx vars show
+```
+
+Decrypts `.vars/vault.vars` → `.vars/unlocked.vars`. Open that file, make your changes, then run `hide`.
+
+Before it decrypts, vars runs two safety checks:
+
+- `unlocked.vars` is in `.gitignore`
+- The pre-commit hook is installed
+
+If either fails, vars stops and tells you what's wrong. Fix it, then retry.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--file <path>` | `-f` | Use a different vault file |
+
+```bash
+npx vars show -f .vars/staging.vars
+```
+
+---
+
+## hide
+
+```bash
+npx vars hide
+```
+
+Re-encrypts `.vars/unlocked.vars` back into `.vars/vault.vars` and removes the unlocked file.
+
+Encryption is all-or-nothing — if any value fails, the vault stays untouched. No partial writes, no corrupted state.
+
+If schemas changed since the last `gen` run, `hide` regenerates `env.generated.ts` automatically.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--file <path>` | `-f` | Use a different vault file |
+
+```bash
+npx vars hide -f .vars/staging.vars
+```
+
+---
+
+## add
+
+```bash
+npx vars add DATABASE_URL
+```
+
+Adds a variable without touching the file. vars prompts you for a Zod schema, then asks for a value per environment (`default`, `dev`, `staging`, `prod`). Skip any env you don't need yet.
+
+The variable gets encrypted and written straight to the vault.
+
+Names must be `UPPER_SNAKE_CASE`.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--schema <zod>` | `-s` | Skip the schema prompt |
+| `--file <path>` | `-f` | Use a different vault file |
+
+```bash
+npx vars add STRIPE_KEY --schema "z.string().startsWith('sk_')"
+```
+
+---
+
+## remove
+
+```bash
+npx vars remove DATABASE_URL
+```
+
+Deletes the variable, every env value, and all metadata. Prompts for confirmation first.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--yes` | `-y` | Skip the confirmation prompt |
+| `--file <path>` | `-f` | Use a different vault file |
+
+```bash
+npx vars remove OLD_API_URL --yes
+```
+
+---
+
+## ls
+
+```bash
+npx vars ls
+```
+
+Prints a table of every variable: schema, which envs have values, required vs optional, and any metadata (description, owner, expiry, deprecation). Deprecated vars show with strikethrough.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--file <path>` | `-f` | Use a different vault file |
+
+```
+NAME             SCHEMA                  ENVS                  STATUS
+DATABASE_URL     z.string().url()        dev, staging, prod    required
+PORT             z.coerce.number()       default               optional
+~~OLD_API_URL~~  z.string().url()        default               deprecated
+```
+
+---
+
+## toggle
+
+```bash
+npx vars toggle
+```
+
+Checks what's currently on disk and runs the right command. `unlocked.vars` exists? Hides it. Only `vault.vars`? Shows it. Same command either way.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--file <path>` | `-f` | Use a different vault file |
+
+---
+
+## Day-to-day
+
+```bash
+# Unlock
+npx vars show
+
+# Edit .vars/unlocked.vars
+
+# Lock
+npx vars hide
+```
+
+Or skip the file entirely and use `add` and `remove`.
