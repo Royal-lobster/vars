@@ -1,11 +1,15 @@
 import { source } from '@/lib/source';
-import { getLLMText } from '@/lib/get-llm-text';
 
 export const revalidate = false;
 
 export async function GET() {
-  const scan = source.getPages().map(getLLMText);
-  const scanned = await Promise.all(scan);
+  const pages = source.getPages();
+  const sections = pages.map(
+    (page) => `# ${page.data.title} (${page.url})\n\n${page.data.description ?? ''}`
+  );
+  const content = sections.join('\n\n---\n\n');
 
-  return new Response(scanned.join('\n\n'));
+  return new Response(content, {
+    headers: { 'Content-Type': 'text/plain' },
+  });
 }
