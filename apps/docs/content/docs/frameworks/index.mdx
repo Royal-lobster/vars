@@ -45,6 +45,8 @@ Each framework has its own prefix for variables exposed to the browser:
 
 Because `vars run` sets `process.env` before the framework starts, prefixed variables get picked up automatically. No extra wiring needed.
 
+Server-only frameworks (NestJS, Express, Fastify) don't need prefixes — all variables are available via `process.env`.
+
 ## CI / CD
 
 Set `VARS_KEY` as a secret in your CI environment:

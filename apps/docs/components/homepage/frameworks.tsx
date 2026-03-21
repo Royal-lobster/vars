@@ -43,9 +43,9 @@ export function Frameworks() {
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-8">
-          {ICONS.map((Icon) => (
+          {ICONS.map((Icon, i) => (
             <Icon
-              key={Icon.displayName}
+              key={i}
               size={24}
               className="text-white/40"
             />
