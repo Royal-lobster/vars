@@ -3,16 +3,16 @@ import { resolve } from "node:path";
 import { loadEnvx } from "@vars/core";
 
 export interface VarsOptions {
-  envFile?: string;
-  env?: string;
-  key?: string;
+	envFile?: string;
+	env?: string;
+	key?: string;
 }
 
 export interface DynamicModule {
-  module: typeof EnvxModule;
-  global: boolean;
-  providers: Array<{ provide: symbol; useValue: Record<string, unknown> }>;
-  exports: symbol[];
+	module: typeof EnvxModule;
+	global: boolean;
+	providers: Array<{ provide: symbol; useValue: Record<string, unknown> }>;
+	exports: symbol[];
 }
 
 /**
@@ -45,37 +45,38 @@ export const VARS: unique symbol = Symbol("VARS");
  * export class AppModule {}
  * ```
  */
+// biome-ignore lint/complexity/noStaticOnlyClass: NestJS module pattern requires a class for DI
 export class EnvxModule {
-  static forRoot(options: VarsOptions = {}): DynamicModule {
-    const envFile = options.envFile ?? ".vars";
-    const env = options.env ?? process.env.VARS_ENV ?? "development";
-    const key = options.key ?? process.env.VARS_KEY ?? readKeyFile(envFile);
+	static forRoot(options: VarsOptions = {}): DynamicModule {
+		const envFile = options.envFile ?? ".vars";
+		const env = options.env ?? process.env.VARS_ENV ?? "development";
+		const key = options.key ?? process.env.VARS_KEY ?? readKeyFile(envFile);
 
-    const envFilePath = resolve(process.cwd(), envFile);
+		const envFilePath = resolve(process.cwd(), envFile);
 
-    const loadOptions: Record<string, unknown> = { env };
-    if (key) loadOptions.key = key;
+		const loadOptions: Record<string, unknown> = { env };
+		if (key) loadOptions.key = key;
 
-    const resolved = loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+		const resolved = loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
 
-    return {
-      module: EnvxModule,
-      global: true,
-      providers: [
-        {
-          provide: VARS,
-          useValue: resolved,
-        },
-      ],
-      exports: [VARS],
-    };
-  }
+		return {
+			module: EnvxModule,
+			global: true,
+			providers: [
+				{
+					provide: VARS,
+					useValue: resolved,
+				},
+			],
+			exports: [VARS],
+		};
+	}
 }
 
 function readKeyFile(envFile: string): string | undefined {
-  const keyPath = resolve(process.cwd(), `${envFile}.key`);
-  if (existsSync(keyPath)) {
-    return readFileSync(keyPath, "utf8").trim();
-  }
-  return undefined;
+	const keyPath = resolve(process.cwd(), `${envFile}.key`);
+	if (existsSync(keyPath)) {
+		return readFileSync(keyPath, "utf8").trim();
+	}
+	return undefined;
 }
