@@ -6,7 +6,59 @@ import {
   SiSvelte,
   SiNuxt,
 } from '@icons-pack/react-simple-icons';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
+
+type Token = { text: string; cls: string };
+
+// Simple JS/TS syntax highlighter for short snippets
+function tokenize(line: string): Token[] {
+  if (line.trim() === '') return [];
+  if (line.trimStart().startsWith('//'))
+    return [{ text: line, cls: 'text-neutral-600 italic' }];
+
+  const tokens: Token[] = [];
+  // Match leading whitespace
+  const leadMatch = line.match(/^(\s+)/);
+  if (leadMatch) {
+    tokens.push({ text: leadMatch[1], cls: '' });
+    line = line.slice(leadMatch[1].length);
+  }
+
+  // Tokenize remaining
+  const regex =
+    /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b(?:import|export|default|from|const|let)\b)|(@\w+)|(\b(?:defineConfig|defineNuxtConfig|withVars|varsPlugin|varsIntegration|sveltekit|VarsModule|forRoot|Module)\b)|([\[\]{}(),;:.])/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(line)) !== null) {
+    // Plain text before match
+    if (match.index > lastIndex) {
+      tokens.push({ text: line.slice(lastIndex, match.index), cls: 'text-white/50' });
+    }
+    if (match[1]) {
+      // String literal
+      tokens.push({ text: match[0], cls: 'text-green-400' });
+    } else if (match[2]) {
+      // Keyword
+      tokens.push({ text: match[0], cls: 'text-purple-400' });
+    } else if (match[3]) {
+      // Decorator
+      tokens.push({ text: match[0], cls: 'text-yellow-400' });
+    } else if (match[4]) {
+      // Function/identifier
+      tokens.push({ text: match[0], cls: 'text-blue-400' });
+    } else if (match[5]) {
+      // Punctuation
+      tokens.push({ text: match[0], cls: 'text-neutral-500' });
+    }
+    lastIndex = match.index + match[0].length;
+  }
+  // Trailing text
+  if (lastIndex < line.length) {
+    tokens.push({ text: line.slice(lastIndex), cls: 'text-white/50' });
+  }
+  return tokens;
+}
 
 const FRAMEWORKS: {
   name: string;
@@ -127,12 +179,21 @@ export function Frameworks() {
                   {fw.name}
                 </span>
               </div>
-              <div className="mx-4 mb-4 overflow-hidden rounded-lg bg-black/30 px-4 py-3 font-mono text-[11px] leading-[1.7]">
-                {fw.code.map((line, i) => (
-                  <div key={i} className={line.startsWith('//') ? 'text-neutral-600' : line === '' ? 'h-2' : 'text-white/50'}>
-                    {line || '\u00A0'}
-                  </div>
-                ))}
+              <div className="mx-4 mb-4 overflow-x-auto rounded-lg bg-black/30 px-4 py-3 font-mono text-[11px] leading-[1.8]">
+                {fw.code.map((line, i) => {
+                  const tokens = tokenize(line);
+                  return (
+                    <div key={i} className={tokens.length === 0 ? 'h-3' : 'whitespace-pre'}>
+                      {tokens.length === 0
+                        ? '\u00A0'
+                        : tokens.map((t, j) => (
+                            <span key={j} className={t.cls}>
+                              {t.text}
+                            </span>
+                          ))}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
