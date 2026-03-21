@@ -1,74 +1,67 @@
 {
-  "name": "@vars/vscode",
-  "displayName": "vars",
-  "description": "Encrypted, typed environment variables — syntax highlighting, validation, autocomplete for .vars files",
-  "version": "0.1.0",
-  "publisher": "vars",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/vars/vars"
-  },
-  "engines": {
-    "vscode": "^1.85.0"
-  },
-  "categories": [
-    "Programming Languages",
-    "Linters",
-    "Snippets"
-  ],
-  "activationEvents": [
-    "onLanguage:vars",
-    "workspaceContains:**/.vars"
-  ],
-  "main": "./dist/extension.cjs",
-  "contributes": {
-    "languages": [
-      {
-        "id": "vars",
-        "aliases": ["vars", "Vars", "envx"],
-        "extensions": [".vars"],
-        "configuration": "./language-configuration.json",
-        "icon": {
-          "light": "./icons/vars-light.png",
-          "dark": "./icons/vars-dark.png"
-        }
-      }
-    ],
-    "grammars": [
-      {
-        "language": "vars",
-        "scopeName": "source.vars",
-        "path": "./src/syntaxes/vars.tmLanguage.json"
-      }
-    ],
-    "configuration": {
-      "title": "vars",
-      "properties": {
-        "vars.trace.server": {
-          "type": "string",
-          "enum": ["off", "messages", "verbose"],
-          "default": "off",
-          "description": "Traces the communication between VS Code and the vars language server."
-        }
-      }
-    }
-  },
-  "scripts": {
-    "build": "tsup",
-    "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist",
-    "vscode:prepublish": "tsup",
-    "package": "vsce package --no-dependencies"
-  },
-  "dependencies": {
-    "@vars/lsp": "workspace:*",
-    "vscode-languageclient": "^9.0.0"
-  },
-  "devDependencies": {
-    "@types/vscode": "^1.85.0",
-    "tsup": "^8.3.0",
-    "typescript": "^5.7.0",
-    "@vscode/vsce": "^3.0.0"
-  }
+	"name": "@vars/vscode",
+	"displayName": "vars",
+	"description": "Encrypted, typed environment variables — syntax highlighting, validation, autocomplete for .vars files",
+	"version": "0.1.0",
+	"publisher": "vars",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/vars/vars"
+	},
+	"engines": {
+		"vscode": "^1.85.0"
+	},
+	"categories": ["Programming Languages", "Linters", "Snippets"],
+	"activationEvents": ["onLanguage:vars", "workspaceContains:**/.vars"],
+	"main": "./dist/extension.cjs",
+	"contributes": {
+		"languages": [
+			{
+				"id": "vars",
+				"aliases": ["vars", "Vars", "envx"],
+				"extensions": [".vars"],
+				"configuration": "./language-configuration.json",
+				"icon": {
+					"light": "./icons/vars-light.png",
+					"dark": "./icons/vars-dark.png"
+				}
+			}
+		],
+		"grammars": [
+			{
+				"language": "vars",
+				"scopeName": "source.vars",
+				"path": "./src/syntaxes/vars.tmLanguage.json"
+			}
+		],
+		"configuration": {
+			"title": "vars",
+			"properties": {
+				"vars.trace.server": {
+					"type": "string",
+					"enum": ["off", "messages", "verbose"],
+					"default": "off",
+					"description": "Traces the communication between VS Code and the vars language server."
+				}
+			}
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"typecheck": "tsc --noEmit",
+		"clean": "rm -rf dist",
+		"vscode:prepublish": "tsup",
+		"package": "vsce package --no-dependencies"
+	},
+	"dependencies": {
+		"@vars/lsp": "workspace:*",
+		"vscode-languageclient": "^9.0.0"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.85.0",
+		"tsup": "^8.3.0",
+		"typescript": "^5.7.0",
+		"@vscode/vsce": "^3.0.0"
+	}
 }
