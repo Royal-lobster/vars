@@ -23,7 +23,7 @@ const STEPS = [
   },
   {
     title: 'Run',
-    description: 'Inject secrets. Nothing hits disk.',
+    description: 'Optional — framework adapters handle this for you.',
     command: 'npx vars run --env dev -- npm start',
   },
 ];
