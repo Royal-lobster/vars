@@ -7,8 +7,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import * as output from "../utils/output.js";
-
-const HOOK_MARKER = "# vars: auto-encrypt before commit";
+import { HOOK_MARKER } from "../utils/patterns.js";
 const HOOK_SCRIPT = `
 ${HOOK_MARKER}
 # Block commit if .vars/unlocked.vars exists (secrets are decrypted)

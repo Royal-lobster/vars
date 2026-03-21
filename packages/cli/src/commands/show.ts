@@ -3,13 +3,11 @@ import { existsSync, readFileSync, renameSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { decrypt, isEncrypted, regenerateIfStale } from "@vars/core";
 import { buildContext, requireKey } from "../utils/context.js";
-import { ENV_VALUE_LINE } from "../utils/patterns.js";
+import { ENV_VALUE_LINE, HOOK_MARKER, countVariables } from "../utils/patterns.js";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import * as output from "../utils/output.js";
 import * as clack from "@clack/prompts";
 import pc from "picocolors";
-
-const HOOK_MARKER = "# vars: auto-encrypt before commit";
 
 export default defineCommand({
   meta: {
@@ -92,18 +90,9 @@ export default defineCommand({
 });
 
 /**
- * Count the number of ENV_VALUE_LINE matches in a .vars file.
- */
-function countVariables(filePath: string): number {
-  const content = readFileSync(filePath, "utf8");
-  const lines = content.split("\n");
-  return lines.filter((line) => ENV_VALUE_LINE.test(line)).length;
-}
-
-/**
  * Walk up from the .vars directory to find the project root (where .git lives).
  */
-function findProjectRoot(startDir: string): string {
+export function findProjectRoot(startDir: string): string {
   let dir = resolve(startDir);
   const root = resolve("/");
   while (dir !== root) {
@@ -119,7 +108,7 @@ function findProjectRoot(startDir: string): string {
  * Build safety checks for the show command.
  * Checks: 1) unlocked.vars in .gitignore  2) pre-commit hook with vars marker
  */
-function buildSafetyChecks(projectRoot: string): output.SafetyCheck[] {
+export function buildSafetyChecks(projectRoot: string): output.SafetyCheck[] {
   const checks: output.SafetyCheck[] = [];
 
   // Check 1: Is unlocked.vars in .gitignore?

@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { parse, isEncrypted } from "@vars/core";
 import { findVarsFile } from "../utils/context.js";
+import { HOOK_MARKER } from "../utils/patterns.js";
 import * as output from "../utils/output.js";
 import type { HealthCheckGroup } from "../utils/output.js";
 
@@ -164,7 +165,7 @@ export function runDoctorChecks(cwd: string): HealthCheckGroup[] {
   }
 
   // Pre-commit hook installed
-  const hookMarker = "# vars: auto-encrypt before commit";
+  const hookMarker = HOOK_MARKER;
   const huskyHookPath = join(projectRoot, ".husky", "pre-commit");
   const gitHookPath = join(projectRoot, ".git", "hooks", "pre-commit");
   const huskyContent = existsSync(huskyHookPath)

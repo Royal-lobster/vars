@@ -1,12 +1,13 @@
 import { defineCommand } from "citty";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { buildContext, requireKey } from "../utils/context.js";
-import { showVarsFile } from "./show.js";
+import { countVariables } from "../utils/patterns.js";
+import { showVarsFile, findProjectRoot, buildSafetyChecks } from "./show.js";
 import { hideVarsFile } from "./hide.js";
-import { ENV_VALUE_LINE } from "../utils/patterns.js";
 import * as output from "../utils/output.js";
 import * as clack from "@clack/prompts";
+import pc from "picocolors";
 
 export default defineCommand({
   meta: {
@@ -61,18 +62,57 @@ export default defineCommand({
 
       output.stateChange("vault.vars", "unlocked.vars");
 
+      // Safety checks — same as vars show
+      const projectRoot = findProjectRoot(dirname(ctx.varsFilePath));
+      const checks = buildSafetyChecks(projectRoot);
+      const failCount = checks.filter((c) => c.status !== "pass").length;
+
+      if (failCount === 0) {
+        clack.note(
+          [
+            "Edit .vars/unlocked.vars in your editor.",
+            "",
+            ...checks.map((c) => `${pc.green("\u2713")} ${c.label}`),
+            "",
+            "Run vars hide when you're done editing.",
+          ].join("\n"),
+          "Ready to edit",
+        );
+      } else if (failCount === checks.length) {
+        clack.note(
+          [
+            "Edit .vars/unlocked.vars in your editor.",
+            "",
+            ...checks.map((c) =>
+              c.status === "pass"
+                ? `${pc.green("\u2713")} ${c.label}`
+                : `${pc.yellow("\u26a0")} ${c.label}${c.fix ? `\n   ${pc.dim(c.fix)}` : ""}`,
+            ),
+            "",
+            pc.yellow("Your decrypted secrets are exposed. Fix the above before continuing."),
+          ].join("\n"),
+          "Safety checks",
+        );
+      } else {
+        clack.note(
+          [
+            "Edit .vars/unlocked.vars in your editor.",
+            "",
+            ...checks.map((c) =>
+              c.status === "pass"
+                ? `${pc.green("\u2713")} ${c.label}`
+                : `${pc.red("\u2717")} ${c.label}${c.fix ? `\n   ${pc.dim(c.fix)}` : ""}`,
+            ),
+            "",
+            "Remember to run vars hide when done \u2014 without the hook, there's no safety net.",
+          ].join("\n"),
+          "Safety checks",
+        );
+      }
+
       output.outro(
         `Toggled: locked \u2192 unlocked. ${varCount} variable${varCount !== 1 ? "s" : ""} decrypted.`,
       );
     }
   },
 });
-
-/**
- * Count the number of ENV_VALUE_LINE matches in a file.
- */
-function countVariables(filePath: string): number {
-  const content = readFileSync(filePath, "utf8");
-  const lines = content.split("\n");
-  return lines.filter((line) => ENV_VALUE_LINE.test(line)).length;
-}
