@@ -42,7 +42,7 @@ The `--` separator is required. Everything after it is the command vars runs.
 npx vars gen
 ```
 
-Generates a typed TypeScript file with accessor functions for every variable in your vault. Default output is `env.generated.ts`. Import it instead of reading `process.env` directly and you get autocomplete and type safety.
+Generates a typed TypeScript file with accessor functions for every variable in your vault. Default output is `.vars/vars.generated.ts`. Import it instead of reading `process.env` directly and you get autocomplete and type safety.
 
 ```bash
 # Generate with defaults
@@ -56,7 +56,7 @@ npx vars gen --output src/lib/env.ts
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--output <path>` | `-o` | Output file path (default: `env.generated.ts`) |
+| `--output <path>` | `-o` | Output file path (default: `.vars/vars.generated.ts`) |
 | `--lang <lang>` | | Language target (`ts` only for now) |
 | `--file <path>` | `-f` | Use a different vault file |
 

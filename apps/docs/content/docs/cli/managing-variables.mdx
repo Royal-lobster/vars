@@ -15,12 +15,12 @@ npx vars show
 
 Decrypts `.vars/vault.vars` → `.vars/unlocked.vars`. Open that file, make your changes, then run `hide`.
 
-Before it decrypts, vars runs two safety checks:
+Before it decrypts, vars auto-fixes safety issues:
 
-- `unlocked.vars` is in `.gitignore`
-- The pre-commit hook is installed
+- Adds `unlocked.vars` to `.gitignore` if missing
+- Warns if the pre-commit hook isn't installed
 
-If either fails, vars stops and tells you what's wrong. Fix it, then retry.
+If your vault has no encrypted values (e.g., a fresh project with plaintext), `show` skips the PIN prompt entirely.
 
 **Flags**
 
@@ -44,7 +44,7 @@ Re-encrypts `.vars/unlocked.vars` back into `.vars/vault.vars` and removes the u
 
 Encryption is all-or-nothing — if any value fails, the vault stays untouched. No partial writes, no corrupted state.
 
-If schemas changed since the last `gen` run, `hide` regenerates `env.generated.ts` automatically.
+If schemas changed since the last `gen` run, `hide` regenerates `.vars/vars.generated.ts` automatically.
 
 **Flags**
 
