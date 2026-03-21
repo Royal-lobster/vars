@@ -28,12 +28,12 @@ export function readKeyFile(envFile: string): string | undefined {
 }
 
 /**
- * Regenerate env.generated.ts if the .vars file is newer than the generated file.
+ * Regenerate vars.generated.ts if the .vars file is newer than the generated file.
  */
 export function regenerateIfStale(envFilePath: string, envFile: string): void {
 	if (!existsSync(envFilePath)) return;
 
-	const generatedPath = resolve(dirname(envFilePath), "env.generated.ts");
+	const generatedPath = resolve(dirname(envFilePath), "vars.generated.ts");
 	const varsModified = statSync(envFilePath).mtimeMs;
 
 	if (existsSync(generatedPath)) {
