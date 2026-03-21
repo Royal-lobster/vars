@@ -40,7 +40,7 @@ export async function VarsDynamicCodeBlock({ code, className }: VarsCodeBlockPro
     jsxs,
     components: {
       pre: (props) => (
-        <CodeBlock keepBackground={false} {...props}>
+        <CodeBlock keepBackground={false} allowCopy={false} {...props}>
           <Pre>{props.children}</Pre>
         </CodeBlock>
       ),

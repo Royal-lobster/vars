@@ -134,7 +134,7 @@ export function Bento() {
                   <DynamicCodeBlock
                     lang={item.lang ?? 'text'}
                     code={item.code}
-                    codeblock={{ keepBackground: false }}
+                    codeblock={{ keepBackground: false, allowCopy: false }}
                   />
                 </div>
               )}

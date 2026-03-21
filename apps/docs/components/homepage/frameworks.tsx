@@ -38,7 +38,7 @@ export function Frameworks() {
           <DynamicCodeBlock
             lang="bash"
             code={`$ vars run --env dev -- your-dev-command\n✔ Injected 12 variables.`}
-            codeblock={{ keepBackground: false }}
+            codeblock={{ keepBackground: false, allowCopy: false }}
           />
         </div>
 

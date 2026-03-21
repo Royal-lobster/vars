@@ -60,7 +60,7 @@ export function Comparison() {
           </div>
 
           <div className={`mx-4 mb-1 ${codeBlockStyle}`}>
-            <DynamicCodeBlock lang="bash" code={ENV_CODE} codeblock={{ keepBackground: false }} />
+            <DynamicCodeBlock lang="bash" code={ENV_CODE} codeblock={{ keepBackground: false, allowCopy: false }} />
           </div>
 
           <div className="grid grid-cols-2 gap-3 px-5 py-5">
