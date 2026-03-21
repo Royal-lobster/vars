@@ -16,6 +16,17 @@ describe("validator", () => {
     it("evaluates z.coerce.boolean()", () => {
       const schema = evaluateSchema("z.coerce.boolean()");
       expect(schema.parse("true")).toBe(true);
+      expect(schema.parse("1")).toBe(true);
+      expect(schema.parse("yes")).toBe(true);
+    });
+
+    it("coerces 'false', '0', and '' to false", () => {
+      const schema = evaluateSchema("z.coerce.boolean()");
+      expect(schema.parse("false")).toBe(false);
+      expect(schema.parse("FALSE")).toBe(false);
+      expect(schema.parse("False")).toBe(false);
+      expect(schema.parse("0")).toBe(false);
+      expect(schema.parse("")).toBe(false);
     });
 
     it("evaluates z.string().url()", () => {

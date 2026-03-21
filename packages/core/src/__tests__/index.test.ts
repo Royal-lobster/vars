@@ -101,22 +101,20 @@ describe("loadEnvx", () => {
   });
 
   it("applies @refine cross-variable constraints", () => {
-    // Note: z.coerce.boolean() coerces any non-empty string to true,
-    // so we use z.coerce.number() with 0/1 to test refine constraints
     writeVarsFile([
       "LOG_LEVEL  z.enum([\"debug\", \"info\"])",
       "  @default = debug",
       "",
-      "DEBUG  z.coerce.number()",
-      "  @default = 0",
+      "DEBUG  z.coerce.boolean()",
+      "  @default = false",
       "",
-      '@refine (env) => env.LOG_LEVEL !== "debug" || env.DEBUG === 1',
-      '  "DEBUG must be 1 when LOG_LEVEL is debug"',
+      '@refine (env) => env.LOG_LEVEL !== "debug" || env.DEBUG === true',
+      '  "DEBUG must be true when LOG_LEVEL is debug"',
     ].join("\n"));
 
     expect(() =>
       loadEnvx(join(tmpDir, ".vars"), { env: "dev", key }),
-    ).toThrow("DEBUG must be 1");
+    ).toThrow("DEBUG must be true");
   });
 
   it("defaults env to development", () => {

@@ -4,6 +4,41 @@ import { ValidationError } from "./errors.js";
 // Allowlist: only permit z.* method chains — no arbitrary code execution
 const SAFE_SCHEMA_PATTERN = /^z\.[\w.(),"'\[\]\s:>=<|&!+\-\/]+$/;
 
+const FALSY_STRINGS = new Set(["false", "0", ""]);
+
+/**
+ * A z.coerce.boolean() replacement that correctly handles env-var strings.
+ * JS Boolean("false") === true, so we preprocess string values first.
+ */
+function envBoolean() {
+  return z.preprocess((val) => {
+    if (typeof val === "string") {
+      return !FALSY_STRINGS.has(val.toLowerCase().trim());
+    }
+    return Boolean(val);
+  }, z.boolean());
+}
+
+/**
+ * Proxy over Zod's `z` that replaces `z.coerce.boolean()` with env-aware coercion.
+ * All other methods pass through to Zod unchanged.
+ */
+const envZ: typeof z = new Proxy(z, {
+  get(target, prop, receiver) {
+    if (prop === "coerce") {
+      return new Proxy(target.coerce, {
+        get(coerceTarget, coerceProp) {
+          if (coerceProp === "boolean") {
+            return envBoolean;
+          }
+          return Reflect.get(coerceTarget, coerceProp);
+        },
+      });
+    }
+    return Reflect.get(target, prop, receiver);
+  },
+});
+
 /** Alias: evaluateSchema is the internal name, parseSchema matches the PRD public API */
 export const parseSchema = evaluateSchema;
 
@@ -28,7 +63,7 @@ export function evaluateSchema(schemaText: string): z.ZodType {
 
   try {
     const fn = new Function("z", `"use strict"; return (${schemaText})`);
-    const schema = fn(z);
+    const schema = fn(envZ);
 
     if (!(schema instanceof z.ZodType)) {
       throw new Error("Expression did not return a Zod schema");
