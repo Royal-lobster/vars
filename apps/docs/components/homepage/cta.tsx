@@ -3,8 +3,17 @@ import { CopyCommand } from './copy-command';
 
 export function CTA() {
   return (
-    <section className="px-5 py-28 text-center md:px-10">
-      <div>
+    <section className="relative overflow-hidden px-5 py-28 text-center md:px-10">
+      <div className="absolute inset-0 z-0">
+        <img
+          src="/images/cta-bg.webp"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-60"
+        />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center_40%,transparent_30%,#050505_75%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#050505] via-transparent to-[#050505]" />
+      </div>
+      <div className="relative z-10">
         <h2 className="text-[clamp(32px,5vw,48px)] font-bold tracking-[-2px]">
           Replace .env{' '}
           <em className="font-serif italic text-green-500 font-normal">today.</em>
