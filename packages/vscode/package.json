@@ -1,0 +1,38 @@
+{
+	"name": "@vars/vscode",
+	"private": true,
+	"version": "0.1.0",
+	"displayName": "vars",
+	"description": "Encrypted, typed environment variables",
+	"publisher": "vars",
+	"engines": {
+		"vscode": "^1.85.0"
+	},
+	"categories": ["Programming Languages", "Linters"],
+	"activationEvents": ["onLanguage:vars"],
+	"main": "./dist/extension.js",
+	"contributes": {
+		"languages": [
+			{
+				"id": "vars",
+				"aliases": ["vars", "Vars"],
+				"extensions": [".vars"],
+				"configuration": "./language-configuration.json"
+			}
+		]
+	},
+	"scripts": {
+		"build": "tsup",
+		"typecheck": "tsc --noEmit",
+		"clean": "rm -rf dist"
+	},
+	"dependencies": {
+		"@vars/lsp": "workspace:*",
+		"vscode-languageclient": "^9.0.0"
+	},
+	"devDependencies": {
+		"@types/vscode": "^1.85.0",
+		"tsup": "^8.3.0",
+		"typescript": "^5.7.0"
+	}
+}
