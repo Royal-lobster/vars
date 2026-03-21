@@ -25,3 +25,12 @@ dist/
 
 # Editor
 *.generated.ts
+
+# Next.js
+.next/
+
+# Fumadocs MDX generated
+.source/
+
+# Superpowers
+.superpowers/
