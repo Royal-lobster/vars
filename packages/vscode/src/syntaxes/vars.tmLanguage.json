@@ -1,0 +1,171 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "vars",
+  "scopeName": "source.vars",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#extends" },
+    { "include": "#refine" },
+    { "include": "#variable" },
+    { "include": "#env-value" },
+    { "include": "#directive" }
+  ],
+  "repository": {
+    "comment": {
+      "match": "^\\s*#.*$",
+      "name": "comment.line.number-sign.vars"
+    },
+    "extends": {
+      "match": "^(@extends)\\s+(.+)$",
+      "captures": {
+        "1": { "name": "keyword.control.extends.vars" },
+        "2": { "name": "string.unquoted.path.vars" }
+      }
+    },
+    "refine": {
+      "begin": "^(@refine)\\s+",
+      "end": "$",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.refine.vars" }
+      },
+      "patterns": [
+        {
+          "match": "\\benv\\.(\\w+)",
+          "captures": {
+            "0": { "name": "variable.other.env-ref.vars" }
+          }
+        },
+        {
+          "match": "=>",
+          "name": "keyword.operator.arrow.vars"
+        },
+        {
+          "match": "\\(env\\)",
+          "name": "variable.parameter.vars"
+        }
+      ]
+    },
+    "variable": {
+      "match": "^([A-Z_][A-Z0-9_]*)\\s{2,}(z\\..*?)\\s*$",
+      "captures": {
+        "1": { "name": "entity.name.variable.vars" },
+        "2": {
+          "patterns": [{ "include": "#zod-schema" }]
+        }
+      }
+    },
+    "zod-schema": {
+      "patterns": [
+        {
+          "match": "\\bz\\b",
+          "name": "support.class.zod.vars"
+        },
+        {
+          "match": "\\.(string|number|boolean|date|bigint|enum|nativeEnum|coerce|literal|union|optional|nullable|array|object|tuple|record|any|unknown|never|void|undefined|null)\\b",
+          "name": "support.function.zod-type.vars"
+        },
+        {
+          "match": "\\.(min|max|email|url|uuid|regex|startsWith|endsWith|int|positive|negative|nonnegative|nonpositive|finite|safe|default|transform|refine|superRefine|pipe|brand|catch|describe|trim|toLowerCase|toUpperCase|length|nonempty)\\b",
+          "name": "support.function.zod-method.vars"
+        },
+        {
+          "match": "'[^']*'",
+          "name": "string.quoted.single.vars"
+        },
+        {
+          "match": "\"[^\"]*\"",
+          "name": "string.quoted.double.vars"
+        },
+        {
+          "match": "\\b\\d+\\b",
+          "name": "constant.numeric.vars"
+        },
+        {
+          "match": "[(),\\[\\]]",
+          "name": "punctuation.bracket.vars"
+        },
+        {
+          "match": "\\.",
+          "name": "punctuation.accessor.vars"
+        }
+      ]
+    },
+    "env-value": {
+      "match": "^(\\s+)(@\\w+)(\\s*=\\s*)(.*)$",
+      "captures": {
+        "2": { "name": "keyword.other.env-name.vars" },
+        "3": { "name": "keyword.operator.assignment.vars" },
+        "4": {
+          "patterns": [
+            { "include": "#encrypted-value" },
+            { "include": "#plain-value" }
+          ]
+        }
+      }
+    },
+    "directive": {
+      "patterns": [
+        {
+          "match": "^(\\s+)(@description)\\s+(\"[^\"]*\")",
+          "captures": {
+            "2": { "name": "keyword.other.directive.vars" },
+            "3": { "name": "string.quoted.double.description.vars" }
+          }
+        },
+        {
+          "match": "^(\\s+)(@deprecated)\\s+(\"[^\"]*\")",
+          "captures": {
+            "2": { "name": "keyword.other.directive.deprecated.vars" },
+            "3": { "name": "string.quoted.double.deprecated.vars" }
+          }
+        },
+        {
+          "match": "^(\\s+)(@expires)\\s+(\\S+)",
+          "captures": {
+            "2": { "name": "keyword.other.directive.vars" },
+            "3": { "name": "constant.other.date.vars" }
+          }
+        },
+        {
+          "match": "^(\\s+)(@owner)\\s+(\\S+)",
+          "captures": {
+            "2": { "name": "keyword.other.directive.vars" },
+            "3": { "name": "entity.name.tag.owner.vars" }
+          }
+        }
+      ]
+    },
+    "encrypted-value": {
+      "match": "enc:v\\d+:aes256gcm:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+",
+      "name": "string.other.encrypted.vars"
+    },
+    "plain-value": {
+      "patterns": [
+        {
+          "match": "\"[^\"]*\"",
+          "name": "string.quoted.double.vars"
+        },
+        {
+          "match": "'[^']*'",
+          "name": "string.quoted.single.vars"
+        },
+        {
+          "match": "\\btrue\\b|\\bfalse\\b",
+          "name": "constant.language.boolean.vars"
+        },
+        {
+          "match": "\\b\\d+\\b",
+          "name": "constant.numeric.vars"
+        },
+        {
+          "match": "[^\\s#]+",
+          "name": "string.unquoted.value.vars"
+        }
+      ]
+    },
+    "refine-message": {
+      "match": "^\\s+\"[^\"]*\"\\s*$",
+      "name": "string.quoted.double.refine-message.vars"
+    }
+  }
+}
