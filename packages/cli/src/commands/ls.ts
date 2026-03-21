@@ -56,7 +56,7 @@ export default defineCommand({
     }));
 
     output.table(rows);
-    console.log(`\n  ${pc.dim(`${list.length} variable(s) total`)}`);
+    output.info(`${list.length} variable(s) total`);
   },
 });
 

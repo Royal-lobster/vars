@@ -2,6 +2,7 @@ import { defineCommand } from "citty";
 import { readFileSync } from "node:fs";
 import { parse, decrypt, isEncrypted } from "@vars/core";
 import { buildContext, getKeyFromEnv } from "../utils/context.js";
+import * as clack from "@clack/prompts";
 import * as output from "../utils/output.js";
 import pc from "picocolors";
 
@@ -48,31 +49,23 @@ export default defineCommand({
     }
 
     if (diff.same.length > 0) {
-      console.log(`\n  ${pc.green("Same in both")} (${diff.same.length}):`);
-      for (const name of diff.same) {
-        console.log(`    ${pc.dim(name)}`);
-      }
+      const lines = diff.same.map((name) => `  ${pc.dim(name)}`);
+      clack.log.message(`${pc.green("Same in both")} (${diff.same.length}):\n${lines.join("\n")}`);
     }
 
     if (diff.different.length > 0) {
-      console.log(`\n  ${pc.yellow("Different values")} (${diff.different.length}):`);
-      for (const d of diff.different) {
-        console.log(`    ${pc.bold(d.variable)}`);
-      }
+      const lines = diff.different.map((d) => `  ${pc.bold(d.variable)}`);
+      clack.log.message(`${pc.yellow("Different values")} (${diff.different.length}):\n${lines.join("\n")}`);
     }
 
     if (diff.onlyLeft.length > 0) {
-      console.log(`\n  ${pc.red(`Only in @${left}`)} (${diff.onlyLeft.length}):`);
-      for (const name of diff.onlyLeft) {
-        console.log(`    ${name}`);
-      }
+      const lines = diff.onlyLeft.map((name) => `  ${name}`);
+      clack.log.message(`${pc.red(`Only in @${left}`)} (${diff.onlyLeft.length}):\n${lines.join("\n")}`);
     }
 
     if (diff.onlyRight.length > 0) {
-      console.log(`\n  ${pc.red(`Only in @${right}`)} (${diff.onlyRight.length}):`);
-      for (const name of diff.onlyRight) {
-        console.log(`    ${name}`);
-      }
+      const lines = diff.onlyRight.map((name) => `  ${name}`);
+      clack.log.message(`${pc.red(`Only in @${right}`)} (${diff.onlyRight.length}):\n${lines.join("\n")}`);
     }
   },
 });

@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { parse, isEncrypted } from "@vars/core";
 import { buildContext, resolveEnv } from "../utils/context.js";
+import * as clack from "@clack/prompts";
 import * as output from "../utils/output.js";
 import pc from "picocolors";
 
@@ -31,8 +32,6 @@ export default defineCommand({
     const ctx = buildContext({ file: args.file });
     const status = getStatus(ctx.varsFilePath);
 
-    output.heading("vars status");
-
     const stateLabel =
       status.encryptionState === "encrypted"
         ? pc.green("encrypted")
@@ -40,14 +39,16 @@ export default defineCommand({
           ? pc.yellow("mixed (some values unencrypted!)")
           : pc.yellow("decrypted (run 'vars hide')");
 
-    console.log(`  File:         ${ctx.varsFilePath}`);
-    console.log(`  State:        ${stateLabel}`);
-    console.log(`  Variables:    ${status.variableCount}`);
-    console.log(`  Environments: ${status.environments.join(", ") || "none"}`);
-    console.log(`  Active env:   ${ctx.env}`);
-    console.log(
-      `  Key file:     ${status.keyFileExists ? pc.green("found") : pc.red("missing")}`,
-    );
+    const noteContent = [
+      `File:         ${ctx.varsFilePath}`,
+      `State:        ${stateLabel}`,
+      `Variables:    ${status.variableCount}`,
+      `Environments: ${status.environments.join(", ") || "none"}`,
+      `Active env:   ${ctx.env}`,
+      `Key file:     ${status.keyFileExists ? pc.green("found") : pc.red("missing")}`,
+    ].join("\n");
+
+    clack.note(noteContent, "vars status");
   },
 });
 

@@ -11,6 +11,7 @@ import {
 } from "@vars/core";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import { ENV_VALUE_LINE } from "../utils/patterns.js";
+import * as clack from "@clack/prompts";
 import * as output from "../utils/output.js";
 import { promptPIN } from "../utils/prompt.js";
 
@@ -20,6 +21,8 @@ export default defineCommand({
     description: "Generate new key + PIN, re-encrypt all values",
   },
   async run() {
+    output.intro("rotate");
+
     const cwd = process.cwd();
 
     const oldPin = await promptPIN("Enter current PIN");
@@ -31,11 +34,15 @@ export default defineCommand({
       process.exit(1);
     }
 
+    const s = clack.spinner();
     try {
+      s.start("Rotating key and re-encrypting values...");
       await rotateKey(cwd, oldPin, newPin);
-      output.success("Key rotated successfully. All values re-encrypted with new key.");
+      s.stop("Re-encrypted all values.");
       output.info("Share the new .vars/key + new PIN with teammates.");
+      output.outro("Rotated. New PIN is active.");
     } catch (err) {
+      s.stop("Rotation failed.");
       output.error(`Rotation failed: ${(err as Error).message}`);
       process.exit(1);
     }

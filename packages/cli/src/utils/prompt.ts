@@ -1,9 +1,13 @@
-import { consola } from "consola";
+import * as clack from "@clack/prompts";
+import pc from "picocolors";
 import { createInterface } from "node:readline";
 
 /**
  * Prompt the user for their PIN with hidden input.
  * Characters are masked with '*' to prevent shoulder-surfing.
+ *
+ * Uses a custom raw-mode implementation (not clack) because clack's
+ * password prompt doesn't support our specific masking / non-TTY needs.
  */
 export async function promptPIN(message = "Enter PIN"): Promise<string> {
   // If not a TTY (piped input, CI, VS Code extension), read from stdin
@@ -30,7 +34,8 @@ export async function promptPIN(message = "Enter PIN"): Promise<string> {
     // Suppress echo
     process.stdin.setRawMode?.(true);
 
-    process.stdout.write(`${message}: `);
+    // Use clack-style visual formatting
+    process.stdout.write(`${pc.gray("\u25c6")}  ${message}: `);
 
     let pin = "";
     const onData = (chunk: Buffer) => {
@@ -55,6 +60,7 @@ export async function promptPIN(message = "Enter PIN"): Promise<string> {
         process.stdin.setRawMode?.(false);
         process.stdin.removeListener("data", onData);
         rl.close();
+        clack.cancel("Operation cancelled.");
         process.exit(1);
       } else {
         pin += char;
@@ -69,10 +75,12 @@ export async function promptPIN(message = "Enter PIN"): Promise<string> {
  * Prompt for confirmation (y/n).
  */
 export async function promptConfirm(message: string): Promise<boolean> {
-  const result = await consola.prompt(message, {
-    type: "confirm",
-  });
-  return result === true;
+  const result = await clack.confirm({ message });
+  if (clack.isCancel(result)) {
+    clack.cancel("Operation cancelled.");
+    process.exit(1);
+  }
+  return result;
 }
 
 /**
@@ -82,10 +90,14 @@ export async function promptSelect<T extends string>(
   message: string,
   options: T[],
 ): Promise<T> {
-  const result = await consola.prompt(message, {
-    type: "select",
-    options: options.map((o) => ({ label: o, value: o })),
+  const result = await clack.select({
+    message,
+    options: options.map((o) => ({ value: o, label: o })),
   });
+  if (clack.isCancel(result)) {
+    clack.cancel("Operation cancelled.");
+    process.exit(1);
+  }
   return result as T;
 }
 
@@ -96,13 +108,14 @@ export async function promptText(
   message: string,
   options?: { placeholder?: string; default?: string },
 ): Promise<string> {
-  const result = await consola.prompt(message, {
-    type: "text",
+  const result = await clack.text({
+    message,
     placeholder: options?.placeholder,
-    default: options?.default,
+    defaultValue: options?.default,
   });
-  if (typeof result !== "string") {
-    throw new Error("Input is required");
+  if (clack.isCancel(result)) {
+    clack.cancel("Operation cancelled.");
+    process.exit(1);
   }
   return result;
 }

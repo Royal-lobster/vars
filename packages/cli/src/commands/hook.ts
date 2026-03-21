@@ -7,8 +7,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import * as output from "../utils/output.js";
-
-const HOOK_MARKER = "# vars: auto-encrypt before commit";
+import { HOOK_MARKER } from "../utils/patterns.js";
 const HOOK_SCRIPT = `
 ${HOOK_MARKER}
 # Block commit if .vars/unlocked.vars exists (secrets are decrypted)
@@ -31,9 +30,10 @@ export default defineCommand({
         description: "Install the pre-commit hook",
       },
       async run() {
+        output.intro("hook");
         const cwd = process.cwd();
         installHook(cwd);
-        output.success("Pre-commit hook installed. .vars will be auto-encrypted before commits.");
+        output.outro("Pre-commit hook installed.");
       },
     }),
   },

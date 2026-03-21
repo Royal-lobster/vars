@@ -2,6 +2,7 @@ import { defineCommand } from "citty";
 import { readFileSync } from "node:fs";
 import { parse, decrypt, isEncrypted, resolveValue } from "@vars/core";
 import { buildContext, getKeyFromEnv } from "../utils/context.js";
+import * as output from "../utils/output.js";
 
 export default defineCommand({
   meta: {
@@ -22,11 +23,22 @@ export default defineCommand({
   },
   async run({ args }) {
     const ctx = buildContext({ file: args.file, env: args.env });
-
     const key = getKeyFromEnv();
-
     const result = generateTemplate(ctx.varsFilePath, ctx.env, key);
+
+    // Output goes to stdout for piping (vars template > .env)
+    // Clack intro/outro goes to stderr so it doesn't pollute the pipe
+    const isTTY = process.stderr.isTTY;
+    if (isTTY) {
+      output.intro("template");
+    }
+
     process.stdout.write(result);
+
+    if (isTTY) {
+      const lineCount = result.split("\n").filter((l) => l && !l.startsWith("#")).length;
+      output.outro(`Generated .env with ${lineCount} variable${lineCount !== 1 ? "s" : ""} (@${ctx.env})`);
+    }
   },
 });
 

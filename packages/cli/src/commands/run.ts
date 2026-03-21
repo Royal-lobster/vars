@@ -8,6 +8,7 @@ import {
   resolveValue,
 } from "@vars/core";
 import { buildContext, requireKey } from "../utils/context.js";
+import * as clack from "@clack/prompts";
 import * as output from "../utils/output.js";
 
 export default defineCommand({
@@ -28,6 +29,8 @@ export default defineCommand({
     },
   },
   async run({ args, rawArgs }) {
+    output.intro("run");
+
     const ctx = buildContext({ file: args.file, env: args.env });
 
     const dashIdx = rawArgs.indexOf("--");
@@ -41,7 +44,11 @@ export default defineCommand({
     const commandArgs = cmdArgs.slice(1);
 
     const key = await requireKey();
+
+    const s = clack.spinner();
+    s.start("Injecting variables...");
     const envVars = buildRunEnv(ctx.varsFilePath, ctx.env, key);
+    s.stop(`Injected ${Object.keys(envVars).length} variables.`);
 
     const child = spawn(command, commandArgs, {
       stdio: "inherit",

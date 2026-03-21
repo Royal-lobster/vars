@@ -7,7 +7,6 @@ export default defineCommand({
     description: "No longer needed — keys are never cached",
   },
   async run() {
-    output.info("'vars lock' is no longer needed.");
-    output.info("Keys are never cached — PIN is prompted on each command.");
+    output.info("'vars lock' is no longer needed — keys are never cached.");
   },
 });

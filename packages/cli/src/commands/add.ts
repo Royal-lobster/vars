@@ -28,6 +28,8 @@ export default defineCommand({
     },
   },
   async run({ args }) {
+    output.intro("add");
+
     const ctx = buildContext({ file: args.file });
     const key = await requireKey();
 
@@ -46,7 +48,7 @@ export default defineCommand({
     }
 
     addVariable(ctx.varsFilePath, key, { name, schema, values });
-    output.success(`Added ${name} to ${ctx.varsFilePath}`);
+    output.outro(`Added ${name}`);
   },
 });
 
