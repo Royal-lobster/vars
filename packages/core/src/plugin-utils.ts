@@ -17,26 +17,15 @@ export function extractValue(value: unknown): string {
 }
 
 /**
- * Read the decryption key from VARS_KEY env var.
- * This is the only way adapters get the key:
- * - Local dev: `vars run --env dev -- pnpm dev` sets VARS_KEY in the child process
- * - CI/CD: VARS_KEY set in platform env vars (Vercel, GitHub Actions, etc.)
- */
-export function readKeyFile(envFile: string): string | undefined {
-	return process.env.VARS_KEY;
-}
-
-/**
  * Resolve the vars file path, preferring unlocked.vars over vault.vars.
- * During development (after `vars show` or `vars init`), unlocked.vars exists with plaintext values.
- * In production/CI, only vault.vars exists with encrypted values.
- * Returns { path, unlocked } so adapters know whether to skip decryption.
+ * Respects custom envFile paths. Returns { path, unlocked } so adapters
+ * know whether to skip decryption.
  */
 export function resolveVarsFile(envFile: string): { path: string; unlocked: boolean } {
-	const varsDir = resolve(process.cwd(), ".vars");
-	const unlockedPath = resolve(varsDir, "unlocked.vars");
+	const vaultPath = resolve(process.cwd(), envFile);
+	const unlockedPath = resolve(dirname(vaultPath), "unlocked.vars");
 	if (existsSync(unlockedPath)) return { path: unlockedPath, unlocked: true };
-	return { path: resolve(process.cwd(), envFile), unlocked: false };
+	return { path: vaultPath, unlocked: false };
 }
 
 /**

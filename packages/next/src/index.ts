@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { extractValue, loadVars, readKeyFile, regenerateIfStale, resolveVarsFile } from "@vars/core";
+import { extractValue, loadVars, regenerateIfStale, resolveVarsFile } from "@vars/core";
 
 export interface VarsOptions {
 	envFile?: string;
@@ -26,7 +26,7 @@ export function withVars<T extends object>(
 	const envFile = varsOptions.envFile ?? ".vars/vault.vars";
 	const env = varsOptions.env ?? process.env.VARS_ENV ?? "development";
 	const { path: envFilePath, unlocked } = resolveVarsFile(envFile);
-	const key = unlocked ? undefined : (varsOptions.key ?? process.env.VARS_KEY ?? readKeyFile(envFile));
+	const key = unlocked ? undefined : (varsOptions.key ?? process.env.VARS_KEY);
 
 	// 1. Auto-regenerate vars.generated.ts if .vars changed
 	regenerateIfStale(envFilePath, envFile);

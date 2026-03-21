@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { extractValue, loadVars as coreLoadVars, readKeyFile, regenerateIfStale, resolveVarsFile } from "@vars/core";
+import { extractValue, loadVars as coreLoadVars, regenerateIfStale, resolveVarsFile } from "@vars/core";
 import type { Plugin } from "vite";
 
 export interface VarsOptions {
@@ -28,7 +28,7 @@ export function varsPlugin(options: VarsOptions = {}): Plugin {
 	function loadVars(): Record<string, unknown> {
 		const env = options.env ?? process.env.VARS_ENV ?? "development";
 		const { path: envFilePath, unlocked } = resolveVarsFile(envFile);
-		const key = unlocked ? undefined : (options.key ?? process.env.VARS_KEY ?? readKeyFile(envFile));
+		const key = unlocked ? undefined : (options.key ?? process.env.VARS_KEY);
 
 		// Auto-regenerate vars.generated.ts if .vars changed
 		regenerateIfStale(envFilePath, envFile);

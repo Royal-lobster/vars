@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { extractValue, loadVars, readKeyFile, regenerateIfStale, resolveVarsFile } from "@vars/core";
+import { extractValue, loadVars, regenerateIfStale, resolveVarsFile } from "@vars/core";
 import type { AstroIntegration } from "astro";
 
 export interface VarsOptions {
@@ -30,7 +30,7 @@ export function varsIntegration(options: VarsOptions = {}): AstroIntegration {
 				const envFile = options.envFile ?? ".vars/vault.vars";
 				const env = options.env ?? process.env.VARS_ENV ?? "development";
 				const { path: envFilePath, unlocked } = resolveVarsFile(envFile);
-				const key = unlocked ? undefined : (options.key ?? process.env.VARS_KEY ?? readKeyFile(envFile));
+				const key = unlocked ? undefined : (options.key ?? process.env.VARS_KEY);
 
 				// Auto-regenerate env.generated.ts if .vars changed
 				regenerateIfStale(envFilePath, envFile);
