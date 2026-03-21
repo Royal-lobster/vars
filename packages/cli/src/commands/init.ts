@@ -56,7 +56,8 @@ export default defineCommand({
     // vault.vars or unlocked.vars exists but key is missing — incomplete setup, repair it
     if ((existsSync(varsPath) || existsSync(unlockedVarsPath)) && !existsSync(keyPath)) {
       output.intro("init");
-      clack.log.message("Found .vars/vault.vars but missing key file. Repairing setup.");
+      const existingFile = existsSync(varsPath) ? varsPath : unlockedVarsPath;
+      clack.log.message(`Found ${existingFile.endsWith("unlocked.vars") ? "unlocked.vars" : "vault.vars"} but missing key file. Repairing setup.`);
 
       let pin: string;
       for (;;) {
@@ -75,8 +76,8 @@ export default defineCommand({
       const masterKey = await createMasterKey();
       const encryptedKey = await encryptMasterKey(masterKey, pin);
 
-      // Encrypt any plaintext values in the existing vault.vars
-      const content = readFileSync(varsPath, "utf8");
+      // Encrypt any plaintext values in the existing vars file
+      const content = readFileSync(existingFile, "utf8");
       const lines = content.split("\n");
       const result: string[] = [];
 
