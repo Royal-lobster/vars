@@ -1,5 +1,6 @@
 import { defineCommand } from "citty";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import { dirname } from "node:path";
 import { buildContext } from "../utils/context.js";
 import * as output from "../utils/output.js";
 
@@ -23,10 +24,15 @@ export default defineCommand({
   async run({ args }) {
     const ctx = buildContext({ file: args.file });
     const name = args.name as string;
-    const cmd = buildHistoryCommand(name, ctx.varsFilePath);
+
+    if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
+      throw new Error(`Invalid variable name: ${name}. Must be UPPER_SNAKE_CASE.`);
+    }
 
     try {
-      const result = execSync(cmd, { cwd: ctx.cwd, encoding: "utf8" });
+      const result = execFileSync("git", [
+        "log", "--all", "-p", "-S", name, "--", ctx.varsFilePath,
+      ], { cwd: dirname(ctx.varsFilePath), encoding: "utf8" });
 
       output.heading(`History: ${name}`);
       if (result.trim()) {
@@ -40,10 +46,3 @@ export default defineCommand({
     }
   },
 });
-
-/**
- * Build a git log command to show history for a variable in a .vars file.
- */
-export function buildHistoryCommand(name: string, varsFilePath: string): string {
-  return `git log --all -p -S "${name}" -- "${varsFilePath}"`;
-}

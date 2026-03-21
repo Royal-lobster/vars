@@ -1,17 +1,67 @@
 import { consola } from "consola";
+import { createInterface } from "node:readline";
 
 /**
- * Prompt the user for their PIN (hidden input).
+ * Prompt the user for their PIN with hidden input.
+ * Characters are masked with '*' to prevent shoulder-surfing.
  */
 export async function promptPIN(message = "Enter PIN"): Promise<string> {
-  const pin = await consola.prompt(message, {
-    type: "text",
-    placeholder: "PIN",
-  });
-  if (typeof pin !== "string" || pin.length === 0) {
-    throw new Error("PIN is required");
+  // If not a TTY (piped input, CI), fall back to consola text prompt
+  if (!process.stdin.isTTY) {
+    const pin = await consola.prompt(message, {
+      type: "text",
+      placeholder: "PIN",
+    });
+    if (typeof pin !== "string" || pin.length === 0) {
+      throw new Error("PIN is required");
+    }
+    return pin;
   }
-  return pin;
+
+  return new Promise((resolve, reject) => {
+    const rl = createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    // Suppress echo
+    process.stdin.setRawMode?.(true);
+
+    process.stdout.write(`${message}: `);
+
+    let pin = "";
+    const onData = (chunk: Buffer) => {
+      const char = chunk.toString();
+      if (char === "\n" || char === "\r" || char === "\u0004") {
+        process.stdin.setRawMode?.(false);
+        process.stdin.removeListener("data", onData);
+        process.stdout.write("\n");
+        rl.close();
+        if (pin.length === 0) {
+          reject(new Error("PIN is required"));
+        } else {
+          resolve(pin);
+        }
+      } else if (char === "\u007F" || char === "\b") {
+        // Backspace
+        if (pin.length > 0) {
+          pin = pin.slice(0, -1);
+          process.stdout.write("\b \b");
+        }
+      } else if (char === "\u0003") {
+        // Ctrl+C
+        process.stdin.setRawMode?.(false);
+        process.stdin.removeListener("data", onData);
+        rl.close();
+        process.exit(1);
+      } else {
+        pin += char;
+        process.stdout.write("*");
+      }
+    };
+
+    process.stdin.on("data", onData);
+  });
 }
 
 /**

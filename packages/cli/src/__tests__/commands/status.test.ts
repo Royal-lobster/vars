@@ -23,7 +23,7 @@ describe("vars status", () => {
     );
 
     const status = getStatus(join(tmpDir, ".vars"));
-    expect(status.encrypted).toBe(true);
+    expect(status.encryptionState).toBe("encrypted");
     expect(status.variableCount).toBe(1);
   });
 
@@ -34,7 +34,7 @@ describe("vars status", () => {
     );
 
     const status = getStatus(join(tmpDir, ".vars"));
-    expect(status.encrypted).toBe(false);
+    expect(status.encryptionState).toBe("decrypted");
   });
 
   it("counts variables correctly", () => {

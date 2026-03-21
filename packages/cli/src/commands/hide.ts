@@ -1,7 +1,8 @@
 import { defineCommand } from "citty";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { encrypt, isEncrypted, retrieveKey } from "@vars/core";
 import { buildContext, getMasterKeyFromEnv } from "../utils/context.js";
+import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import * as output from "../utils/output.js";
 
 const ENV_VALUE_LINE = /^([ \t]+@[\w-]+[ \t]+=[ \t]+)(.+)$/;
@@ -28,27 +29,35 @@ export default defineCommand({
 
 /**
  * Encrypt all plaintext values in a .vars file in-place.
+ * Uses encrypt-all-or-nothing: if any value fails to encrypt,
+ * the file is not modified.
  */
 export function hideVarsFile(filePath: string, key: Buffer): void {
   const content = readFileSync(filePath, "utf8");
   const lines = content.split("\n");
-  const result: string[] = [];
+  const encryptedLines: string[] = [];
 
-  for (const line of lines) {
+  // Encrypt into a new array first -- don't modify the file until ALL values succeed
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const match = line.match(ENV_VALUE_LINE);
     if (match) {
-      const prefix = match[1];
-      const value = match[2].trim();
-      if (!isEncrypted(value)) {
-        const encrypted = encrypt(value, key);
-        result.push(`${prefix}${encrypted}`);
+      const [, prefix, value] = match;
+      if (!isEncrypted(value.trim())) {
+        try {
+          const encrypted = encrypt(value.trim(), key);
+          encryptedLines.push(`${prefix}${encrypted}`);
+        } catch (err) {
+          throw new Error(`Failed to encrypt value at line ${i + 1}: ${(err as Error).message}`);
+        }
         continue;
       }
     }
-    result.push(line);
+    encryptedLines.push(line);
   }
 
-  writeFileSync(filePath, result.join("\n"));
+  // Only write if ALL encryptions succeeded
+  atomicWriteFileSync(filePath, encryptedLines.join("\n"));
 }
 
 async function requireKey(): Promise<Buffer> {

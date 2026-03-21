@@ -1,6 +1,6 @@
 import { defineCommand } from "citty";
 import { readFileSync } from "node:fs";
-import { parse, decrypt, isEncrypted, retrieveKey } from "@vars/core";
+import { parse, decrypt, isEncrypted, retrieveKey, resolveValue } from "@vars/core";
 import { buildContext, getMasterKeyFromEnv } from "../utils/context.js";
 
 export default defineCommand({
@@ -55,10 +55,7 @@ export function generateTemplate(
   lines.push("");
 
   for (const v of parsed.variables) {
-    const envVal = v.values.find((val) => val.env === env);
-    const defaultVal = v.values.find((val) => val.env === "default");
-    const raw = envVal?.value ?? defaultVal?.value;
-
+    const raw = resolveValue(v, env);
     if (raw === undefined) continue;
 
     let value = raw;

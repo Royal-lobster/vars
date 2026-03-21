@@ -81,7 +81,7 @@ describe("CLI integration: full workflow", () => {
 
     // 10. Status
     const status = getStatus(join(tmpDir, ".vars"));
-    expect(status.encrypted).toBe(true);
+    expect(status.encryptionState).toBe("encrypted");
     expect(status.variableCount).toBe(3);
 
     // 11. Coverage

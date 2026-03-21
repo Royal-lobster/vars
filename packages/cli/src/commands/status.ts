@@ -8,7 +8,7 @@ import pc from "picocolors";
 export interface VarsStatus {
   varsFileExists: boolean;
   keyFileExists: boolean;
-  encrypted: boolean;
+  encryptionState: "encrypted" | "decrypted" | "mixed";
   variableCount: number;
   environments: string[];
   activeEnv: string;
@@ -32,10 +32,15 @@ export default defineCommand({
 
     output.heading("vars status");
 
+    const stateLabel =
+      status.encryptionState === "encrypted"
+        ? pc.green("encrypted")
+        : status.encryptionState === "mixed"
+          ? pc.yellow("mixed (some values unencrypted!)")
+          : pc.yellow("decrypted (run 'vars hide')");
+
     console.log(`  File:         ${ctx.varsFilePath}`);
-    console.log(
-      `  State:        ${status.encrypted ? pc.green("encrypted") : pc.yellow("decrypted (run 'vars hide')")}`,
-    );
+    console.log(`  State:        ${stateLabel}`);
     console.log(`  Variables:    ${status.variableCount}`);
     console.log(`  Environments: ${status.environments.join(", ") || "none"}`);
     console.log(`  Active env:   ${ctx.env}`);
@@ -47,6 +52,7 @@ export default defineCommand({
 
 /**
  * Get status information about a .vars file.
+ * Scans ALL values across ALL variables to determine encryption state.
  */
 export function getStatus(filePath: string): VarsStatus {
   const varsFileExists = existsSync(filePath);
@@ -56,7 +62,7 @@ export function getStatus(filePath: string): VarsStatus {
     return {
       varsFileExists: false,
       keyFileExists,
-      encrypted: false,
+      encryptionState: "decrypted",
       variableCount: 0,
       environments: [],
       activeEnv: resolveEnv(),
@@ -66,14 +72,20 @@ export function getStatus(filePath: string): VarsStatus {
   const content = readFileSync(filePath, "utf8");
   const parsed = parse(content, filePath);
 
-  let encrypted = false;
+  let hasEncrypted = false;
+  let hasPlaintext = false;
   for (const v of parsed.variables) {
     for (const val of v.values) {
-      encrypted = isEncrypted(val.value);
-      break;
+      if (isEncrypted(val.value)) hasEncrypted = true;
+      else hasPlaintext = true;
     }
-    if (encrypted) break;
   }
+
+  const encryptionState = hasEncrypted && hasPlaintext
+    ? "mixed"
+    : hasEncrypted
+      ? "encrypted"
+      : "decrypted";
 
   const envSet = new Set<string>();
   for (const v of parsed.variables) {
@@ -87,7 +99,7 @@ export function getStatus(filePath: string): VarsStatus {
   return {
     varsFileExists,
     keyFileExists,
-    encrypted,
+    encryptionState,
     variableCount: parsed.variables.length,
     environments: [...envSet].sort(),
     activeEnv: resolveEnv(),

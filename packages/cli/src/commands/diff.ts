@@ -1,7 +1,7 @@
 import { defineCommand } from "citty";
 import { readFileSync } from "node:fs";
-import { parse } from "@vars/core";
-import { buildContext } from "../utils/context.js";
+import { parse, decrypt, isEncrypted, retrieveKey } from "@vars/core";
+import { buildContext, getMasterKeyFromEnv } from "../utils/context.js";
 import * as output from "../utils/output.js";
 import pc from "picocolors";
 
@@ -36,10 +36,24 @@ export default defineCommand({
       process.exit(1);
     }
 
+    let key: Buffer | null = null;
+    try {
+      key = getMasterKeyFromEnv();
+      if (!key) {
+        key = await retrieveKey();
+      }
+    } catch {
+      // No key available -- will compare encrypted blobs as-is
+    }
+
     const [left, right] = envPair;
-    const diff = diffEnvironments(ctx.varsFilePath, left, right);
+    const diff = diffEnvironments(ctx.varsFilePath, left, right, key ?? undefined);
 
     output.heading(`Diff: @${left} vs @${right}`);
+
+    if (!key) {
+      output.warn("No decryption key available. Encrypted values compared as ciphertext.");
+    }
 
     if (diff.same.length > 0) {
       console.log(`\n  ${pc.green("Same in both")} (${diff.same.length}):`);
@@ -72,12 +86,24 @@ export default defineCommand({
 });
 
 /**
+ * Resolve a value, decrypting if a key is provided.
+ */
+function resolveForDiff(raw: string, key?: Buffer): string {
+  if (isEncrypted(raw) && key) {
+    return decrypt(raw, key);
+  }
+  return raw;
+}
+
+/**
  * Compare two environments structurally.
+ * When a key is provided, encrypted values are decrypted before comparison.
  */
 export function diffEnvironments(
   filePath: string,
   leftEnv: string,
   rightEnv: string,
+  key?: Buffer,
 ): EnvDiff {
   const content = readFileSync(filePath, "utf8");
   const parsed = parse(content, filePath);
@@ -97,7 +123,9 @@ export function diffEnvironments(
     const hasRight = rightVal !== undefined;
 
     if (hasLeft && hasRight) {
-      if (leftVal.value === rightVal.value) {
+      const leftResolved = resolveForDiff(leftVal.value, key);
+      const rightResolved = resolveForDiff(rightVal.value, key);
+      if (leftResolved === rightResolved) {
         same.push(v.name);
       } else {
         different.push({ variable: v.name, leftHas: true, rightHas: true });

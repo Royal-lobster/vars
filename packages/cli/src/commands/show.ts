@@ -1,7 +1,8 @@
 import { defineCommand } from "citty";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { decrypt, isEncrypted, retrieveKey } from "@vars/core";
 import { buildContext, getMasterKeyFromEnv } from "../utils/context.js";
+import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import * as output from "../utils/output.js";
 
 const ENV_VALUE_LINE = /^([ \t]+@[\w-]+[ \t]+=[ \t]+)(.+)$/;
@@ -48,7 +49,7 @@ export function showVarsFile(filePath: string, key: Buffer): void {
     result.push(line);
   }
 
-  writeFileSync(filePath, result.join("\n"));
+  atomicWriteFileSync(filePath, result.join("\n"));
 }
 
 async function requireKey(): Promise<Buffer> {

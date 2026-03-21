@@ -1,5 +1,6 @@
 import { defineCommand } from "citty";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import { dirname } from "node:path";
 import { buildContext } from "../utils/context.js";
 import * as output from "../utils/output.js";
 
@@ -23,13 +24,17 @@ export default defineCommand({
   async run({ args }) {
     const ctx = buildContext({ file: args.file });
     const name = args.name as string;
+
+    if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
+      throw new Error(`Invalid variable name: ${name}. Must be UPPER_SNAKE_CASE.`);
+    }
+
     const pattern = buildBlamePattern(name);
 
     try {
-      const result = execSync(
-        `git log --oneline -10 -S "${pattern}" -- "${ctx.varsFilePath}"`,
-        { cwd: ctx.cwd, encoding: "utf8" },
-      );
+      const result = execFileSync("git", [
+        "log", "--oneline", "-10", "-S", pattern, "--", ctx.varsFilePath,
+      ], { cwd: dirname(ctx.varsFilePath), encoding: "utf8" });
 
       output.heading(`Blame: ${name}`);
       if (result.trim()) {

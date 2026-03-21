@@ -1,5 +1,5 @@
 import { defineCommand } from "citty";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   createMasterKey,
@@ -9,6 +9,7 @@ import {
   decrypt,
   isEncrypted,
 } from "@vars/core";
+import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import * as output from "../utils/output.js";
 import { promptPIN } from "../utils/prompt.js";
 
@@ -44,6 +45,10 @@ export default defineCommand({
 
 /**
  * Rotate the encryption key.
+ *
+ * Safety order:
+ * 1. Write new .vars.key first (so we never lose the ability to decrypt)
+ * 2. Re-encrypt .vars with the new key
  */
 export async function rotateKey(
   cwd: string,
@@ -58,6 +63,7 @@ export async function rotateKey(
 
   const newKey = await createMasterKey();
 
+  // Re-encrypt all values in memory first
   const content = readFileSync(varsPath, "utf8");
   const lines = content.split("\n");
   const result: string[] = [];
@@ -77,10 +83,13 @@ export async function rotateKey(
     result.push(line);
   }
 
-  writeFileSync(varsPath, result.join("\n"));
-
   const newKeyEncoded = await encryptMasterKey(newKey, newPin);
-  writeFileSync(keyPath, newKeyEncoded + "\n");
+
+  // Write key BEFORE re-encrypted vars -- if we crash between these two writes,
+  // we still have the old .vars (encrypted with old key) and old .vars.key
+  // Use atomic writes for both
+  atomicWriteFileSync(keyPath, newKeyEncoded + "\n");
+  atomicWriteFileSync(varsPath, result.join("\n"));
 
   return { newKey };
 }
