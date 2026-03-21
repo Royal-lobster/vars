@@ -124,7 +124,7 @@ export function Frameworks() {
                 </span>
               </div>
               <div className="mx-4 mb-4 [&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11px] [&_pre]:!leading-[1.8]">
-                <DynamicCodeBlock lang={fw.lang} code={fw.code} />
+                <DynamicCodeBlock lang={fw.lang} code={fw.code} codeblock={{ keepBackground: false }} />
               </div>
             </div>
           ))}
