@@ -1,7 +1,18 @@
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { VarsCodeBlock } from './code-block';
+import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
+
+const HERO_CODE = `DATABASE_URL  z.string().url().startsWith("postgres://")
+  @dev   = enc:v1:aes256gcm:7f3a9b2c...
+  @prod  = enc:v1:aes256gcm:e8d1f0a3...
+
+PORT  z.coerce.number().int().min(1024)
+  @default = enc:v1:aes256gcm:2c4b8e...
+
+// Cross-variable refinement
+@refine (env) => env.LOG_LEVEL !== "debug" || env.DEBUG === true
+  "DEBUG must be true when LOG_LEVEL is debug"`;
 
 export function Hero() {
   return (
@@ -59,7 +70,9 @@ export function Hero() {
           </Button>
         </div>
 
-        <VarsCodeBlock className="mt-14 w-full max-w-[620px]" />
+        <div className="mt-14 w-full max-w-[620px] [&_figure]:!my-0 [&_figure]:!rounded-xl [&_figure]:!shadow-2xl [&_figure]:!shadow-black/50 [&_pre]:!text-[13px] [&_pre]:!leading-[1.9]">
+          <DynamicCodeBlock lang="js" code={HERO_CODE} codeblock={{ keepBackground: false }} />
+        </div>
       </div>
 
       {/* Bottom fade */}
