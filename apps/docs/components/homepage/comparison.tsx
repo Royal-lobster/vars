@@ -1,4 +1,3 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 export function Comparison() {
@@ -16,88 +15,135 @@ export function Comparison() {
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* .env — Before */}
-        <Card className="border-red-500/10 bg-red-500/[0.03]">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <Badge variant="outline" className="border-red-500/20 text-red-400 bg-red-500/10 font-mono text-xs">
-                .env
-              </Badge>
-              <CardTitle className="text-sm font-medium text-white/40">
-                What you&apos;ve been doing
-              </CardTitle>
+        <div className="overflow-hidden rounded-xl border border-red-500/10 bg-red-500/[0.03]">
+          <div className="flex items-center gap-3 px-5 pt-5 pb-4">
+            <Badge variant="outline" className="border-red-500/20 text-red-400 bg-red-500/10 font-mono text-xs">
+              .env
+            </Badge>
+            <span className="text-sm font-medium text-white/40">
+              What you&apos;ve been doing
+            </span>
+          </div>
+
+          {/* Editor-style code block */}
+          <div className="mx-5 overflow-hidden rounded-lg border border-red-500/10 bg-[#0a0a0a]">
+            <div className="flex items-center gap-1.5 border-b border-white/[0.04] px-3 py-2">
+              <div className="h-2 w-2 rounded-full bg-red-500/50" />
+              <div className="h-2 w-2 rounded-full bg-yellow-500/50" />
+              <div className="h-2 w-2 rounded-full bg-green-500/50" />
+              <span className="ml-2 font-mono text-[10px] text-neutral-600">.env</span>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-lg bg-black/40 p-4 font-mono text-xs leading-[2]">
-              <div className="text-red-400/60">DATABASE_URL=postgres://admin:password123@db.example.com/prod</div>
-              <div className="text-red-400/60">PORT=3000</div>
-              <div className="text-red-400/60">STRIPE_KEY=sk_live_abc123def456</div>
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="p-4 font-mono text-xs leading-[2]">
               {[
-                'Plaintext passwords in git',
-                'No type safety',
-                'No schema validation',
-                'Secrets shared via DMs',
-                'Env drift across stages',
-                'Runtime crashes on typos',
-              ].map((problem) => (
-                <div key={problem} className="flex items-start gap-2 text-xs text-red-400/50">
-                  <span className="mt-0.5 text-red-500/40">✕</span>
-                  {problem}
+                'DATABASE_URL=postgres://admin:password123@db.example.com/prod',
+                'PORT=3000',
+                'STRIPE_KEY=sk_live_abc123def456',
+              ].map((line, i) => (
+                <div key={i} className="flex">
+                  <span className="mr-4 w-3 select-none text-right text-[10px] text-neutral-700">{i + 1}</span>
+                  <span className="text-red-400/70">{line}</span>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 px-5 py-5">
+            {[
+              'Plaintext passwords in git',
+              'No type safety',
+              'No schema validation',
+              'Secrets shared via DMs',
+              'Env drift across stages',
+              'Runtime crashes on typos',
+            ].map((problem) => (
+              <div key={problem} className="flex items-start gap-2 text-xs text-red-400/50">
+                <span className="mt-0.5 text-red-500/40">✕</span>
+                {problem}
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* .vars — After */}
-        <Card className="border-green-500/10 bg-green-500/[0.03]">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <Badge variant="outline" className="border-green-500/20 text-green-400 bg-green-500/10 font-mono text-xs">
-                .vars
-              </Badge>
-              <CardTitle className="text-sm font-medium text-white/40">
-                What it looks like now
-              </CardTitle>
+        <div className="overflow-hidden rounded-xl border border-green-500/10 bg-green-500/[0.03]">
+          <div className="flex items-center gap-3 px-5 pt-5 pb-4">
+            <Badge variant="outline" className="border-green-500/20 text-green-400 bg-green-500/10 font-mono text-xs">
+              .vars
+            </Badge>
+            <span className="text-sm font-medium text-white/40">
+              What it looks like now
+            </span>
+          </div>
+
+          {/* Editor-style code block */}
+          <div className="mx-5 overflow-hidden rounded-lg border border-green-500/10 bg-[#0a0a0a]">
+            <div className="flex items-center gap-1.5 border-b border-white/[0.04] px-3 py-2">
+              <div className="h-2 w-2 rounded-full bg-red-500/50" />
+              <div className="h-2 w-2 rounded-full bg-yellow-500/50" />
+              <div className="h-2 w-2 rounded-full bg-green-500/50" />
+              <span className="ml-2 font-mono text-[10px] text-neutral-600">.vars</span>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="rounded-lg bg-black/40 p-4 font-mono text-xs leading-[2]">
-              <div>
-                <span className="font-semibold text-green-50">DATABASE_URL</span>{' '}
-                <span className="text-green-500">z.string().url()</span>
-              </div>
-              <div className="text-neutral-700">  @prod = enc:v1:aes256gcm:...</div>
-              <div>
-                <span className="font-semibold text-green-50">PORT</span>{' '}
-                <span className="text-green-500">z.coerce.number()</span>
-              </div>
-              <div className="text-neutral-700">  @default = enc:v1:aes256gcm:...</div>
-              <div>
-                <span className="font-semibold text-green-50">STRIPE_KEY</span>{' '}
-                <span className="text-green-500">z.string().startsWith(&quot;sk_&quot;)</span>
-              </div>
-              <div className="text-neutral-700">  @prod = enc:v1:aes256gcm:...</div>
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              {[
-                'AES-256-GCM encrypted',
-                'Zod type safety',
-                'Build-time validation',
-                'Safe to commit & share',
-                'All envs in one file',
-                'AI-safe by design',
-              ].map((benefit) => (
-                <div key={benefit} className="flex items-start gap-2 text-xs text-green-400/70">
-                  <span className="mt-0.5 text-green-500">✓</span>
-                  {benefit}
+            <div className="p-4 font-mono text-xs leading-[2]">
+              {([
+                [
+                  { text: 'DATABASE_URL', cls: 'text-green-50 font-semibold' },
+                  { text: ' ', cls: '' },
+                  { text: 'z.string().url()', cls: 'text-green-500' },
+                ],
+                [
+                  { text: '  @prod', cls: 'text-green-700' },
+                  { text: ' = ', cls: 'text-neutral-600' },
+                  { text: 'enc:v1:aes256gcm:...', cls: 'text-neutral-600' },
+                ],
+                [
+                  { text: 'PORT', cls: 'text-green-50 font-semibold' },
+                  { text: ' ', cls: '' },
+                  { text: 'z.coerce.number()', cls: 'text-green-500' },
+                ],
+                [
+                  { text: '  @default', cls: 'text-green-700' },
+                  { text: ' = ', cls: 'text-neutral-600' },
+                  { text: 'enc:v1:aes256gcm:...', cls: 'text-neutral-600' },
+                ],
+                [
+                  { text: 'STRIPE_KEY', cls: 'text-green-50 font-semibold' },
+                  { text: ' ', cls: '' },
+                  { text: 'z.string().startsWith("sk_")', cls: 'text-green-500' },
+                ],
+                [
+                  { text: '  @prod', cls: 'text-green-700' },
+                  { text: ' = ', cls: 'text-neutral-600' },
+                  { text: 'enc:v1:aes256gcm:...', cls: 'text-neutral-600' },
+                ],
+              ] as { text: string; cls: string }[][]).map((tokens, i) => (
+                <div key={i} className="flex">
+                  <span className="mr-4 w-3 select-none text-right text-[10px] text-neutral-700">{i + 1}</span>
+                  <span>
+                    {tokens.map((t, j) => (
+                      <span key={j} className={t.cls}>{t.text}</span>
+                    ))}
+                  </span>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 px-5 py-5">
+            {[
+              'AES-256-GCM encrypted',
+              'Zod type safety',
+              'Build-time validation',
+              'Safe to commit & share',
+              'All envs in one file',
+              'AI-safe by design',
+            ].map((benefit) => (
+              <div key={benefit} className="flex items-start gap-2 text-xs text-green-400/70">
+                <span className="mt-0.5 text-green-500">✓</span>
+                {benefit}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );

@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import { Card, CardContent } from '@/components/ui/card';
 
 interface BentoItem {
   label: string;
@@ -73,9 +72,9 @@ export function Bento() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
         {ITEMS.map((item) => (
-          <Card
+          <div
             key={item.label}
-            className={`group overflow-hidden border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)] ${spanClass(item.span)}`}
+            className={`group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)] ${spanClass(item.span)}`}
           >
             <div className="relative h-[200px] overflow-hidden">
               <Image
@@ -85,7 +84,7 @@ export function Bento() {
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </div>
-            <CardContent className="p-6">
+            <div className="p-6">
               <span className="font-mono text-[10px] uppercase tracking-[2px] text-green-500">
                 {item.label}
               </span>
@@ -102,12 +101,12 @@ export function Bento() {
                   ))}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
 
         {/* Full-width refinements card */}
-        <Card className="group overflow-hidden border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 md:col-span-12">
+        <div className="group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 md:col-span-12">
           <div className="grid md:grid-cols-2">
             <div className="relative min-h-[240px] overflow-hidden">
               <Image
@@ -117,7 +116,7 @@ export function Bento() {
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </div>
-            <CardContent className="flex flex-col justify-center p-8">
+            <div className="flex flex-col justify-center p-8">
               <span className="font-mono text-[10px] uppercase tracking-[2px] text-green-500">
                 Refinements
               </span>
@@ -140,9 +139,9 @@ export function Bento() {
                   {'  '}&quot;DEBUG must be true when LOG_LEVEL is debug&quot;
                 </div>
               </div>
-            </CardContent>
+            </div>
           </div>
-        </Card>
+        </div>
       </div>
     </section>
   );
