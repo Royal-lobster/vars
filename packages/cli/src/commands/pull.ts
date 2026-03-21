@@ -47,16 +47,12 @@ export function mergePulledVars(
   env: string,
 ): void {
   let lines: string[] = [];
-
-  if (existsSync(filePath)) {
-    const existing = readFileSync(filePath, "utf8");
-    lines = existing.split("\n");
-  }
-
   let existingVarNames = new Set<string>();
+
   if (existsSync(filePath)) {
+    const content = readFileSync(filePath, "utf8");
+    lines = content.split("\n");
     try {
-      const content = readFileSync(filePath, "utf8");
       const parsed = parse(content, filePath);
       existingVarNames = new Set(parsed.variables.map((v) => v.name));
 

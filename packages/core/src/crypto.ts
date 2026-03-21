@@ -1,12 +1,8 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import type { EncryptedValue } from "./types.js";
 import { CryptoError } from "./errors.js";
+import { ALGORITHM, IV_LENGTH, TAG_LENGTH, VERSION, ALG_NAME } from "./crypto-constants.js";
 
-const ALGORITHM = "aes-256-gcm";
-const IV_LENGTH = 12;
-const TAG_LENGTH = 16;
-const VERSION = "v1";
-const ALG_NAME = "aes256gcm";
 const PREFIX = `enc:${VERSION}:${ALG_NAME}:`;
 
 export function encrypt(plaintext: string, key: Buffer): string {

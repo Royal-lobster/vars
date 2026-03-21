@@ -1,5 +1,6 @@
 import { type CompletionItem, CompletionItemKind } from "vscode-languageserver/node.js";
 import { evaluateSchema, getZodMethodsForType } from "./zod-introspect.js";
+import { VAR_DECL_RE } from "./patterns.js";
 
 export interface CompletionContext {
 	text: string;
@@ -202,7 +203,7 @@ function getRefineVarCompletions(lines: string[]): CompletionItem[] {
 	const varNames: string[] = [];
 
 	for (const line of lines) {
-		const match = line.match(/^([A-Z_][A-Z0-9_]*)\s{2,}z\./);
+		const match = line.match(VAR_DECL_RE);
 		if (match) {
 			varNames.push(match[1]);
 		}

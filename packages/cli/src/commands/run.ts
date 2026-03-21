@@ -9,9 +9,9 @@ import {
 } from "@vars/core";
 import type { LoadOptions } from "@vars/core";
 import { buildContext, requireKey, getKeyFromEnv } from "../utils/context.js";
+import { ENV_VALUE_LINE_VALUE_ONLY } from "../utils/patterns.js";
 import { hideVarsFile } from "./hide.js";
 import * as output from "../utils/output.js";
-import pc from "picocolors";
 
 export default defineCommand({
   meta: {
@@ -97,7 +97,7 @@ export default defineCommand({
 function fileHasEncryptedValues(filePath: string): boolean {
   const content = readFileSync(filePath, "utf8");
   return content.split("\n").some((line) => {
-    const match = line.match(/^\s+@[\w-]+\s+=\s+(.+)$/);
+    const match = line.match(ENV_VALUE_LINE_VALUE_ONLY);
     return match && isEncrypted(match[1].trim());
   });
 }

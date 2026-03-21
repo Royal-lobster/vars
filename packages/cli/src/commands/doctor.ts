@@ -7,14 +7,6 @@ import { HOOK_MARKER } from "../utils/patterns.js";
 import * as output from "../utils/output.js";
 import type { HealthCheckGroup } from "../utils/output.js";
 
-// Kept for backwards compatibility
-export interface DoctorCheck {
-  name: string;
-  label: string;
-  status: "pass" | "warn" | "fail";
-  message: string;
-}
-
 export default defineCommand({
   meta: {
     name: "doctor",
