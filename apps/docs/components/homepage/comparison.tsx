@@ -41,7 +41,7 @@ export function Comparison() {
               ].map((line, i) => (
                 <div key={i} className="flex">
                   <span className="mr-4 w-4 select-none text-right tabular-nums text-[10px] text-neutral-700">{i + 1}</span>
-                  <span className="text-red-400/70">{line}</span>
+                  <span className="text-white/60">{line}</span>
                 </div>
               ))}
             </div>
