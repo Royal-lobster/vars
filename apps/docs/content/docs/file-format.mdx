@@ -5,7 +5,7 @@ description: Complete reference for the .vars file format.
 
 Here's a `.vars` file using every feature. Read this first, then use the sections below as a reference.
 
-> **Note:** Examples below show values in plaintext (what you see after `vars show`). In your committed `.vars` file, all values are encrypted. See the [Encrypted values](#encrypted-values) section for what that looks like.
+> **Note:** Examples below show values as they appear in `unlocked.vars` (after `vars show`). In your committed `vault.vars`, all values are encrypted. See the [Encrypted values](#encrypted-values) section for what that looks like.
 
 ```vars
 # Database config
@@ -88,13 +88,13 @@ LOG_LEVEL  z.enum(["debug", "info", "warn", "error"])
   @dev      = debug
 ```
 
-Here `@prod`, `@staging`, `@ci` all get the `@default` value. Only `@dev` gets its own value. Use `vars show` to see the plaintext.
+Here `@prod`, `@staging`, `@ci` all get the `@default` value. Only `@dev` gets its own value. Run `vars show` to unlock and see values in `unlocked.vars`.
 
 ### Value quoting
 
 Quoted or unquoted both work. Quotes get stripped before use.
 
-When editing with `vars edit`, you'll see plaintext values. Quoting rules apply here:
+In `unlocked.vars`, you'll see plaintext values. Quoting rules apply here:
 
 ```vars
 # What you see during `vars edit`
@@ -112,11 +112,11 @@ PORT  z.coerce.number()
   @default = 3000 # this comment is ignored
 ```
 
-After `vars hide`, these all become encrypted.
+After `vars hide`, these are encrypted back into `vault.vars`.
 
 ## Encrypted values
 
-After `vars hide`, values become encrypted blobs:
+In `vault.vars`, values are stored as encrypted blobs:
 
 ```
 enc:v1:aes256gcm:<iv>:<ciphertext>:<tag>
@@ -133,7 +133,7 @@ Always six colon-separated segments. All three data parts are base64-encoded.
 | `<ciphertext>` | The encrypted value |
 | `<tag>` | 16-byte auth tag |
 
-You never write these by hand. `vars hide` produces them, `vars show` decrypts them.
+You never write these by hand. `vars hide` encrypts into `vault.vars`, `vars show` decrypts into `unlocked.vars`.
 
 The auth tag catches tampering — decryption fails loudly rather than giving you corrupted data.
 
@@ -144,7 +144,7 @@ Start a line with `#` to comment it out. For inline comments on unquoted values,
 ```vars
 # This whole line is a comment
 
-# During `vars edit`, inline comments work on plaintext values:
+# In unlocked.vars, inline comments work on plaintext values:
 DATABASE_URL  z.string().url()
   @dev = postgres://localhost/myapp  # dev DB, no auth needed
 ```
@@ -254,4 +254,4 @@ LOG_LEVEL  z.enum(["debug", "info", "warn", "error"])
 | `@refine expr` + indented message | Cross-variable constraint |
 | `@extends ./path` | Inherit from another file |
 | `# comment` | Line comment |
-| `enc:v1:aes256gcm:iv:ct:tag` | Encrypted value (from `vars hide`) |
+| `enc:v1:aes256gcm:iv:ct:tag` | Encrypted value (in `vault.vars`) |
