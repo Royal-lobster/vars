@@ -36,6 +36,43 @@ All live in `packages/cli/src/utils/output.ts`, replacing the current consola-ba
 | `healthCheck(groups)` | Doctor-style grouped checks | Custom — grouped with category headers |
 | `table(rows)` | Styled data table | Custom — improved ASCII table with clack bar styling |
 
+### Component API signatures
+
+```typescript
+interface FileTreeEntry {
+  path: string;           // e.g. "vault.vars"
+  description: string;    // e.g. "Encrypted secrets (commit this)"
+  indent?: number;        // nesting depth, 0 = root
+}
+
+interface SafetyCheck {
+  label: string;          // e.g. "unlocked.vars is gitignored"
+  status: "pass" | "warn" | "fail";
+  fix?: string;           // e.g. "Run: vars hook" — shown when status != pass
+}
+
+interface HealthCheckGroup {
+  name: string;           // e.g. "Files", "Security", "Secrets Health"
+  checks: Array<{
+    label: string;
+    status: "pass" | "warn" | "fail";
+    message: string;
+    suggestion?: string;  // actionable fix shown in summary box
+  }>;
+}
+
+function intro(command: string): void;
+function outro(message: string): void;
+function step(message: string): void;
+function fileTree(root: string, files: FileTreeEntry[]): void;
+function stateChange(from: string, to: string): void;
+function nextSteps(items: string[]): void;
+function safetyChecks(checks: SafetyCheck[]): void;
+function warning(title: string, bullets: string[]): void;
+function healthCheck(groups: HealthCheckGroup[]): void;
+function table(rows: Array<Record<string, string>>): void;
+```
+
 ### Design rules
 
 - **Mutating commands** (init, add, remove, show, hide, push, pull, rotate) get intro bar, step flow, outro bar
@@ -129,7 +166,11 @@ Check for config files to determine framework:
 | `nest-cli.json` or `@nestjs/core` in deps | NestJS | `@vars/nestjs` |
 | SvelteKit (`@sveltejs/kit` in deps) | SvelteKit | `@vars/vite` |
 
-If no framework detected, skip the section. If multiple detected (monorepo), show the primary one.
+If no framework detected, skip the section. If multiple detected (monorepo), use the first match in table order (Next.js > Vite > Astro > Nuxt > NestJS > SvelteKit).
+
+#### PIN mismatch
+
+If Choose PIN and Confirm PIN don't match, show an error and re-prompt both fields (don't exit).
 
 ### `vars show` — Unlock with Safety Reassurance
 
@@ -304,6 +345,8 @@ All-green path:
 | `pull` | `◆ vars pull` | Platform → spinner → diff | `■ Pulled 8 variables from Vercel` |
 | `run` | `◆ vars run` | PIN → spinner | `■ Running: npm start (12 vars injected)` |
 | `hook` | `◆ vars hook` | Detect husky/.git | `■ Pre-commit hook installed` |
+| `gen` | `◆ vars gen` | Spinner | `■ Generated vars.generated.ts` |
+| `template` | `◆ vars template` | Spinner → file path | `■ Generated .env from vault.vars` |
 
 #### Read-only commands (structured data, no ceremony)
 
@@ -316,6 +359,14 @@ All-green path:
 | `coverage` | Percentage per env with colored thresholds |
 | `typecheck` | File references grouped with line numbers |
 | `blame` / `history` | Styled log output |
+| `completions` | No visual treatment — outputs shell script |
+
+#### Deprecated commands (minimal treatment)
+
+| Command | Output |
+|---------|--------|
+| `lock` | `clack.log.info("No longer needed — keys are never cached.")` |
+| `unlock` | `clack.log.info("No longer needed — PIN is prompted on each command.")` |
 
 ## Files to Modify
 
@@ -336,6 +387,15 @@ All-green path:
 | File | Purpose |
 |------|---------|
 | `packages/cli/src/utils/detect-framework.ts` | Framework detection logic for init |
+
+## Non-TTY / CI Behavior
+
+The current `prompt.ts` has explicit non-TTY handling (reading PIN from piped stdin for CI). This must be preserved. When `!process.stdin.isTTY`:
+
+- Skip all clack interactive prompts (intro/outro bars, spinners)
+- PIN reads from stdin pipe as before
+- Output falls back to plain `console.log` without clack formatting
+- `clack.isCancel()` checks must be added to all prompts to handle Ctrl+C gracefully
 
 ## Out of Scope
 
