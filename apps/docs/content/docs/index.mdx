@@ -1,0 +1,30 @@
+---
+title: Getting Started
+description: Get up and running with vars in under 5 minutes.
+---
+
+## Installation
+
+```bash
+npx vars init
+```
+
+This creates a `.vars` file in your project root with an empty schema.
+
+## Quick Start
+
+```
+DATABASE_URL  z.string().url()
+
+@dev
+DATABASE_URL  postgres://localhost/myapp
+
+@prod
+DATABASE_URL  postgres://prod-host/myapp
+```
+
+Then encrypt it:
+
+```bash
+npx vars lock
+```
