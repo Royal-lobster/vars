@@ -45,6 +45,15 @@ importers:
       citty:
         specifier: ^0.2.1
         version: 0.2.1
+      consola:
+        specifier: ^3.4.0
+        version: 3.4.2
+      picocolors:
+        specifier: ^1.1.0
+        version: 1.1.1
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
     devDependencies:
       tsup:
         specifier: ^8.3.0
