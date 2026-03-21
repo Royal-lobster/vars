@@ -11,7 +11,6 @@ import type { LoadOptions } from "@vars/core";
 import { buildContext, requireKey, getKeyFromEnv } from "../utils/context.js";
 import { hideVarsFile } from "./hide.js";
 import * as output from "../utils/output.js";
-import pc from "picocolors";
 
 export default defineCommand({
   meta: {

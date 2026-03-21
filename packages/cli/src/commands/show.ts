@@ -7,7 +7,6 @@ import { ENV_VALUE_LINE, ENV_VALUE_LINE_VALUE_ONLY, HOOK_MARKER, countVariables 
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import * as output from "../utils/output.js";
 import * as clack from "@clack/prompts";
-import pc from "picocolors";
 
 export default defineCommand({
   meta: {
