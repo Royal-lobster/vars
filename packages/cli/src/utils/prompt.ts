@@ -46,7 +46,6 @@ export async function promptPIN(message = "Enter PIN"): Promise<string> {
         // Backspace
         if (pin.length > 0) {
           pin = pin.slice(0, -1);
-          process.stdout.write("\b \b");
         }
       } else if (char === "\u0003") {
         // Ctrl+C
@@ -56,7 +55,6 @@ export async function promptPIN(message = "Enter PIN"): Promise<string> {
         process.exit(1);
       } else {
         pin += char;
-        process.stdout.write("*");
       }
     };
 

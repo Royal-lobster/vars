@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import { parse } from "@vars/core";
 import type { Variable, VarsFile } from "@vars/core";
 import { type Diagnostic, DiagnosticSeverity, Range } from "vscode-languageserver/node.js";
+import { z } from "zod";
 import { evaluateSchema } from "./zod-introspect.js";
 
 /**
@@ -41,6 +42,9 @@ export function computeDiagnostics(text: string, uri: string): Diagnostic[] {
 				message: `Invalid schema: ${result.error}`,
 				source: "vars-schema",
 			});
+		} else {
+			// Validate each plaintext value against the schema
+			checkValues(variable, result.schema, lines, diagnostics);
 		}
 
 		// Check metadata
@@ -121,6 +125,34 @@ function checkMetadata(
 					source: "vars-expires",
 				});
 			}
+		}
+	}
+}
+
+/**
+ * Validate each plaintext (non-encrypted) value against the variable's Zod schema.
+ * Encrypted values are skipped since we can't decrypt them in the LSP.
+ */
+function checkValues(
+	variable: Variable,
+	schema: z.ZodTypeAny,
+	lines: string[],
+	diagnostics: Diagnostic[],
+): void {
+	for (const envValue of variable.values) {
+		// Skip encrypted values — we can't validate without the key
+		if (envValue.value.startsWith("enc:")) continue;
+
+		const valueLine = envValue.line - 1;
+		const result = schema.safeParse(envValue.value);
+		if (!result.success) {
+			const issue = result.error.issues[0];
+			diagnostics.push({
+				severity: DiagnosticSeverity.Error,
+				range: lineRange(lines, valueLine, envValue.value),
+				message: `Value fails schema: ${issue?.message ?? "validation error"}`,
+				source: "vars-value",
+			});
 		}
 	}
 }

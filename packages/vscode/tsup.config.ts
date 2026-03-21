@@ -9,6 +9,6 @@ export default defineConfig({
 	dts: true,
 	clean: true,
 	sourcemap: true,
-	external: ["vscode"],
+	external: ["vscode", "argon2", "keytar"],
 	noExternal: ["@vars/lsp", "vscode-languageserver", "vscode-languageserver-textdocument", "vscode-languageclient"],
 });

@@ -1,5 +1,5 @@
 import { defineCommand } from "citty";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync } from "node:fs";
 import { encrypt, isEncrypted } from "@vars/core";
 import { buildContext, requireKey } from "../utils/context.js";
 import { ENV_VALUE_LINE } from "../utils/patterns.js";
@@ -9,7 +9,7 @@ import * as output from "../utils/output.js";
 export default defineCommand({
   meta: {
     name: "hide",
-    description: "Re-encrypt all values in-place within .vars",
+    description: "Re-encrypt all values and restore to .vars",
   },
   args: {
     file: {
@@ -22,17 +22,21 @@ export default defineCommand({
     const ctx = buildContext({ file: args.file });
     const key = await requireKey();
     hideVarsFile(ctx.varsFilePath, key);
-    output.success("All values encrypted in-place.");
+    output.success("All values encrypted → .vars restored.");
   },
 });
 
 /**
- * Encrypt all plaintext values in a .vars file in-place.
+ * Encrypt all plaintext values and rename .vars.decrypted → .vars.
  * Uses encrypt-all-or-nothing: if any value fails to encrypt,
  * the file is not modified.
  */
 export function hideVarsFile(filePath: string, key: Buffer): void {
-  const content = readFileSync(filePath, "utf8");
+  // Determine source: prefer .vars.decrypted if it exists (show/hide flow)
+  const decryptedPath = filePath + ".decrypted";
+  const sourcePath = existsSync(decryptedPath) ? decryptedPath : filePath;
+
+  const content = readFileSync(sourcePath, "utf8");
   const lines = content.split("\n");
   const encryptedLines: string[] = [];
 
@@ -55,7 +59,9 @@ export function hideVarsFile(filePath: string, key: Buffer): void {
     encryptedLines.push(line);
   }
 
-  // Only write if ALL encryptions succeeded
-  atomicWriteFileSync(filePath, encryptedLines.join("\n"));
+  // Write encrypted content into source, then rename to .vars
+  atomicWriteFileSync(sourcePath, encryptedLines.join("\n"));
+  if (sourcePath !== filePath) {
+    renameSync(sourcePath, filePath);
+  }
 }
-

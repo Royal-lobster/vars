@@ -191,6 +191,8 @@ function updateGitignore(cwd: string): void {
     "# vars",
     ".vars.key",
     ".vars.key.*",
+    ".vars.decrypted",
+    ".vars.encrypted.bak",
     ".env",
     ".env.*",
     ".vars.swp",

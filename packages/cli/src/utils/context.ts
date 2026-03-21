@@ -11,7 +11,8 @@ export interface CliContext {
 
 /**
  * Walk up from `startDir` looking for a `.vars` file.
- * Returns absolute path or null.
+ * Also checks for `.vars.decrypted` (active show mode) and returns
+ * the base `.vars` path regardless, so commands always reference the canonical name.
  */
 export function findVarsFile(startDir: string = process.cwd()): string | null {
   let dir = resolve(startDir);
@@ -20,6 +21,9 @@ export function findVarsFile(startDir: string = process.cwd()): string | null {
   while (dir !== root) {
     const candidate = resolve(dir, ".vars");
     if (existsSync(candidate)) return candidate;
+    // If .vars.decrypted exists, we're in show mode — return the base .vars path
+    const decrypted = resolve(dir, ".vars.decrypted");
+    if (existsSync(decrypted)) return candidate;
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;

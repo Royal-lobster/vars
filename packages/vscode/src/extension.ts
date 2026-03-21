@@ -1,5 +1,6 @@
 import * as path from "node:path";
-import { type ExtensionContext, workspace } from "vscode";
+import * as cp from "node:child_process";
+import { type ExtensionContext, commands, window, workspace, Uri, ViewColumn } from "vscode";
 import {
 	LanguageClient,
 	type LanguageClientOptions,
@@ -32,8 +33,7 @@ export function activate(context: ExtensionContext): void {
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [{ scheme: "file", language: "vars" }],
 		synchronize: {
-			// Watch for .vars file changes
-			fileEvents: workspace.createFileSystemWatcher("**/.vars"),
+			fileEvents: workspace.createFileSystemWatcher("**/.vars{,.decrypted}"),
 		},
 	};
 
@@ -44,8 +44,80 @@ export function activate(context: ExtensionContext): void {
 		clientOptions,
 	);
 
-	// Start the client, which also launches the server
 	client.start();
+
+	// --- vars commands ---
+	for (const cmd of ["toggle", "show", "hide"] as const) {
+		const disposable = commands.registerCommand(`vars.${cmd}`, async () => {
+			const workspaceFolder = workspace.workspaceFolders?.[0];
+			if (!workspaceFolder) {
+				window.showErrorMessage("vars: No workspace folder open.");
+				return;
+			}
+
+			try {
+				await runVarsCommand(cmd, workspaceFolder.uri.fsPath);
+			} catch (err) {
+				const msg = err instanceof Error ? err.message : String(err);
+				if (msg.includes("No key available")) {
+					window.showErrorMessage("vars: Run 'vars unlock' in your terminal first.");
+				} else {
+					window.showErrorMessage(`vars ${cmd} failed: ${msg}`);
+				}
+			}
+		});
+		context.subscriptions.push(disposable);
+	}
+
+	// --- File watcher for show/hide tab swapping ---
+	const watcher = workspace.createFileSystemWatcher("**/.vars.decrypted");
+
+	watcher.onDidCreate(async (uri) => {
+		const varsUri = Uri.file(uri.fsPath.replace(/\.decrypted$/, ""));
+		await closeEditorByUri(varsUri);
+		await openFileInEditor(uri);
+	});
+
+	watcher.onDidDelete(async (uri) => {
+		const varsUri = Uri.file(uri.fsPath.replace(/\.decrypted$/, ""));
+		await closeEditorByUri(uri);
+		await openFileInEditor(varsUri);
+	});
+
+	context.subscriptions.push(watcher);
+}
+
+function runVarsCommand(subcommand: string, cwd: string): Promise<void> {
+	return new Promise((resolve, reject) => {
+		cp.exec(`vars ${subcommand}`, { cwd }, (err, _stdout, stderr) => {
+			if (err) {
+				reject(new Error(stderr.trim() || err.message));
+			} else {
+				resolve();
+			}
+		});
+	});
+}
+
+async function closeEditorByUri(uri: Uri): Promise<void> {
+	for (const tabGroup of window.tabGroups.all) {
+		for (const tab of tabGroup.tabs) {
+			const tabUri = (tab.input as { uri?: Uri })?.uri;
+			if (tabUri && tabUri.fsPath === uri.fsPath) {
+				await window.tabGroups.close(tab);
+				return;
+			}
+		}
+	}
+}
+
+async function openFileInEditor(uri: Uri): Promise<void> {
+	try {
+		const doc = await workspace.openTextDocument(uri);
+		await window.showTextDocument(doc, ViewColumn.Active);
+	} catch {
+		// File might not exist yet (race condition with rename)
+	}
 }
 
 export function deactivate(): Thenable<void> | undefined {
