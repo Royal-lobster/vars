@@ -5,13 +5,18 @@ import { VarsDynamicCodeBlock } from './vars-codeblock';
 const ENV_CODE = `# No encryption, no types, no validation
 DATABASE_URL=postgres://admin:password123@prod.db.com/mydb
 API_KEY=sk_live_abc123def456ghi789
+STRIPE_SECRET=sk_live_51J3...keep_scrolling
 PORT=3000
 LOG_LEVEL=debug
-DEBUG=false  # wait, is this a string or boolean?
+DEBUG=false  # string or boolean? who knows
+NODE_ENV=production
+REDIS_URL=redis://default:pass@cache.internal:6379
+JWT_SECRET=my-super-secret-jwt-key-dont-tell-anyone
 
-# Copy this to .env.staging, .env.production...
-# Share secrets over Slack DMs...
-# Hope nobody commits this to git...`;
+# Now copy-paste all of this into:
+#   .env.local, .env.staging, .env.production
+# And pray they stay in sync...
+# Oh, and share new secrets via Slack DMs 🙃`;
 
 const VARS_CODE = `DATABASE_URL  z.string().url()
   @dev   = enc:v1:aes256gcm:7f3a...
