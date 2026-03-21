@@ -6,147 +6,91 @@ import {
   SiSvelte,
   SiNuxt,
 } from '@icons-pack/react-simple-icons';
-import type { ComponentType, ReactNode } from 'react';
-
-type Token = { text: string; cls: string };
-
-// Simple JS/TS syntax highlighter for short snippets
-function tokenize(line: string): Token[] {
-  if (line.trim() === '') return [];
-  if (line.trimStart().startsWith('//'))
-    return [{ text: line, cls: 'text-neutral-600 italic' }];
-
-  const tokens: Token[] = [];
-  // Match leading whitespace
-  const leadMatch = line.match(/^(\s+)/);
-  if (leadMatch) {
-    tokens.push({ text: leadMatch[1], cls: '' });
-    line = line.slice(leadMatch[1].length);
-  }
-
-  // Tokenize remaining
-  const regex =
-    /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\b(?:import|export|default|from|const|let)\b)|(@\w+)|(\b(?:defineConfig|defineNuxtConfig|withVars|varsPlugin|varsIntegration|sveltekit|VarsModule|forRoot|Module)\b)|([\[\]{}(),;:.])/g;
-  let lastIndex = 0;
-  let match;
-
-  while ((match = regex.exec(line)) !== null) {
-    // Plain text before match
-    if (match.index > lastIndex) {
-      tokens.push({ text: line.slice(lastIndex, match.index), cls: 'text-white/50' });
-    }
-    if (match[1]) {
-      // String literal
-      tokens.push({ text: match[0], cls: 'text-green-400' });
-    } else if (match[2]) {
-      // Keyword
-      tokens.push({ text: match[0], cls: 'text-purple-400' });
-    } else if (match[3]) {
-      // Decorator
-      tokens.push({ text: match[0], cls: 'text-yellow-400' });
-    } else if (match[4]) {
-      // Function/identifier
-      tokens.push({ text: match[0], cls: 'text-blue-400' });
-    } else if (match[5]) {
-      // Punctuation
-      tokens.push({ text: match[0], cls: 'text-neutral-500' });
-    }
-    lastIndex = match.index + match[0].length;
-  }
-  // Trailing text
-  if (lastIndex < line.length) {
-    tokens.push({ text: line.slice(lastIndex), cls: 'text-white/50' });
-  }
-  return tokens;
-}
+import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
+import type { ComponentType } from 'react';
 
 const FRAMEWORKS: {
   name: string;
-  code: string[];
+  code: string;
+  lang: string;
   color: string;
   Icon: ComponentType<{ size?: number; color?: string; className?: string }>;
   iconColor: string;
 }[] = [
   {
     name: 'Next.js',
-    code: [
-      '// next.config.mjs',
-      'import { withVars } from "@vars/next";',
-      '',
-      'export default withVars({',
-      '  // your next config',
-      '});',
-    ],
+    lang: 'js',
+    code: `// next.config.mjs
+import { withVars } from "@vars/next";
+
+export default withVars({
+  // your next config
+});`,
     color: 'from-white/5 to-white/[0.02]',
     Icon: SiNextdotjs,
     iconColor: '#ffffff',
   },
   {
     name: 'Vite',
-    code: [
-      '// vite.config.ts',
-      'import { varsPlugin } from "@vars/vite";',
-      '',
-      'export default defineConfig({',
-      '  plugins: [varsPlugin()],',
-      '});',
-    ],
+    lang: 'ts',
+    code: `// vite.config.ts
+import { varsPlugin } from "@vars/vite";
+
+export default defineConfig({
+  plugins: [varsPlugin()],
+});`,
     color: 'from-purple-500/5 to-purple-500/[0.02]',
     Icon: SiVite,
     iconColor: '#646CFF',
   },
   {
     name: 'Astro',
-    code: [
-      '// astro.config.mjs',
-      'import { varsIntegration } from "@vars/astro";',
-      '',
-      'export default defineConfig({',
-      '  integrations: [varsIntegration()],',
-      '});',
-    ],
+    lang: 'js',
+    code: `// astro.config.mjs
+import { varsIntegration } from "@vars/astro";
+
+export default defineConfig({
+  integrations: [varsIntegration()],
+});`,
     color: 'from-orange-500/5 to-orange-500/[0.02]',
     Icon: SiAstro,
     iconColor: '#BC52EE',
   },
   {
     name: 'NestJS',
-    code: [
-      '// app.module.ts',
-      'import { VarsModule } from "@vars/nestjs";',
-      '',
-      '@Module({',
-      '  imports: [VarsModule.forRoot()],',
-      '})',
-    ],
+    lang: 'ts',
+    code: `// app.module.ts
+import { VarsModule } from "@vars/nestjs";
+
+@Module({
+  imports: [VarsModule.forRoot()],
+})`,
     color: 'from-red-500/5 to-red-500/[0.02]',
     Icon: SiNestjs,
     iconColor: '#E0234E',
   },
   {
     name: 'SvelteKit',
-    code: [
-      '// vite.config.ts',
-      'import { varsPlugin } from "@vars/vite";',
-      '',
-      'export default defineConfig({',
-      '  plugins: [sveltekit(), varsPlugin()],',
-      '});',
-    ],
+    lang: 'ts',
+    code: `// vite.config.ts
+import { varsPlugin } from "@vars/vite";
+
+export default defineConfig({
+  plugins: [sveltekit(), varsPlugin()],
+});`,
     color: 'from-orange-500/5 to-orange-500/[0.02]',
     Icon: SiSvelte,
     iconColor: '#FF3E00',
   },
   {
     name: 'Nuxt',
-    code: [
-      '// nuxt.config.ts',
-      'import { varsPlugin } from "@vars/vite";',
-      '',
-      'export default defineNuxtConfig({',
-      '  vite: { plugins: [varsPlugin()] },',
-      '});',
-    ],
+    lang: 'ts',
+    code: `// nuxt.config.ts
+import { varsPlugin } from "@vars/vite";
+
+export default defineNuxtConfig({
+  vite: { plugins: [varsPlugin()] },
+});`,
     color: 'from-green-500/5 to-green-500/[0.02]',
     Icon: SiNuxt,
     iconColor: '#00DC82',
@@ -179,21 +123,8 @@ export function Frameworks() {
                   {fw.name}
                 </span>
               </div>
-              <div className="mx-4 mb-4 overflow-x-auto rounded-lg bg-black/30 px-4 py-3 font-mono text-[11px] leading-[1.8]">
-                {fw.code.map((line, i) => {
-                  const tokens = tokenize(line);
-                  return (
-                    <div key={i} className={tokens.length === 0 ? 'h-3' : 'whitespace-pre'}>
-                      {tokens.length === 0
-                        ? '\u00A0'
-                        : tokens.map((t, j) => (
-                            <span key={j} className={t.cls}>
-                              {t.text}
-                            </span>
-                          ))}
-                    </div>
-                  );
-                })}
+              <div className="mx-4 mb-4 [&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11px] [&_pre]:!leading-[1.8]">
+                <DynamicCodeBlock lang={fw.lang} code={fw.code} />
               </div>
             </div>
           ))}
