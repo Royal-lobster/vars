@@ -9,13 +9,18 @@ description: Initialize a project, run health checks, and set up shell completio
 npx vars init
 ```
 
-Sets up a new vars project. You'll be prompted for a PIN, then vars creates:
+Sets up a new vars project. You'll be prompted for a PIN, then vars:
 
-- `.vars/vault.vars` — encrypted secrets file (safe to commit)
-- `.vars/key` — PIN-protected master key (gitignored)
-- A `.gitignore` update so the key and `unlocked.vars` don't get committed
+1. Creates `.vars/vault.vars` — encrypted secrets file (safe to commit)
+2. Creates `.vars/key` — PIN-protected master key (gitignored)
+3. Generates `.vars/vars.generated.ts` — typed accessors
+4. Updates `.gitignore` — key, unlocked.vars, and swap files excluded
+5. Installs a pre-commit hook — blocks commits if secrets are still decrypted
+6. Detects your framework — auto-configures Next.js, Vite, Astro, NestJS, etc.
 
 If a `.env` file exists, vars offers to import it. It reads the key-value pairs, guesses Zod schemas from the values, and encrypts everything before writing.
+
+If `.vars/vault.vars` already exists but `.vars/key` is missing (e.g., a fresh clone), running `init` again will detect the incomplete setup, prompt for a new PIN, and create the missing key file.
 
 ### Flags
 
@@ -31,7 +36,7 @@ If a `.env` file exists, vars offers to import it. It reads the key-value pairs,
 npx vars init --file .env.staging --env staging
 ```
 
-You'll also be asked whether to install the pre-commit hook. It blocks commits when `unlocked.vars` is still on disk. Say yes.
+The pre-commit hook is installed automatically. It blocks commits when `unlocked.vars` is still on disk — run `vars hide` first.
 
 ---
 
@@ -48,7 +53,7 @@ Runs health checks in three groups and prints a summary. Exits 1 if any check fa
 Files:
 - `.vars/vault.vars` exists
 - `.vars/key` exists
-- `env.generated.ts` up to date
+- `.vars/vars.generated.ts` up to date
 
 Security:
 - `.vars/key` is gitignored
@@ -65,8 +70,8 @@ Secrets Health:
 ◆  Files
 │  ✓ .vars/vault.vars found
 │  ✓ .vars/key found
-│  △ env.generated.ts up to date
-│      Run vars gen to regenerate env.generated.ts
+│  △ .vars/vars.generated.ts up to date
+│      Run vars gen to regenerate
 
 ◆  Security
 │  ✓ .vars/key is gitignored
