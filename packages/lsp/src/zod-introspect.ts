@@ -1,4 +1,4 @@
-import vm from "node:vm";
+import { evaluateSchema as coreEvaluateSchema } from "@vars/core";
 import { z } from "zod";
 
 // ─── Schema Evaluation ─────────────────────────────
@@ -15,34 +15,19 @@ export interface EvalFailure {
 
 export type EvalResult = EvalSuccess | EvalFailure;
 
-/** Callback methods that allow arbitrary code execution */
-const CALLBACK_METHODS = /\.(transform|refine|superRefine|preprocess|pipe)\s*\(/;
-
 /**
- * Evaluate a Zod schema string using real Zod.
- * Uses `vm.runInNewContext` with only `z` in scope — fully isolated from Node globals.
+ * Evaluate a Zod schema string using core's implementation.
+ * Delegates to @vars/core which provides env-aware boolean coercion
+ * (via the envZ proxy) and a strict keyword-based security blocklist.
  */
 export function evaluateSchema(schemaText: string): EvalResult {
-	// Block callback methods that allow arbitrary code execution
-	if (CALLBACK_METHODS.test(schemaText)) {
-		return { success: false, error: "Blocked: callback method detected" };
-	}
-
 	try {
-		const sandbox = { z, result: undefined as unknown };
-		vm.runInNewContext(`result = (${schemaText})`, sandbox, {
-			timeout: 100,
-			filename: "vars-lsp-schema-eval",
-		});
-
-		if (sandbox.result instanceof z.ZodType) {
-			return { success: true, schema: sandbox.result as z.ZodTypeAny };
-		}
-		return { success: false, error: "Expression did not return a Zod schema" };
+		const schema = coreEvaluateSchema(schemaText);
+		return { success: true, schema };
 	} catch (err) {
 		return {
 			success: false,
-			error: err instanceof Error ? err.message : String(err),
+			error: (err as Error).message,
 		};
 	}
 }
