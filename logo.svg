@@ -1,19 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#818cf8"/>
-      <stop offset="100%" style="stop-color:#6366f1"/>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="lock" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.95"/>
+      <stop offset="100%" style="stop-color:#e0e7ff;stop-opacity:0.9"/>
     </linearGradient>
   </defs>
 
-  <!-- V shape formed by two halves — left half solid (revealed), right half dashed/fragmented (encrypted) -->
+  <!-- Rounded square background -->
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="url(#bg)"/>
 
-  <!-- Left arm of V — solid, clean -->
-  <path d="M96 112L256 400" stroke="url(#grad)" stroke-width="56" stroke-linecap="round"/>
+  <!-- Lock shackle (top arc) -->
+  <path d="M196 220V172c0-33.1 26.9-60 60-60s60 26.9 60 60v48"
+        stroke="url(#lock)" stroke-width="28" stroke-linecap="round" fill="none"/>
 
-  <!-- Right arm of V — fragmented/dissolving into segments -->
-  <path d="M416 112L384 176" stroke="#6366f1" stroke-width="56" stroke-linecap="round"/>
-  <path d="M368 208L340 264" stroke="#6366f1" stroke-width="56" stroke-linecap="round" opacity="0.7"/>
-  <path d="M324 296L296 352" stroke="#818cf8" stroke-width="56" stroke-linecap="round" opacity="0.45"/>
-  <path d="M280 368L256 400" stroke="#a78bfa" stroke-width="56" stroke-linecap="round" opacity="0.2"/>
+  <!-- Lock body -->
+  <rect x="168" y="220" width="176" height="144" rx="24" fill="url(#lock)"/>
+
+  <!-- Keyhole -->
+  <circle cx="256" cy="278" r="22" fill="#6366f1"/>
+  <rect x="248" y="290" width="16" height="40" rx="8" fill="#6366f1"/>
+
+  <!-- Curly braces — code/schema hint -->
+  <path d="M108 180c-20 0-32 12-32 32v40c0 16-12 24-24 24 12 0 24 8 24 24v40c0 20 12 32 32 32"
+        stroke="url(#lock)" stroke-width="18" stroke-linecap="round" fill="none" opacity="0.6"/>
+  <path d="M404 180c20 0 32 12 32 32v40c0 16 12 24 24 24-12 0-24 8-24 24v40c0 20-12 32-32 32"
+        stroke="url(#lock)" stroke-width="18" stroke-linecap="round" fill="none" opacity="0.6"/>
 </svg>
