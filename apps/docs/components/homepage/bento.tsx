@@ -43,7 +43,7 @@ z.enum(["development", "staging", "production"])`,
     description:
       'Everything from the command line. Scriptable and CI-friendly.',
     image: '/images/aurora.webp',
-    span: 'narrow',
+    span: 'wide',
     lang: 'bash',
     code: `$ vars show     # decrypt, edit
 $ vars hide     # re-encrypt
@@ -56,7 +56,7 @@ $ vars gen      # typed exports`,
     description:
       'Autocomplete, inline validation, hover docs — your .vars file gets first-class editor support through a dedicated language server.',
     image: '/images/neural-mesh.webp',
-    span: 'wide',
+    span: 'narrow',
   },
 ];
 
