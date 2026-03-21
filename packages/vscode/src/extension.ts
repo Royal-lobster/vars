@@ -32,7 +32,7 @@ export function activate(context: ExtensionContext): void {
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [{ scheme: "file", language: "vars" }],
 		synchronize: {
-			fileEvents: workspace.createFileSystemWatcher("**/.vars{,.unlocked}"),
+			fileEvents: workspace.createFileSystemWatcher("**/.vars/{vault,unlocked}.vars"),
 		},
 	};
 
@@ -77,16 +77,16 @@ export function activate(context: ExtensionContext): void {
 	}
 
 	// --- File watcher for show/hide tab swapping ---
-	const watcher = workspace.createFileSystemWatcher("**/.vars.unlocked");
+	const watcher = workspace.createFileSystemWatcher("**/.vars/unlocked.vars");
 
 	watcher.onDidCreate(async (uri) => {
-		const varsUri = Uri.file(uri.fsPath.replace(/\.unlocked$/, ""));
+		const varsUri = Uri.file(uri.fsPath.replace(/\/unlocked\.vars$/, "/vault.vars"));
 		await closeEditorByUri(varsUri);
 		await openFileInEditor(uri);
 	});
 
 	watcher.onDidDelete(async (uri) => {
-		const varsUri = Uri.file(uri.fsPath.replace(/\.unlocked$/, ""));
+		const varsUri = Uri.file(uri.fsPath.replace(/\/unlocked\.vars$/, "/vault.vars"));
 		await closeEditorByUri(uri);
 		await openFileInEditor(varsUri);
 	});

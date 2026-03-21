@@ -34,7 +34,7 @@ export default defineCommand({
     try {
       await rotateKey(cwd, oldPin, newPin);
       output.success("Key rotated successfully. All values re-encrypted with new key.");
-      output.info("Share the new varskey + new PIN with teammates.");
+      output.info("Share the new .vars/key + new PIN with teammates.");
     } catch (err) {
       output.error(`Rotation failed: ${(err as Error).message}`);
       process.exit(1);
@@ -54,8 +54,8 @@ export async function rotateKey(
   oldPin: string,
   newPin: string,
 ): Promise<{ newKey: Buffer }> {
-  const keyPath = join(cwd, "varskey");
-  const varsPath = join(cwd, ".vars");
+  const keyPath = join(cwd, ".vars", "key");
+  const varsPath = join(cwd, ".vars", "vault.vars");
 
   const oldKeyEncoded = readFileSync(keyPath, "utf8").trim();
   const oldKey = await decryptMasterKey(oldKeyEncoded, oldPin);

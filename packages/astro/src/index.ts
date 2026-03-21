@@ -27,7 +27,7 @@ export function varsIntegration(options: VarsOptions = {}): AstroIntegration {
 		name: "vars",
 		hooks: {
 			"astro:config:setup"({ updateConfig }) {
-				const envFile = options.envFile ?? ".vars";
+				const envFile = options.envFile ?? ".vars/vault.vars";
 				const env = options.env ?? process.env.VARS_ENV ?? "development";
 				const key = options.key ?? process.env.VARS_KEY ?? readKeyFile(envFile);
 				const envFilePath = resolve(process.cwd(), envFile);

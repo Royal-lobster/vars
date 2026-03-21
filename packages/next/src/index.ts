@@ -23,7 +23,7 @@ export function withEnvx(
 	nextConfig: Record<string, unknown> = {},
 	varsOptions: VarsOptions = {},
 ): Record<string, unknown> {
-	const envFile = varsOptions.envFile ?? ".vars";
+	const envFile = varsOptions.envFile ?? ".vars/vault.vars";
 	const env = varsOptions.env ?? process.env.VARS_ENV ?? "development";
 	const key = varsOptions.key ?? process.env.VARS_KEY ?? readKeyFile(envFile);
 

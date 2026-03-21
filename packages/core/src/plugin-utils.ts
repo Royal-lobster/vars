@@ -20,7 +20,7 @@ export function extractValue(value: unknown): string {
  * Read the decryption key from a varskey file if it exists.
  */
 export function readKeyFile(envFile: string): string | undefined {
-	const keyPath = resolve(process.cwd(), "varskey");
+	const keyPath = resolve(process.cwd(), ".vars", "key");
 	if (existsSync(keyPath)) {
 		return readFileSync(keyPath, "utf8").trim();
 	}
@@ -33,7 +33,7 @@ export function readKeyFile(envFile: string): string | undefined {
 export function regenerateIfStale(envFilePath: string, envFile: string): void {
 	if (!existsSync(envFilePath)) return;
 
-	const generatedPath = resolve(dirname(envFilePath), "vars.generated.ts");
+	const generatedPath = resolve(dirname(envFilePath), "..", "vars.generated.ts");
 	const varsModified = statSync(envFilePath).mtimeMs;
 
 	if (existsSync(generatedPath)) {

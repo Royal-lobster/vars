@@ -20,10 +20,10 @@ export function findVarsFile(startDir: string = process.cwd()): string | null {
   const root = resolve("/");
 
   while (dir !== root) {
-    const candidate = resolve(dir, ".vars");
+    const candidate = resolve(dir, ".vars", "vault.vars");
     if (existsSync(candidate)) return candidate;
-    // If .vars.unlocked exists, we're in show mode — return the base .vars path
-    const decrypted = resolve(dir, ".vars.unlocked");
+    // If .vars/unlocked exists, we're in show mode — return the base .vars/vault path
+    const decrypted = resolve(dir, ".vars", "unlocked.vars");
     if (existsSync(decrypted)) return candidate;
     const parent = dirname(dir);
     if (parent === dir) break;
@@ -37,7 +37,7 @@ export function findVarsFile(startDir: string = process.cwd()): string | null {
  * Resolve the varskey file path relative to the .vars file.
  */
 export function findKeyFile(varsFilePath: string): string {
-  return resolve(dirname(varsFilePath), "varskey");
+  return resolve(dirname(varsFilePath), "key");
 }
 
 /** Map common long environment names to the short forms used in .vars files. */
@@ -69,7 +69,7 @@ export function buildContext(options: {
   const cwd = options.cwd ?? process.cwd();
   const varsFilePath = options.file
     ? resolve(cwd, options.file)
-    : findVarsFile(cwd) ?? resolve(cwd, ".vars");
+    : findVarsFile(cwd) ?? resolve(cwd, ".vars", "vault.vars");
   const keyFilePath = findKeyFile(varsFilePath);
   const env = resolveEnv(options.env);
 
@@ -114,7 +114,7 @@ export async function requireKey(ctx?: CliContext): Promise<Buffer> {
 
   // Find the key file
   const keyFilePath = ctx?.keyFilePath ?? findKeyFile(
-    findVarsFile() ?? resolve(process.cwd(), ".vars"),
+    findVarsFile() ?? resolve(process.cwd(), ".vars", "vault.vars"),
   );
   const encoded = readKeyFile(keyFilePath);
 

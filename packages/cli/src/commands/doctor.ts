@@ -56,7 +56,7 @@ export default defineCommand({
 export function runDoctorChecks(cwd: string): DoctorCheck[] {
   const checks: DoctorCheck[] = [];
 
-  const varsPath = findVarsFile(cwd) ?? join(cwd, ".vars");
+  const varsPath = findVarsFile(cwd) ?? join(cwd, ".vars", "vault.vars");
   if (existsSync(varsPath)) {
     checks.push({
       name: "vars-file",
@@ -75,18 +75,18 @@ export function runDoctorChecks(cwd: string): DoctorCheck[] {
   }
 
   const varsDir = dirname(varsPath);
-  const keyPath = join(varsDir, "varskey");
+  const keyPath = join(varsDir, "key");
   if (existsSync(keyPath)) {
     checks.push({
       name: "key-file",
-      label: "varskey file",
+      label: ".vars/key file",
       status: "pass",
       message: "Found",
     });
   } else {
     checks.push({
       name: "key-file",
-      label: "varskey file",
+      label: ".vars/key file",
       status: "fail",
       message: "Not found. Run 'vars init' to generate a key.",
     });
@@ -95,19 +95,19 @@ export function runDoctorChecks(cwd: string): DoctorCheck[] {
   const gitignorePath = join(varsDir, ".gitignore");
   if (existsSync(gitignorePath)) {
     const gitignore = readFileSync(gitignorePath, "utf8");
-    if (gitignore.includes("varskey")) {
+    if (gitignore.includes(".vars/key")) {
       checks.push({
         name: "gitignore",
         label: ".gitignore",
         status: "pass",
-        message: "varskey is gitignored",
+        message: ".vars/key is gitignored",
       });
     } else {
       checks.push({
         name: "gitignore",
         label: ".gitignore",
         status: "warn",
-        message: "varskey is NOT in .gitignore",
+        message: ".vars/key is NOT in .gitignore",
       });
     }
   } else {
@@ -115,7 +115,7 @@ export function runDoctorChecks(cwd: string): DoctorCheck[] {
       name: "gitignore",
       label: ".gitignore",
       status: "warn",
-      message: "No .gitignore found. Create one with varskey entry.",
+      message: "No .gitignore found. Create one with .vars/key entry.",
     });
   }
 

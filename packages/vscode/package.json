@@ -21,7 +21,7 @@
 	],
 	"activationEvents": [
 		"onLanguage:vars",
-		"workspaceContains:**/.vars"
+		"workspaceContains:**/.vars/vault.vars"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
@@ -34,8 +34,7 @@
 					"envx"
 				],
 				"extensions": [
-					".vars",
-					".vars.unlocked"
+					".vars"
 				],
 				"configuration": "./language-configuration.json",
 				"icon": {
@@ -75,12 +74,12 @@
 			"editor/title": [
 				{
 					"command": "vars.show",
-					"when": "resourceLangId == vars && resourceFilename == .vars",
+					"when": "resourceLangId == vars && resourcePath =~ /\\.vars\\/vault\\.vars$/",
 					"group": "navigation"
 				},
 				{
 					"command": "vars.hide",
-					"when": "resourceLangId == vars && resourceFilename == .vars.unlocked",
+					"when": "resourceLangId == vars && resourcePath =~ /\\.vars\\/unlocked\\.vars$/",
 					"group": "navigation"
 				}
 			]

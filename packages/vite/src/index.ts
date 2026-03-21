@@ -22,7 +22,7 @@ export interface VarsOptions {
  * ```
  */
 export function varsPlugin(options: VarsOptions = {}): Plugin {
-	const envFile = options.envFile ?? ".vars";
+	const envFile = options.envFile ?? ".vars/vault.vars";
 	let resolvedVars: Record<string, unknown> = {};
 
 	function loadVars(): Record<string, unknown> {

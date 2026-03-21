@@ -41,7 +41,7 @@ export const VARS: unique symbol = Symbol("VARS");
 // biome-ignore lint/complexity/noStaticOnlyClass: NestJS module pattern requires a class for DI
 export class EnvxModule {
 	static forRoot(options: VarsOptions = {}): DynamicModule {
-		const envFile = options.envFile ?? ".vars";
+		const envFile = options.envFile ?? ".vars/vault.vars";
 		const env = options.env ?? process.env.VARS_ENV ?? "development";
 		const key = options.key ?? process.env.VARS_KEY ?? readKeyFile(envFile);
 

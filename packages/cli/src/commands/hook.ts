@@ -11,9 +11,9 @@ import * as output from "../utils/output.js";
 const HOOK_MARKER = "# vars: auto-encrypt before commit";
 const HOOK_SCRIPT = `
 ${HOOK_MARKER}
-# Block commit if .vars.unlocked exists (secrets are decrypted)
-if [ -f .vars.unlocked ]; then
-  echo "vars: .vars.unlocked exists — secrets are decrypted!"
+# Block commit if .vars/unlocked.vars exists (secrets are decrypted)
+if [ -f .vars/unlocked.vars ]; then
+  echo "vars: .vars/unlocked.vars exists — secrets are decrypted!"
   echo "Run 'vars hide' before committing."
   exit 1
 fi

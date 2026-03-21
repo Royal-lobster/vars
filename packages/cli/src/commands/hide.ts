@@ -1,5 +1,6 @@
 import { defineCommand } from "citty";
 import { existsSync, readFileSync, renameSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { encrypt, isEncrypted, regenerateIfStale } from "@vars/core";
 import { buildContext, requireKey } from "../utils/context.js";
 import { ENV_VALUE_LINE } from "../utils/patterns.js";
@@ -33,7 +34,7 @@ export default defineCommand({
  */
 export function hideVarsFile(filePath: string, key: Buffer): void {
   // Determine source: prefer .vars.unlocked if it exists (show/hide flow)
-  const decryptedPath = filePath + ".unlocked";
+  const decryptedPath = resolve(dirname(filePath), "unlocked.vars");
   const sourcePath = existsSync(decryptedPath) ? decryptedPath : filePath;
 
   const content = readFileSync(sourcePath, "utf8");

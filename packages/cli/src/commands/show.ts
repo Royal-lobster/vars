@@ -1,5 +1,6 @@
 import { defineCommand } from "citty";
 import { readFileSync, renameSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { decrypt, isEncrypted, regenerateIfStale } from "@vars/core";
 import { buildContext, requireKey } from "../utils/context.js";
 import { ENV_VALUE_LINE } from "../utils/patterns.js";
@@ -57,7 +58,7 @@ export function showVarsFile(filePath: string, key: Buffer): string {
   // Regenerate env.generated.ts before rename (while .vars still exists)
   regenerateIfStale(filePath, ".vars");
 
-  const decryptedPath = filePath + ".unlocked";
+  const decryptedPath = resolve(dirname(filePath), "unlocked.vars");
   renameSync(filePath, decryptedPath);
   return decryptedPath;
 }

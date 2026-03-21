@@ -1,5 +1,5 @@
 import { defineCommand } from "citty";
-import { existsSync, readFileSync, writeFileSync, appendFileSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, unlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
   createMasterKey,
@@ -30,10 +30,11 @@ export default defineCommand({
   },
   async run({ args }) {
     const cwd = process.cwd();
-    const varsPath = resolve(cwd, ".vars");
+    const varsDir = resolve(cwd, ".vars");
+    const varsPath = resolve(varsDir, "vault.vars");
 
     if (existsSync(varsPath)) {
-      output.warn(".vars already exists. Use 'vars add' to add variables.");
+      output.warn(".vars/vault.vars already exists. Use 'vars add' to add variables.");
       return;
     }
 
@@ -87,12 +88,13 @@ export default defineCommand({
       lines.push("");
     }
 
+    mkdirSync(varsDir, { recursive: true });
     writeFileSync(varsPath, lines.join("\n"));
-    writeFileSync(resolve(cwd, "varskey"), encryptedKey + "\n");
+    writeFileSync(resolve(varsDir, "key"), encryptedKey + "\n");
     updateGitignore(cwd);
 
-    output.success("Created .vars (encrypted values)");
-    output.success("Created varskey (PIN-protected encryption key)");
+    output.success("Created .vars/vault.vars (encrypted values)");
+    output.success("Created .vars/key (PIN-protected encryption key)");
 
     // Offer to delete .env after successful migration
     if (envVars.length > 0 && existsSync(envFilePath)) {
@@ -180,8 +182,9 @@ export async function initProject(options: {
   interactive: boolean;
 }): Promise<void> {
   const { cwd, pin, env } = options;
-  const varsPath = resolve(cwd, ".vars");
-  const keyPath = resolve(cwd, "varskey");
+  const varsDir = resolve(cwd, ".vars");
+  const varsPath = resolve(varsDir, "vault.vars");
+  const keyPath = resolve(varsDir, "key");
 
   const masterKey = await createMasterKey();
   const encryptedKey = await encryptMasterKey(masterKey, pin);
@@ -202,6 +205,7 @@ export async function initProject(options: {
     lines.push("");
   }
 
+  mkdirSync(varsDir, { recursive: true });
   writeFileSync(varsPath, lines.join("\n"));
   writeFileSync(keyPath, encryptedKey + "\n");
   updateGitignore(cwd);
@@ -212,9 +216,9 @@ function updateGitignore(cwd: string): void {
   const varsEntries = [
     "",
     "# vars",
-    "varskey",
-    "varskey.*",
-    ".vars.unlocked",
+    ".vars/key",
+    ".vars/key.*",
+    ".vars/unlocked.vars",
     ".env",
     ".env.*",
     ".vars.swp",
@@ -225,7 +229,7 @@ function updateGitignore(cwd: string): void {
 
   if (existsSync(gitignorePath)) {
     const existing = readFileSync(gitignorePath, "utf8");
-    if (!existing.includes("varskey")) {
+    if (!existing.includes(".vars/key")) {
       appendFileSync(gitignorePath, "\n" + varsEntries + "\n");
     }
   } else {

@@ -1,5 +1,6 @@
 import { defineCommand } from "citty";
 import { readFileSync, existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { parse, isEncrypted } from "@vars/core";
 import { buildContext, resolveEnv } from "../utils/context.js";
 import * as output from "../utils/output.js";
@@ -56,7 +57,7 @@ export default defineCommand({
  */
 export function getStatus(filePath: string): VarsStatus {
   const varsFileExists = existsSync(filePath);
-  const keyFileExists = existsSync(filePath.replace(/\.vars$/, "varskey"));
+  const keyFileExists = existsSync(resolve(dirname(filePath), "key"));
 
   if (!varsFileExists) {
     return {
