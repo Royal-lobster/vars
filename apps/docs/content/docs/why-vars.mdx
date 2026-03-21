@@ -16,11 +16,11 @@ If you're using `.env` files, you've probably hit these:
 
 ## How vars fixes this
 
-vars replaces `.env` files. Every value is AES-256-GCM encrypted, so your `.vars` file is safe to commit. No more `.gitignore` anxiety.
+vars replaces `.env` files. Every value is AES-256-GCM encrypted, so your `.vars` file is safe to commit. New teammate clones the repo, enters the PIN, and they have every secret for every environment. No Slack DMs. No 1Password vaults. No Doppler.
 
 Schemas live right next to the values. You write `z.string().url()` and that typo in your database URL gets caught before your app boots, not after it crashes in prod.
 
-All environments live in one file under `@env` blocks. Dev, staging, prod, one place to look, one file to audit. And because the file is encrypted, you just commit it. New teammate clones the repo, enters the PIN, and they're up to date. No Slack DMs. No external services.
+All environments live in one file under `@env` blocks. Dev, staging, prod, one place to look, one file to audit.
 
 The encryption key is locked behind a PIN. AI agents, CI scripts, and anything else with file access can't decrypt values without it.
 
