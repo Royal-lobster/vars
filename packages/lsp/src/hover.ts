@@ -1,4 +1,5 @@
 import { evaluateSchema, getSchemaInfo } from "./zod-introspect.js";
+import { VAR_DECL_RE } from "./patterns.js";
 
 export interface HoverContext {
 	text: string;
@@ -41,7 +42,7 @@ export function computeHover(ctx: HoverContext): HoverResult | null {
 	}
 
 	// Parse the variable declaration from this line
-	const varMatch = currentLine.match(/^([A-Z_][A-Z0-9_]*)\s{2,}(z\..+)$/);
+	const varMatch = currentLine.match(VAR_DECL_RE);
 	if (!varMatch) return null;
 
 	const varName = varMatch[1];

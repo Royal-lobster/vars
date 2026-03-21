@@ -1,13 +1,9 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { CryptoError, KeyError } from "./errors.js";
+import { ALGORITHM, IV_LENGTH, TAG_LENGTH, VERSION, ALG_NAME } from "./crypto-constants.js";
 
-const IV_LENGTH = 12;
 const SALT_LENGTH = 16;
 const KEY_LENGTH = 32;
-const TAG_LENGTH = 16;
-const ALGORITHM = "aes-256-gcm";
-const VERSION = "v1";
-const ALG_NAME = "aes256gcm";
 
 export async function createMasterKey(): Promise<Buffer> {
   return randomBytes(KEY_LENGTH);

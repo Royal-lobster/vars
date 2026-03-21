@@ -1,3 +1,5 @@
+import { VAR_DECL_RE } from "./patterns.js";
+
 export interface CodeActionContext {
 	text: string;
 	startLine: number;
@@ -85,7 +87,7 @@ function findVariableInRange(
 ): VariableInfo | null {
 	// Walk up from startLine to find the variable declaration
 	for (let i = startLine; i >= 0; i--) {
-		const match = lines[i].match(/^([A-Z_][A-Z0-9_]*)\s{2,}z\./);
+		const match = lines[i].match(VAR_DECL_RE);
 		if (match) {
 			return { name: match[1], lineIndex: i };
 		}
@@ -95,7 +97,7 @@ function findVariableInRange(
 
 	// Also check forward in the range
 	for (let i = startLine; i <= endLine && i < lines.length; i++) {
-		const match = lines[i].match(/^([A-Z_][A-Z0-9_]*)\s{2,}z\./);
+		const match = lines[i].match(VAR_DECL_RE);
 		if (match) {
 			return { name: match[1], lineIndex: i };
 		}

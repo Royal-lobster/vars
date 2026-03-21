@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { parse } from "@vars/core";
+import { parse, extractReferencedVars } from "@vars/core";
 import type { Variable, VarsFile } from "@vars/core";
 import { type Diagnostic, DiagnosticSeverity, Range } from "vscode-languageserver/node.js";
 import { z } from "zod";
@@ -67,11 +67,9 @@ function checkRefineReferences(parsed: VarsFile, lines: string[], diagnostics: D
 	for (const refine of parsed.refines) {
 		const lineIndex = refine.line - 1;
 		// Extract env.VARNAME references
-		const refPattern = /env\.([A-Z_][A-Z0-9_]*)/g;
-		const matches = refine.expression.matchAll(refPattern);
+		const referencedVars = extractReferencedVars(refine.expression);
 
-		for (const match of matches) {
-			const varName = match[1];
+		for (const varName of referencedVars) {
 			if (!declaredNames.has(varName)) {
 				diagnostics.push({
 					severity: DiagnosticSeverity.Error,
