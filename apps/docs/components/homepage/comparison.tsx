@@ -1,6 +1,21 @@
 import { Badge } from '@/components/ui/badge';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 import { VarsDynamicCodeBlock } from './vars-codeblock';
+import {
+  FileWarning,
+  FolderSync,
+  FileQuestion,
+  MessageSquare,
+  ClipboardCopy,
+  ShieldAlert,
+  Lock,
+  FileStack,
+  ShieldCheck,
+  KeyRound,
+  LockKeyhole,
+  FileCode,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 const ENV_CODE = `# .env.development
 DATABASE_URL=postgres://localhost:5432/myapp
@@ -64,16 +79,16 @@ export function Comparison() {
           </div>
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-6">
-            {[
-              'Plaintext secrets on disk',
-              'Three files to keep in sync',
-              'No types or validation',
-              'Shared via Slack DMs',
-              'Copy-paste between envs',
-              'Hope nobody commits prod',
-            ].map((problem) => (
+            {([
+              [FileWarning, 'Plaintext secrets on disk'],
+              [FolderSync, 'Three files to keep in sync'],
+              [FileQuestion, 'No types or validation'],
+              [MessageSquare, 'Shared via Slack DMs'],
+              [ClipboardCopy, 'Copy-paste between envs'],
+              [ShieldAlert, 'Hope nobody commits prod'],
+            ] as [LucideIcon, string][]).map(([Icon, problem]) => (
               <div key={problem} className="flex items-start gap-2.5 text-sm text-red-400/80">
-                <span className="mt-0.5 text-red-500/60 font-medium">✕</span>
+                <Icon size={16} className="mt-0.5 shrink-0 text-red-500/60" />
                 {problem}
               </div>
             ))}
@@ -97,16 +112,16 @@ export function Comparison() {
           />
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-6">
-            {[
-              'Encrypted, safe to commit',
-              'One file, all environments',
-              'Zod schemas validate values',
-              'Clone the repo, enter PIN',
-              'Always encrypted, unlock to edit',
-              'Types generated for you',
-            ].map((benefit) => (
+            {([
+              [Lock, 'Encrypted, safe to commit'],
+              [FileStack, 'One file, all environments'],
+              [ShieldCheck, 'Zod schemas validate values'],
+              [KeyRound, 'Clone the repo, enter PIN'],
+              [LockKeyhole, 'Always encrypted, unlock to edit'],
+              [FileCode, 'Types generated for you'],
+            ] as [LucideIcon, string][]).map(([Icon, benefit]) => (
               <div key={benefit} className="flex items-start gap-2.5 text-sm text-green-400/90">
-                <span className="mt-0.5 text-green-500 font-medium">✓</span>
+                <Icon size={16} className="mt-0.5 shrink-0 text-green-500" />
                 {benefit}
               </div>
             ))}
