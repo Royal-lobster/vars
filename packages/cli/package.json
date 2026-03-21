@@ -15,8 +15,8 @@
 	},
 	"dependencies": {
 		"@vars/core": "workspace:*",
+		"@clack/prompts": "^0.10.0",
 		"citty": "^0.2.1",
-		"consola": "^3.4.0",
 		"picocolors": "^1.1.0",
 		"zod": "^3.24.0"
 	},
