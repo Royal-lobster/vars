@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { extractValue, loadVars, readKeyFile, regenerateIfStale } from "@vars/core";
+import { extractValue, loadVars, regenerateIfStale, resolveVarsFile } from "@vars/core";
 
 export interface VarsOptions {
 	envFile?: string;
@@ -19,17 +19,16 @@ export interface VarsOptions {
  * export default withVars({ reactStrictMode: true })
  * ```
  */
-export function withVars(
-	nextConfig: Record<string, unknown> = {},
+export function withVars<T extends object>(
+	nextConfig: T = {} as T,
 	varsOptions: VarsOptions = {},
-): Record<string, unknown> {
+): T {
 	const envFile = varsOptions.envFile ?? ".vars/vault.vars";
 	const env = varsOptions.env ?? process.env.VARS_ENV ?? "development";
-	const key = varsOptions.key ?? process.env.VARS_KEY ?? readKeyFile(envFile);
+	const { path: envFilePath, unlocked } = resolveVarsFile(envFile);
+	const key = unlocked ? undefined : (varsOptions.key ?? process.env.VARS_KEY);
 
-	const envFilePath = resolve(process.cwd(), envFile);
-
-	// 1. Auto-regenerate env.generated.ts if .vars changed
+	// 1. Auto-regenerate vars.generated.ts if .vars changed
 	regenerateIfStale(envFilePath, envFile);
 
 	// 2. Load, decrypt, and validate
@@ -57,12 +56,12 @@ export function withVars(
 	}
 
 	// 5. Merge into Next.js config
-	const existingEnv = (nextConfig.env as Record<string, string>) ?? {};
+	const existingEnv = ((nextConfig as Record<string, unknown>).env as Record<string, string>) ?? {};
 
 	return {
 		...nextConfig,
 		...(Object.keys(clientEnv).length > 0 || Object.keys(existingEnv).length > 0
 			? { env: { ...existingEnv, ...clientEnv } }
 			: {}),
-	};
+	} as T;
 }

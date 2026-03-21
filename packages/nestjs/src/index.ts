@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { loadVars, readKeyFile } from "@vars/core";
+import { loadVars, resolveVarsFile } from "@vars/core";
 import { Module, type DynamicModule } from "@nestjs/common";
 
 export interface VarsOptions {
@@ -43,9 +43,8 @@ export class VarsModule {
 	static forRoot(options: VarsOptions = {}): DynamicModule {
 		const envFile = options.envFile ?? ".vars/vault.vars";
 		const env = options.env ?? process.env.VARS_ENV ?? "development";
-		const key = options.key ?? process.env.VARS_KEY ?? readKeyFile(envFile);
-
-		const envFilePath = resolve(process.cwd(), envFile);
+		const { path: envFilePath, unlocked } = resolveVarsFile(envFile);
+		const key = unlocked ? undefined : (options.key ?? process.env.VARS_KEY);
 
 		const loadOptions: Record<string, unknown> = { env };
 		if (key) loadOptions.key = key;

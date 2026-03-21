@@ -17,14 +17,15 @@ export function extractValue(value: unknown): string {
 }
 
 /**
- * Read the decryption key from a varskey file if it exists.
+ * Resolve the vars file path, preferring unlocked.vars over vault.vars.
+ * Respects custom envFile paths. Returns { path, unlocked } so adapters
+ * know whether to skip decryption.
  */
-export function readKeyFile(envFile: string): string | undefined {
-	const keyPath = resolve(process.cwd(), ".vars", "key");
-	if (existsSync(keyPath)) {
-		return readFileSync(keyPath, "utf8").trim();
-	}
-	return undefined;
+export function resolveVarsFile(envFile: string): { path: string; unlocked: boolean } {
+	const vaultPath = resolve(process.cwd(), envFile);
+	const unlockedPath = resolve(dirname(vaultPath), "unlocked.vars");
+	if (existsSync(unlockedPath)) return { path: unlockedPath, unlocked: true };
+	return { path: vaultPath, unlocked: false };
 }
 
 /**
@@ -33,7 +34,7 @@ export function readKeyFile(envFile: string): string | undefined {
 export function regenerateIfStale(envFilePath: string, envFile: string): void {
 	if (!existsSync(envFilePath)) return;
 
-	const generatedPath = resolve(dirname(envFilePath), "..", "vars.generated.ts");
+	const generatedPath = resolve(dirname(envFilePath), "vars.generated.ts");
 	const varsModified = statSync(envFilePath).mtimeMs;
 
 	if (existsSync(generatedPath)) {

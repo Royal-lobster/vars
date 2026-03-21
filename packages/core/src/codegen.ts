@@ -29,7 +29,7 @@ export function generateTypes(varsFile: VarsFile, envFile = ".vars"): string {
   lines.push("");
 
   // Env type — wrap only plain string fields with Redacted (not enums, numbers, booleans)
-  lines.push("export type Env = {");
+  lines.push("export type Var = {");
   for (const v of varsFile.variables) {
     const optional = v.schema.includes(".optional()");
     const tsType = inferTsType(v);
@@ -40,7 +40,7 @@ export function generateTypes(varsFile: VarsFile, envFile = ".vars"): string {
   lines.push("");
 
   // Parse helper — validates + wraps plain strings in Redacted
-  lines.push("function parseEnv(input: Record<string, unknown>): Env {");
+  lines.push("function parseVars(input: Record<string, unknown>): Var {");
   lines.push("  const parsed = schema.parse(input);");
   lines.push("  return {");
   for (const v of varsFile.variables) {
@@ -55,12 +55,12 @@ export function generateTypes(varsFile: VarsFile, envFile = ".vars"): string {
       lines.push(`    ${v.name}: parsed.${v.name},`);
     }
   }
-  lines.push("  } as Env;");
+  lines.push("  } as Var;");
   lines.push("}");
   lines.push("");
 
   // Server env export
-  lines.push("export const env: Env = parseEnv(process.env);");
+  lines.push("export const vars: Var = parseVars(process.env);");
   lines.push("");
 
   // Client env export (PUBLIC_* and NEXT_PUBLIC_* variables only)
@@ -74,10 +74,10 @@ export function generateTypes(varsFile: VarsFile, envFile = ".vars"): string {
       lines.push(`  ${v.name}: true,`);
     }
     lines.push("});");
-    lines.push(`export type ClientEnv = Pick<Env, ${pickKeys}>;`);
+    lines.push(`export type ClientVar = Pick<Var, ${pickKeys}>;`);
 
     // Parse only client vars — server-only vars may not exist in client builds
-    lines.push("function parseClientEnv(input: Record<string, unknown>): ClientEnv {");
+    lines.push("function parseClientVar(input: Record<string, unknown>): ClientVar {");
     lines.push("  const parsed = clientSchema.parse(input);");
     lines.push("  return {");
     for (const v of clientVars) {
@@ -92,10 +92,10 @@ export function generateTypes(varsFile: VarsFile, envFile = ".vars"): string {
         lines.push(`    ${v.name}: parsed.${v.name},`);
       }
     }
-    lines.push("  } as ClientEnv;");
+    lines.push("  } as ClientVar;");
     lines.push("}");
 
-    lines.push("export const clientEnv: ClientEnv = parseClientEnv(process.env);");
+    lines.push("export const clientVars: ClientVar = parseClientVar(process.env);");
     lines.push("");
   }
 
