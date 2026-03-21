@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 
 export function baseOptions(): BaseLayoutProps {
@@ -6,7 +5,7 @@ export function baseOptions(): BaseLayoutProps {
     nav: {
       title: (
         <span className="flex items-center gap-2.5 font-bold">
-          <Image src="/logo.svg" alt="vars" width={28} height={28} className="rounded-lg" />
+          <img src="/logo.svg" alt="vars" width={28} height={28} className="rounded-lg" />
           vars
         </span>
       ),

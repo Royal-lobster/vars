@@ -1,5 +1,3 @@
-import Image from 'next/image';
-
 export function FeatureEncryption() {
   return (
     <section className="mx-auto grid max-w-[1120px] items-center gap-16 px-5 py-24 md:grid-cols-2 md:px-10">
@@ -22,7 +20,7 @@ export function FeatureEncryption() {
       </div>
 
       <div className="relative overflow-hidden rounded-2xl border border-white/[0.06]">
-        <Image
+        <img
           src="/images/fluid-green.webp"
           alt=""
           width={600}

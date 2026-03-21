@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { VarsDynamicCodeBlock } from './vars-codeblock';
@@ -39,12 +38,10 @@ export function Hero() {
     <section className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-5 pb-10 pt-16 md:px-10">
       {/* Background image */}
       <div className="absolute inset-0 z-0">
-        <Image
+        <img
           src="/images/hero-bg.webp"
           alt=""
-          fill
-          className="object-cover opacity-60"
-          priority
+          className="absolute inset-0 h-full w-full object-cover opacity-60"
         />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center_40%,transparent_30%,#050505_75%)]" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#050505] via-transparent to-[#050505]" />

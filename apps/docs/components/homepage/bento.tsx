@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 import { VarsDynamicCodeBlock } from './vars-codeblock';
 
@@ -114,12 +113,10 @@ export function Bento() {
             className={`group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)] ${spanClass(item.span)}`}
           >
             <div className="relative h-[200px] overflow-hidden">
-              <Image
+              <img
                 src={item.image}
                 alt=""
-                fill
-                sizes="(max-width: 768px) 100vw, 66vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </div>
             <div className="p-6">
@@ -149,12 +146,10 @@ export function Bento() {
         <div className="group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 md:col-span-12">
           <div className="grid md:grid-cols-2">
             <div className="relative min-h-[240px] overflow-hidden">
-              <Image
+              <img
                 src="/images/crystal.webp"
                 alt=""
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </div>
             <div className="flex flex-col justify-center p-8">

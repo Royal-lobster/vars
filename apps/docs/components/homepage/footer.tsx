@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 
 const COLUMNS = [
@@ -33,7 +32,7 @@ export function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2.5 font-bold">
-              <Image src="/logo.svg" alt="vars" width={28} height={28} className="rounded-lg" />
+              <img src="/logo.svg" alt="vars" width={28} height={28} className="rounded-lg" />
               vars
             </div>
             <p className="mt-3 max-w-[280px] text-[13px] leading-relaxed text-white/25">
