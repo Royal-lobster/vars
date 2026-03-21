@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 
 interface BentoItem {
   label: string;
@@ -6,7 +7,8 @@ interface BentoItem {
   description: string;
   image: string;
   span: 'wide' | 'narrow' | 'full';
-  code?: string[];
+  code?: string;
+  lang?: string;
 }
 
 const ITEMS: BentoItem[] = [
@@ -17,11 +19,10 @@ const ITEMS: BentoItem[] = [
       'No proprietary DSL. Write the same Zod expressions you already use. Type errors at build time, not in production at 3am.',
     image: '/images/topographic.webp',
     span: 'wide',
-    code: [
-      'z.string().url().startsWith("postgres://")',
-      'z.coerce.number().int().min(1024).max(65535)',
-      'z.enum(["development", "staging", "production"])',
-    ],
+    lang: 'ts',
+    code: `z.string().url().startsWith("postgres://")
+z.coerce.number().int().min(1024).max(65535)
+z.enum(["development", "staging", "production"])`,
   },
   {
     label: 'Multi-env',
@@ -49,6 +50,12 @@ const ITEMS: BentoItem[] = [
   },
 ];
 
+const REFINE_CODE = `// Cross-variable constraint
+@refine (env) =>
+  env.LOG_LEVEL !== "debug"
+  || env.DEBUG === true
+  "DEBUG must be true when LOG_LEVEL is debug"`;
+
 function spanClass(span: BentoItem['span']) {
   switch (span) {
     case 'wide':
@@ -59,6 +66,8 @@ function spanClass(span: BentoItem['span']) {
       return 'md:col-span-12';
   }
 }
+
+const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11.5px] [&_pre]:!leading-[1.8]';
 
 export function Bento() {
   return (
@@ -95,10 +104,12 @@ export function Bento() {
                 {item.description}
               </p>
               {item.code && (
-                <div className="mt-4 rounded-lg bg-black/40 p-4 font-mono text-[11.5px] leading-[1.8] text-green-500">
-                  {item.code.map((line, i) => (
-                    <div key={i}>{line}</div>
-                  ))}
+                <div className={`mt-4 ${codeBlockStyle}`}>
+                  <DynamicCodeBlock
+                    lang={item.lang ?? 'text'}
+                    code={item.code}
+                    codeblock={{ keepBackground: false }}
+                  />
                 </div>
               )}
             </div>
@@ -127,17 +138,12 @@ export function Bento() {
                 Express relationships between variables. If LOG_LEVEL is &quot;debug&quot;,
                 enforce that DEBUG is true. Validated at build time.
               </p>
-              <div className="mt-4 rounded-lg bg-black/40 p-4 font-mono text-[11.5px] leading-[1.8]">
-                <div>
-                  <span className="font-semibold text-green-400">@refine</span>{' '}
-                  <span className="text-green-500">(env) =&gt;</span>
-                </div>
-                <div className="text-green-500">
-                  {'  '}env.LOG_LEVEL !== &quot;debug&quot; || env.DEBUG === true
-                </div>
-                <div className="text-green-800">
-                  {'  '}&quot;DEBUG must be true when LOG_LEVEL is debug&quot;
-                </div>
+              <div className={`mt-4 ${codeBlockStyle}`}>
+                <DynamicCodeBlock
+                  lang="js"
+                  code={REFINE_CODE}
+                  codeblock={{ keepBackground: false }}
+                />
               </div>
             </div>
           </div>
