@@ -18,7 +18,7 @@ import pc from "picocolors";
 import * as clack from "@clack/prompts";
 import * as output from "../utils/output.js";
 import { promptConfirm, promptPIN } from "../utils/prompt.js";
-import { detectFramework, applyFrameworkConfig, wrapDevScript } from "../utils/detect-framework.js";
+import { detectFramework, wrapDevScript } from "../utils/detect-framework.js";
 import { installHook } from "./hook.js";
 
 export default defineCommand({
@@ -217,25 +217,12 @@ export default defineCommand({
         : `${pc.yellow("\u26a0")} Pre-commit hook not installed ${pc.dim("(run git init, then vars hook install)")}`,
     ];
 
-    // ── Framework detection & auto-configuration ─────────────────────
+    // ── Framework detection & dev script wrapping ─────────────────────
     const framework = detectFramework(cwd);
     if (framework) {
-      const configured = applyFrameworkConfig(cwd, framework);
-      if (configured) {
-        summaryLines.push(`${pc.green("\u2713")} ${pc.bold(framework.name)} configured — updated ${pc.cyan(framework.configFile)}`);
-      } else {
-        summaryLines.push(
-          `${pc.yellow("\u26a0")} Detected ${pc.bold(framework.name)} but couldn't auto-configure ${pc.cyan(framework.configFile)}`,
-          `  ${pc.dim("Add manually:")}`,
-          ...framework.snippet.split("\n").map((l) => `  ${pc.dim(l)}`),
-          `  ${pc.dim(`Then run: pnpm add ${framework.package}`)}`,
-        );
-      }
-
-      // Wrap dev script with vars run
       const devWrapped = wrapDevScript(cwd, framework);
       if (devWrapped) {
-        summaryLines.push(`${pc.green("\u2713")} dev script updated — ${pc.cyan("pnpm dev")} now prompts for PIN`);
+        summaryLines.push(`${pc.green("\u2713")} dev script updated — ${pc.cyan("pnpm dev")} now uses ${pc.cyan("vars run")}`);
       }
     }
 
