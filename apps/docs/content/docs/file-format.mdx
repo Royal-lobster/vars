@@ -12,7 +12,7 @@ Here's a `.vars` file using every feature. Read this first, then use the section
 DATABASE_URL  z.string().url().startsWith("postgres://")
   @description "Primary database connection"
   @owner       "platform-team"
-  @dev         = postgres://localhost:5432/myapp
+  @dev         = enc:v1:aes256gcm:k3m4n5:p6q7r8:s9t0u1
   @staging     = enc:v1:aes256gcm:a1b2c3:d4e5f6:g7h8i9
   @prod        = enc:v1:aes256gcm:j8fn2p:t9u0v1:w2x3y4
 
@@ -23,10 +23,10 @@ PORT  z.coerce.number().int().min(1024).max(65535)
 # Feature flags
 ENABLE_BETA  z.enum(["true", "false"])
   @deprecated "Use FEATURE_FLAGS instead"
-  @dev        = true
-  @prod       = false
+  @dev        = enc:v1:aes256gcm:v2w3x4:y5z6a7:b8c9d0
+  @prod       = enc:v1:aes256gcm:e1f2g3:h4i5j6:k7l8m9
 
-# Expiring API key — after `vars hide`, all values above become encrypted too
+# Expiring API key
 STRIPE_KEY  z.string().startsWith("sk_")
   @expires "2026-01-01"
   @dev     = enc:v1:aes256gcm:abc123:def456:ghi789
