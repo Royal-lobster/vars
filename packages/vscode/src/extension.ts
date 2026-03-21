@@ -85,15 +85,17 @@ export function activate(context: ExtensionContext): void {
 		await openFileInEditor(uri);
 	});
 
+	let regenTimer: ReturnType<typeof setTimeout> | undefined;
 	watcher.onDidChange(async (uri) => {
-		// Auto-regenerate vars.generated.ts on save
-		const varsDir = path.dirname(uri.fsPath);
-		const cwd = path.dirname(varsDir);
-		try {
-			cp.execFileSync("vars", ["gen"], { cwd, timeout: 5000, stdio: "ignore" });
-		} catch {
-			// Silently ignore — gen may fail if schemas are mid-edit
-		}
+		// Debounce — wait 500ms after last save before regenerating
+		if (regenTimer) clearTimeout(regenTimer);
+		regenTimer = setTimeout(() => {
+			const varsDir = path.dirname(uri.fsPath);
+			const cwd = path.dirname(varsDir);
+			cp.execFile("vars", ["gen"], { cwd, timeout: 5000 }, () => {
+				// Silently ignore errors — gen may fail if schemas are mid-edit
+			});
+		}, 500);
 	});
 
 	watcher.onDidDelete(async (uri) => {
