@@ -111,7 +111,7 @@ export function Frameworks() {
           {FRAMEWORKS.map((fw) => (
             <div
               key={fw.name}
-              className={`group overflow-hidden rounded-xl border border-white/[0.06] bg-gradient-to-b ${fw.color} transition-all hover:border-green-500/15`}
+              className={`group cursor-pointer overflow-hidden rounded-xl border border-white/[0.06] bg-gradient-to-b ${fw.color} transition-all duration-200 hover:-translate-y-1 hover:border-green-500/15 hover:shadow-lg hover:shadow-green-500/[0.03]`}
             >
               <div className="flex items-center gap-3 px-5 pt-5 pb-3">
                 <fw.Icon
