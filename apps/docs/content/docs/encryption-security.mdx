@@ -1,0 +1,104 @@
+---
+title: Encryption & Security
+description: How vars keeps your secrets safe — and what its limits are.
+---
+
+Your `.vars` file is safe to commit. That's the whole point. Here's how it works.
+
+---
+
+## How encryption works
+
+Every value gets encrypted independently with AES-256-GCM.
+
+AES-256-GCM: 256-bit key (very hard to brute-force), GCM mode (Galois/Counter Mode — it adds a tamper-proof auth tag so corrupted or modified data gets rejected, not silently swallowed).
+
+Each encrypted value looks like:
+
+```
+enc:v1:aes256gcm:<iv>:<ciphertext>:<tag>
+```
+
+Six colon-separated segments. All three data parts are base64-encoded.
+
+| Segment | What it is |
+|---------|------------|
+| `enc` | Literal marker |
+| `v1` | Format version |
+| `aes256gcm` | Algorithm |
+| `<iv>` | 12-byte random IV (initialization vector) |
+| `<ciphertext>` | The encrypted value |
+| `<tag>` | 16-byte authentication tag |
+
+A fresh random 12-byte IV is generated for every value, every time you run `vars hide`. Two identical plaintext values will look completely different in the file. Attackers can't learn anything by comparing ciphertexts.
+
+The auth tag catches tampering. If anyone modifies the ciphertext — even one byte — decryption throws an error. You find out immediately, not after your app boots with garbage data.
+
+---
+
+## The PIN/key model
+
+When you run `vars init`, two things get created:
+
+1. A master key — 32 bytes of random data. This is what actually encrypts your values.
+2. An encrypted copy of that master key — stored in your OS keychain (macOS Keychain, Windows Credential Manager, or the Linux Secret Service), locked behind your PIN.
+
+The PIN is never stored anywhere. Instead, it goes through Argon2id — a password-hashing algorithm designed to be slow and memory-intensive, so brute-forcing it is expensive — to derive a wrapping key. That wrapping key decrypts the master key, the master key decrypts your values, and then the wrapping key is discarded.
+
+The master key never touches disk in plaintext. Knowing the PIN is the only way to get it.
+
+The PIN is prompted at the terminal every time vars needs to decrypt. Not cached. Not stored in an env var. Not passed as a flag. You type it, it unlocks, done.
+
+---
+
+## Why AI agents can't access your secrets
+
+The PIN prompt goes to a TTY — a real interactive terminal. Automated tools don't have one.
+
+If an AI agent, CI script, or background process tries to run a vars command that needs decryption, it hits the PIN prompt and hangs. No flag to skip it. No env var to bypass it. The prompt is the lock.
+
+File-system access alone isn't enough. Anything with access to your `.vars` file — an AI with tool use, a misconfigured backup, etc. — just sees encrypted blobs.
+
+---
+
+## The `Redacted<T>` type
+
+When vars decrypts values and hands them to your code, sensitive ones come wrapped in `Redacted<T>`.
+
+You can't accidentally log a secret:
+
+```ts
+const key = new Redacted("sk_live_abc123");
+
+console.log(key);          // <redacted>
+console.log(`${key}`);     // <redacted>
+JSON.stringify({ key });   // {"key":"<redacted>"}
+```
+
+`toString()`, `toJSON()`, and Node.js's `util.inspect` all return `"<redacted>"`. The value stays hidden from logs, error reporters, and serializers without any extra work.
+
+To get the real value, call `unwrap()`:
+
+```ts
+const actualKey = key.unwrap(); // "sk_live_abc123"
+```
+
+`unwrap()` shows up in code review as the exact spot where a secret is deliberately exposed — easy to find, easy to audit.
+
+---
+
+## Threat model
+
+### What vars protects against
+
+- **Accidental commits** — the `.vars` file is only encrypted blobs. You can commit it.
+- **Log leaks** — `Redacted<T>` keeps secrets out of structured logs, error reporters, and `console.log` dumps.
+- **Unauthorized file access** — if someone grabs your `.vars` file (leaked backup, overly-permissive S3 bucket, etc.), they get ciphertext. Useless without the PIN.
+- **Automated tools** — AI agents and scripts with file-system access can read the file, but can't decrypt it. The PIN prompt stops them.
+
+### What vars doesn't protect against
+
+- **A compromised machine where the attacker also knows the PIN.** If they can sit at your keyboard and type your PIN, they can decrypt everything. vars doesn't solve physical security.
+- **Memory on a live system.** Once values are decrypted in memory for your running app, an attacker with OS-level access can read them. That's true of every secret manager, not just vars.
+- **PIN brute-forcing with offline access.** If an attacker copies your OS keychain, they can attempt to guess the PIN offline. Argon2id makes it slow and expensive, but a weak PIN is still a weak PIN.
+- **Supply chain attacks.** vars can't help if a dependency is exfiltrating `process.env` values after injection. Audit your dependencies.
