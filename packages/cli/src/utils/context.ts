@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
-import { retrieveKey } from "@vars/core";
+import { decryptMasterKey } from "@vars/core";
+import { promptPIN } from "./prompt.js";
 
 export interface CliContext {
   varsFilePath: string;
@@ -11,7 +12,7 @@ export interface CliContext {
 
 /**
  * Walk up from `startDir` looking for a `.vars` file.
- * Also checks for `.vars.decrypted` (active show mode) and returns
+ * Also checks for `.vars.unlocked` (active show mode) and returns
  * the base `.vars` path regardless, so commands always reference the canonical name.
  */
 export function findVarsFile(startDir: string = process.cwd()): string | null {
@@ -21,8 +22,8 @@ export function findVarsFile(startDir: string = process.cwd()): string | null {
   while (dir !== root) {
     const candidate = resolve(dir, ".vars");
     if (existsSync(candidate)) return candidate;
-    // If .vars.decrypted exists, we're in show mode — return the base .vars path
-    const decrypted = resolve(dir, ".vars.decrypted");
+    // If .vars.unlocked exists, we're in show mode — return the base .vars path
+    const decrypted = resolve(dir, ".vars.unlocked");
     if (existsSync(decrypted)) return candidate;
     const parent = dirname(dir);
     if (parent === dir) break;
@@ -33,10 +34,10 @@ export function findVarsFile(startDir: string = process.cwd()): string | null {
 }
 
 /**
- * Resolve the .vars.key file path relative to the .vars file.
+ * Resolve the varskey file path relative to the .vars file.
  */
 export function findKeyFile(varsFilePath: string): string {
-  return resolve(dirname(varsFilePath), ".vars.key");
+  return resolve(dirname(varsFilePath), "varskey");
 }
 
 /** Map common long environment names to the short forms used in .vars files. */
@@ -88,9 +89,10 @@ export function readKeyFile(keyFilePath: string): string {
 }
 
 /**
- * Try to get the master key: VARS_KEY env var > null (need PIN).
+ * Try to get the key without prompting. Returns null if unavailable.
+ * Only checks VARS_KEY env var — no PIN prompt, no keychain.
  */
-export function getMasterKeyFromEnv(): Buffer | null {
+export function getKeyFromEnv(): Buffer | null {
   const envKey = process.env.VARS_KEY;
   if (envKey) {
     return Buffer.from(envKey, "base64");
@@ -99,17 +101,24 @@ export function getMasterKeyFromEnv(): Buffer | null {
 }
 
 /**
- * Resolve the encryption key from available sources.
- * Priority: VARS_KEY env var > OS keychain > error.
+ * Resolve the encryption key. Prompts for PIN every time.
+ * Priority: VARS_KEY env var (for CI/CD) > PIN prompt.
+ * The key is never cached — human must authenticate each time.
  */
-export async function requireKey(): Promise<Buffer> {
-  const envKey = getMasterKeyFromEnv();
-  if (envKey) return envKey;
+export async function requireKey(ctx?: CliContext): Promise<Buffer> {
+  // CI/CD escape hatch
+  const envKey = process.env.VARS_KEY;
+  if (envKey) {
+    return Buffer.from(envKey, "base64");
+  }
 
-  const keychainKey = await retrieveKey();
-  if (keychainKey) return keychainKey;
-
-  throw new Error(
-    "No key available. Run 'vars unlock' first, or set VARS_KEY env var.",
+  // Find the key file
+  const keyFilePath = ctx?.keyFilePath ?? findKeyFile(
+    findVarsFile() ?? resolve(process.cwd(), ".vars"),
   );
+  const encoded = readKeyFile(keyFilePath);
+
+  // Prompt for PIN and decrypt
+  const pin = await promptPIN("Enter PIN");
+  return decryptMasterKey(encoded, pin);
 }

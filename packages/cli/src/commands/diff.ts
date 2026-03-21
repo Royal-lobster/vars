@@ -1,7 +1,7 @@
 import { defineCommand } from "citty";
 import { readFileSync } from "node:fs";
-import { parse, decrypt, isEncrypted, retrieveKey } from "@vars/core";
-import { buildContext, getMasterKeyFromEnv } from "../utils/context.js";
+import { parse, decrypt, isEncrypted } from "@vars/core";
+import { buildContext, getKeyFromEnv } from "../utils/context.js";
 import * as output from "../utils/output.js";
 import pc from "picocolors";
 
@@ -36,15 +36,7 @@ export default defineCommand({
       process.exit(1);
     }
 
-    let key: Buffer | null = null;
-    try {
-      key = getMasterKeyFromEnv();
-      if (!key) {
-        key = await retrieveKey();
-      }
-    } catch {
-      // No key available -- will compare encrypted blobs as-is
-    }
+    const key = getKeyFromEnv();
 
     const [left, right] = envPair;
     const diff = diffEnvironments(ctx.varsFilePath, left, right, key ?? undefined);

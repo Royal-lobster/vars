@@ -6,16 +6,19 @@ import { createInterface } from "node:readline";
  * Characters are masked with '*' to prevent shoulder-surfing.
  */
 export async function promptPIN(message = "Enter PIN"): Promise<string> {
-  // If not a TTY (piped input, CI), fall back to consola text prompt
+  // If not a TTY (piped input, CI, VS Code extension), read from stdin
   if (!process.stdin.isTTY) {
-    const pin = await consola.prompt(message, {
-      type: "text",
-      placeholder: "PIN",
+    return new Promise((resolve, reject) => {
+      let data = "";
+      process.stdin.setEncoding("utf8");
+      process.stdin.on("data", (chunk) => { data += chunk; });
+      process.stdin.on("end", () => {
+        const pin = data.trim().split("\n")[0];
+        if (!pin) reject(new Error("PIN is required"));
+        else resolve(pin);
+      });
+      process.stdin.resume();
     });
-    if (typeof pin !== "string" || pin.length === 0) {
-      throw new Error("PIN is required");
-    }
-    return pin;
   }
 
   return new Promise((resolve, reject) => {

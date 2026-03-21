@@ -27,13 +27,13 @@ export default defineCommand({
 });
 
 /**
- * Encrypt all plaintext values and rename .vars.decrypted → .vars.
+ * Encrypt all plaintext values and rename .vars.unlocked → .vars.
  * Uses encrypt-all-or-nothing: if any value fails to encrypt,
  * the file is not modified.
  */
 export function hideVarsFile(filePath: string, key: Buffer): void {
-  // Determine source: prefer .vars.decrypted if it exists (show/hide flow)
-  const decryptedPath = filePath + ".decrypted";
+  // Determine source: prefer .vars.unlocked if it exists (show/hide flow)
+  const decryptedPath = filePath + ".unlocked";
   const sourcePath = existsSync(decryptedPath) ? decryptedPath : filePath;
 
   const content = readFileSync(sourcePath, "utf8");

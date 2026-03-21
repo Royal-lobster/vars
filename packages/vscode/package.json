@@ -35,7 +35,7 @@
 				],
 				"extensions": [
 					".vars",
-					".vars.decrypted"
+					".vars.unlocked"
 				],
 				"configuration": "./language-configuration.json",
 				"icon": {
@@ -80,7 +80,7 @@
 				},
 				{
 					"command": "vars.hide",
-					"when": "resourceLangId == vars && resourceFilename == .vars.decrypted",
+					"when": "resourceLangId == vars && resourceFilename == .vars.unlocked",
 					"group": "navigation"
 				}
 			]

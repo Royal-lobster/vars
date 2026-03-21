@@ -1,7 +1,7 @@
 import { defineCommand } from "citty";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { parse, encrypt, retrieveKey } from "@vars/core";
-import { buildContext, getMasterKeyFromEnv } from "../utils/context.js";
+import { parse, encrypt } from "@vars/core";
+import { buildContext, requireKey } from "../utils/context.js";
 import * as output from "../utils/output.js";
 
 export default defineCommand({
