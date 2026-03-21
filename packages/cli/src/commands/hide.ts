@@ -31,20 +31,7 @@ export default defineCommand({
     const sourcePath = existsSync(decryptedPath) ? decryptedPath : ctx.varsFilePath;
     const varCount = countVariables(sourcePath);
 
-    const s = clack.spinner();
-    s.start("Encrypting...");
     hideVarsFile(ctx.varsFilePath, key);
-    s.stop("Encrypted.");
-
-    output.stateChange("unlocked.vars", "vault.vars");
-
-    clack.note(
-      [
-        "Your changes are saved and encrypted.",
-        "vault.vars is safe to commit.",
-      ].join("\n"),
-      "Locked",
-    );
 
     output.outro(`Locked. ${varCount} variable${varCount !== 1 ? "s" : ""} encrypted.`);
   },

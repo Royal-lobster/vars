@@ -1,15 +1,17 @@
 import { defineCommand } from "citty";
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import {
   parse,
   decrypt,
   isEncrypted,
   resolveValue,
 } from "@vars/core";
-import { buildContext, requireKey } from "../utils/context.js";
-import * as clack from "@clack/prompts";
+import { buildContext, requireKey, getKeyFromEnv } from "../utils/context.js";
+import { hideVarsFile } from "./hide.js";
 import * as output from "../utils/output.js";
+import pc from "picocolors";
 
 export default defineCommand({
   meta: {
@@ -43,20 +45,39 @@ export default defineCommand({
     const command = cmdArgs[0];
     const commandArgs = cmdArgs.slice(1);
 
-    const key = await requireKey();
+    // If unlocked.vars exists, auto-encrypt it back to vault.vars first
+    const isUnlocked = ctx.varsFilePath.endsWith("unlocked.vars");
+    let key: Buffer | null = getKeyFromEnv();
 
-    const s = clack.spinner();
-    s.start("Injecting variables...");
+    if (isUnlocked && !key) {
+      // Need PIN to encrypt unlocked → vault
+      key = await requireKey();
+      const vaultPath = resolve(dirname(ctx.varsFilePath), "vault.vars");
+      output.info(`Encrypting secrets \u2192 vault.vars`);
+      hideVarsFile(vaultPath, key);
+      // Update context to point to vault.vars
+      ctx.varsFilePath = vaultPath;
+    } else if (!isUnlocked && !key) {
+      // vault.vars with encrypted values — need PIN
+      if (fileHasEncryptedValues(ctx.varsFilePath)) {
+        key = await requireKey();
+      }
+    }
+
     const envVars = buildRunEnv(ctx.varsFilePath, ctx.env, key);
-    s.stop(`Injected ${Object.keys(envVars).length} variables.`);
+
+    output.outro(`Injected ${Object.keys(envVars).length} variables.`);
+
+    const childEnv: Record<string, string | undefined> = {
+      ...process.env,
+      ...envVars,
+      VARS_ENV: ctx.env,
+    };
+    if (key) childEnv.VARS_KEY = key.toString("base64");
 
     const child = spawn(command, commandArgs, {
       stdio: "inherit",
-      env: {
-        ...process.env,
-        ...envVars,
-        VARS_ENV: ctx.env,
-      },
+      env: childEnv,
     });
 
     child.on("exit", (code) => {
@@ -71,13 +92,24 @@ export default defineCommand({
 });
 
 /**
+ * Check if a .vars file contains any encrypted values.
+ */
+function fileHasEncryptedValues(filePath: string): boolean {
+  const content = readFileSync(filePath, "utf8");
+  return content.split("\n").some((line) => {
+    const match = line.match(/^\s+@[\w-]+\s+=\s+(.+)$/);
+    return match && isEncrypted(match[1].trim());
+  });
+}
+
+/**
  * Build an environment variable object from a .vars file.
  * Decrypts encrypted values in memory. Never writes to disk.
  */
 export function buildRunEnv(
   filePath: string,
   env: string,
-  key: Buffer,
+  key: Buffer | null,
 ): Record<string, string | undefined> {
   const content = readFileSync(filePath, "utf8");
   const parsed = parse(content, filePath);
@@ -89,6 +121,7 @@ export function buildRunEnv(
 
     let value = raw;
     if (isEncrypted(value)) {
+      if (!key) throw new Error(`Encrypted value found for ${variable.name} but no key available.`);
       value = decrypt(value, key);
     }
 
@@ -97,4 +130,3 @@ export function buildRunEnv(
 
   return result;
 }
-

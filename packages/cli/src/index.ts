@@ -25,6 +25,7 @@ const main = defineCommand({
     diff: () => import("./commands/diff.js").then((m) => m.default),
     doctor: () => import("./commands/doctor.js").then((m) => m.default),
     hook: () => import("./commands/hook.js").then((m) => m.default),
+    key: () => import("./commands/key.js").then((m) => m.default),
     ls: () => import("./commands/ls.js").then((m) => m.default),
     "export": () => import("./commands/export.js").then((m) => m.default),
     template: () => import("./commands/export.js").then((m) => m.default),
