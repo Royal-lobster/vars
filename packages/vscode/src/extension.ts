@@ -85,6 +85,19 @@ export function activate(context: ExtensionContext): void {
 		await openFileInEditor(uri);
 	});
 
+	let regenTimer: ReturnType<typeof setTimeout> | undefined;
+	watcher.onDidChange(async (uri) => {
+		// Debounce — wait 500ms after last save before regenerating
+		if (regenTimer) clearTimeout(regenTimer);
+		regenTimer = setTimeout(() => {
+			const varsDir = path.dirname(uri.fsPath);
+			const cwd = path.dirname(varsDir);
+			cp.execFile("vars", ["gen"], { cwd, timeout: 5000 }, () => {
+				// Silently ignore errors — gen may fail if schemas are mid-edit
+			});
+		}, 500);
+	});
+
 	watcher.onDidDelete(async (uri) => {
 		const varsUri = Uri.file(uri.fsPath.replace(/\/unlocked\.vars$/, "/vault.vars"));
 		await closeEditorByUri(uri);
