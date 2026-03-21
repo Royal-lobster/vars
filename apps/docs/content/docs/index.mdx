@@ -1,30 +1,66 @@
 ---
 title: Getting Started
-description: Get up and running with vars in under 5 minutes.
+description: From zero to encrypted, typed env vars in a few minutes.
 ---
 
-## Installation
+## Install
 
 ```bash
 npx vars init
 ```
 
-This creates a `.vars` file in your project root with an empty schema.
+You'll be asked for a PIN. After that, you get:
+- `.vars/vault.vars` — your variables file, encrypted at rest
+- `.vars/key` — your encryption key, locked behind that PIN
+- A `.gitignore` update so neither file gets committed by accident
 
-## Quick Start
+Already have a `.env`? vars will offer to import it during init.
+
+## Add a variable
+
+```bash
+npx vars show
+```
+
+This decrypts the vault into `.vars/unlocked.vars`. Open that file and add a variable:
 
 ```
 DATABASE_URL  z.string().url()
-
-@dev
-DATABASE_URL  postgres://localhost/myapp
-
-@prod
-DATABASE_URL  postgres://prod-host/myapp
+  @dev  = postgres://localhost/myapp
+  @prod = postgres://prod-host/myapp
 ```
 
-Then encrypt it:
+The schema (`z.string().url()`) sits right next to the name. vars validates against it, so a typo in the connection string gets caught before it reaches your app.
+
+## Encrypt
 
 ```bash
-npx vars lock
+npx vars hide
 ```
+
+Encrypts everything back with AES-256-GCM and removes the unlocked file. Safe to commit.
+
+## Run your app
+
+```bash
+npx vars run --env dev -- node server.js
+```
+
+vars decrypts in memory and injects the values as environment variables before handing off to your process. Nothing gets written to disk.
+
+## Generate typed accessors
+
+```bash
+npx vars gen
+```
+
+Outputs `env.generated.ts` with a typed export for each variable. No more guessing whether `process.env.DATABASE_URL` exists.
+
+## Pick a framework
+
+- [Next.js](/docs/frameworks/nextjs)
+- [Vite](/docs/frameworks/vite) — also works with SvelteKit, Nuxt, Remix
+- [Astro](/docs/frameworks/astro)
+- [NestJS](/docs/frameworks/nestjs)
+
+Or read about the [file format](/docs/file-format) and [CLI reference](/docs/cli/setup-auth).
