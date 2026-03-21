@@ -1,0 +1,54 @@
+---
+title: Why vars?
+description: Your .env files are a liability. Here's why vars exists.
+---
+
+## The problem with `.env`
+
+If you're using `.env` files, you've probably hit these:
+
+- **No encryption.** Secrets sit in plaintext. One bad `git push` and they're public.
+- **No types.** That `PORT` is a string. That `ENABLE_FEATURE` is a string. Everything is a string.
+- **No validation.** Typo in your database URL? You'll find out at runtime. In prod.
+- **File sprawl.** `.env.local`, `.env.staging`, `.env.production` scattered across your repo. Drift guaranteed.
+- **AI agents can read them.** Any tool with file access can grab your secrets.
+
+## How vars fixes this
+
+vars replaces `.env` files. Every value is AES-256-GCM encrypted, so your `.vars` file is safe to commit. No more `.gitignore` anxiety.
+
+Schemas live right next to the values. You write `z.string().url()` and that typo in your database URL gets caught before your app boots, not after it crashes in prod.
+
+All environments live in one file under `@env` blocks. Dev, staging, prod — one place to look, one file to audit.
+
+The encryption key is locked behind a PIN. AI agents, CI scripts, and anything else with file access can't decrypt values without it.
+
+## `.env` vs `.vars`
+
+Here's what managing a database URL actually looks like:
+
+**The `.env` way:**
+
+```bash
+# .env.development
+DATABASE_URL=postgres://localhost/myapp
+
+# .env.production (hope nobody commits this)
+DATABASE_URL=postgres://prod-host/myapp
+```
+
+No types. No validation. Two files. Plaintext secrets sitting on disk.
+
+**The `.vars` way:**
+
+```
+DATABASE_URL  z.string().url().startsWith("postgres://")
+  @dev     = enc:v1:aes256gcm:a1b2c3...:d4e5f6...:g7h8i9...
+  @prod    = enc:v1:aes256gcm:j8fn2p...:t9u0v1...:w2x3y4...
+```
+
+Typed, validated, encrypted. One file.
+
+## Ready?
+
+[Get started in under 5 minutes →](/docs)
