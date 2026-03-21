@@ -1,5 +1,10 @@
 import type { Variable } from "./types.js";
 
+const ENV_ALIASES: Record<string, string> = {
+  development: "dev",
+  production: "prod",
+};
+
 /**
  * Resolution order (highest -> lowest priority):
  * 1. Variable's @<env> value
@@ -9,8 +14,10 @@ import type { Variable } from "./types.js";
  * Zod .default() is handled at validation time by Zod itself.
  */
 export function resolveValue(variable: Variable, env: string): string | undefined {
+  const normalizedEnv = ENV_ALIASES[env] ?? env;
+
   // 1. Exact env match
-  const envValue = variable.values.find((v) => v.env === env);
+  const envValue = variable.values.find((v) => v.env === normalizedEnv);
   if (envValue) return envValue.value;
 
   // 2. Default fallback

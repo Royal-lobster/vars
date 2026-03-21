@@ -10,7 +10,9 @@ const COMMENT_PATTERN = /^#/;
 const EMPTY_PATTERN = /^[ \t]*$/;
 
 export function parse(input: string, filePath?: string): VarsFile {
-  const lines = input.split("\n");
+  // Normalize line endings and strip BOM
+  const normalized = input.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = normalized.split("\n");
   const variables: Variable[] = [];
   const refines: Refine[] = [];
   let extendsPath: string | null = null;

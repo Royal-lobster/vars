@@ -5,10 +5,7 @@ import { ValidationError } from "./errors.js";
 // Reject schemas that contain callback-accepting Zod methods (code execution vectors)
 const CALLBACK_METHODS = /\.(transform|refine|superRefine|preprocess|pipe)\s*\(/;
 
-/** Alias: evaluateSchema is the internal name, parseSchema matches the PRD public API */
-export const parseSchema = evaluateSchema;
-
-export function evaluateSchema(schemaText: string): z.ZodType {
+export function parseSchema(schemaText: string): z.ZodType {
   // Block callback-accepting methods — these allow arbitrary code in Zod's execution
   if (CALLBACK_METHODS.test(schemaText)) {
     throw new ValidationError(
@@ -50,11 +47,8 @@ export interface ValidateFailure {
 
 export type ValidateResult = ValidateSuccess | ValidateFailure;
 
-/** Alias: validateValue is the internal name, validate matches the PRD public API */
-export const validate = validateValue;
-
-export function validateValue(schemaText: string, value: unknown): ValidateResult {
-  const schema = evaluateSchema(schemaText);
+export function validate(schemaText: string, value: unknown): ValidateResult {
+  const schema = parseSchema(schemaText);
   const result = schema.safeParse(value);
 
   if (result.success) {

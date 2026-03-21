@@ -1,6 +1,16 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
-import argon2 from "argon2";
 import { CryptoError, KeyError } from "./errors.js";
+
+async function getArgon2() {
+  try {
+    return await import("argon2");
+  } catch {
+    throw new Error(
+      "argon2 is required for PIN operations but not installed. " +
+      "Install it with: pnpm add argon2"
+    );
+  }
+}
 
 const IV_LENGTH = 12;
 const SALT_LENGTH = 16;
@@ -76,6 +86,7 @@ export function parseKeyFile(encoded: string): KeyFileComponents {
 }
 
 async function deriveKey(pin: string, salt: Buffer): Promise<Buffer> {
+  const argon2 = await getArgon2();
   const hash = await argon2.hash(pin, {
     type: argon2.argon2id,
     salt,

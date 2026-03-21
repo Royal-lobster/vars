@@ -167,6 +167,19 @@ describe("parser", () => {
     });
   });
 
+  describe("line ending handling", () => {
+    it("handles Windows CRLF line endings", () => {
+      const result = parse("PORT  z.coerce.number()\r\n  @default = 3000\r\n");
+      expect(result.variables).toHaveLength(1);
+      expect(result.variables[0].name).toBe("PORT");
+    });
+
+    it("handles BOM at start of file", () => {
+      const result = parse("\uFEFFPORT  z.coerce.number()\n  @default = 3000\n");
+      expect(result.variables).toHaveLength(1);
+    });
+  });
+
   describe("error handling", () => {
     it("throws ParseError for invalid variable name", () => {
       expect(() => parse("lowercase  z.string()\n  @default = x\n")).toThrow("UPPER_SNAKE_CASE");

@@ -53,10 +53,14 @@ export function decrypt(encoded: string, key: Buffer): string {
   }
 }
 
+const BASE64_PATTERN = /^[A-Za-z0-9+/]+=*$/;
+
 export function isEncrypted(value: string): boolean {
   if (!value.startsWith(PREFIX)) return false;
   const parts = value.split(":");
-  return parts.length === 6;
+  if (parts.length !== 6) return false;
+  // Validate that iv, ciphertext, and tag are valid base64
+  return BASE64_PATTERN.test(parts[3]) && BASE64_PATTERN.test(parts[4]) && BASE64_PATTERN.test(parts[5]);
 }
 
 export function parseEncryptedValue(encoded: string): EncryptedValue {

@@ -4,7 +4,7 @@ import { decrypt, isEncrypted } from "./crypto.js";
 import { ParseError, ValidationError } from "./errors.js";
 import type { LoadOptions, VarsFile } from "./types.js";
 import { parse } from "./parser.js";
-import { evaluateSchema } from "./validator.js";
+import { parseSchema } from "./validator.js";
 import { resolveAllValues } from "./resolver.js";
 import { applyRefines } from "./refine.js";
 import { Redacted } from "./redacted.js";
@@ -13,7 +13,7 @@ import { resolveExtends } from "./extends.js";
 export { Redacted } from "./redacted.js";
 export { encrypt, decrypt, isEncrypted } from "./crypto.js";
 export { parse } from "./parser.js";
-export { evaluateSchema, validateValue, parseSchema, validate } from "./validator.js";
+export { parseSchema, parseSchema as evaluateSchema, validate, validate as validateValue } from "./validator.js";
 export { resolveValue, resolveAllValues } from "./resolver.js";
 export { applyRefines, extractReferencedVars } from "./refine.js";
 export { resolveExtends } from "./extends.js";
@@ -57,23 +57,29 @@ export function loadEnvx(
     }
   }
 
-  // 4. Build Zod schema object and validate
-  const schemaShape: Record<string, z.ZodType> = {};
-  for (const variable of varsFile.variables) {
-    schemaShape[variable.name] = evaluateSchema(variable.schema);
+  // 4. Build Zod schema — use provided schema or build from file
+  let schema: z.ZodType;
+  if (options.schema) {
+    schema = options.schema;
+  } else {
+    const schemaShape: Record<string, z.ZodType> = {};
+    for (const variable of varsFile.variables) {
+      schemaShape[variable.name] = parseSchema(variable.schema);
+    }
+    schema = z.object(schemaShape);
   }
-
-  let schema: z.ZodType = z.object(schemaShape);
 
   // 5. Apply @refine constraints
   if (varsFile.refines.length > 0) {
     schema = applyRefines(schema as z.ZodObject<z.ZodRawShape>, varsFile.refines);
   }
 
-  // 6. Build input object (raw strings -> Zod handles coercion)
+  // 6. Build input object — exclude undefined values so Zod sees them as missing
   const input: Record<string, unknown> = {};
   for (const [name, value] of decrypted) {
-    input[name] = value;
+    if (value !== undefined) {
+      input[name] = value;
+    }
   }
 
   // 7. Validate

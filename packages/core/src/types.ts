@@ -50,6 +50,7 @@ export interface LoadOptions {
   env?: string;
   key?: string | Buffer;
   envFile?: string;
+  schema?: import("zod").ZodType;
 }
 
 /** Options for encrypt/decrypt operations */

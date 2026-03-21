@@ -30,6 +30,21 @@ describe("resolver", () => {
       expect(resolveValue(v, "prod")).toBeUndefined();
     });
 
+    it("resolves 'development' to @dev values", () => {
+      const v = makeVar([
+        { env: "dev", value: "dev-val" },
+        { env: "default", value: "default-val" },
+      ]);
+      expect(resolveValue(v, "development")).toBe("dev-val");
+    });
+
+    it("resolves 'production' to @prod values", () => {
+      const v = makeVar([
+        { env: "prod", value: "prod-val" },
+      ]);
+      expect(resolveValue(v, "production")).toBe("prod-val");
+    });
+
     it("prefers exact env over default", () => {
       const v = makeVar([
         { env: "prod", value: "prod-val" },

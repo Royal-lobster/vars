@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateSchema, validateValue } from "../validator.js";
+import { parseSchema as evaluateSchema, validate as validateValue } from "../validator.js";
 
 describe("validator", () => {
   describe("evaluateSchema", () => {

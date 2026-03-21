@@ -119,6 +119,17 @@ describe("loadEnvx", () => {
     ).toThrow("DEBUG must be 1");
   });
 
+  it("throws for missing required numeric variable (not NaN)", () => {
+    writeVarsFile([
+      "COUNT  z.coerce.number()",
+      "  @dev = 42",
+    ].join("\n"));
+
+    expect(() =>
+      loadEnvx(join(tmpDir, ".vars"), { env: "prod", key }),
+    ).toThrow();
+  });
+
   it("defaults env to development", () => {
     writeVarsFile([
       "PORT  z.coerce.number()",
