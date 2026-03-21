@@ -1,11 +1,14 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-	entry: ["src/extension.ts"],
+	entry: {
+		extension: "src/extension.ts",
+		server: "src/server.ts",
+	},
 	format: ["cjs"],
-	dts: false,
+	dts: true,
 	clean: true,
 	sourcemap: true,
 	external: ["vscode"],
-	noExternal: ["@vars/lsp", "vscode-languageclient"],
+	noExternal: ["@vars/lsp", "vscode-languageserver", "vscode-languageserver-textdocument", "vscode-languageclient"],
 });

@@ -1,3 +1,4 @@
+import vm from "node:vm";
 import { z } from "zod";
 
 // ─── Schema Evaluation ─────────────────────────────
@@ -14,44 +15,30 @@ export interface EvalFailure {
 
 export type EvalResult = EvalSuccess | EvalFailure;
 
-/** Dangerous patterns that should never be evaluated */
-const BLOCKED_PATTERNS = [
-	/\brequire\s*\(/,
-	/\bimport\s*\(/,
-	/\bprocess\b/,
-	/\bglobal\b/,
-	/\bglobalThis\b/,
-	/\beval\b/,
-	/\bFunction\s*\(/,
-	/\bfetch\b/,
-	/\bXMLHttpRequest\b/,
-	/\b__proto__\b/,
-	/\bconstructor\s*\[/,
-];
+/** Callback methods that allow arbitrary code execution */
+const CALLBACK_METHODS = /\.(transform|refine|superRefine|preprocess|pipe)\s*\(/;
 
 /**
  * Evaluate a Zod schema string using real Zod.
- * Uses `new Function` with only `z` in scope — no access to Node globals.
+ * Uses `vm.runInNewContext` with only `z` in scope — fully isolated from Node globals.
  */
 export function evaluateSchema(schemaText: string): EvalResult {
-	// Block dangerous patterns before eval
-	for (const pattern of BLOCKED_PATTERNS) {
-		if (pattern.test(schemaText)) {
-			return { success: false, error: `Blocked: pattern "${pattern.source}" detected` };
-		}
+	// Block callback methods that allow arbitrary code execution
+	if (CALLBACK_METHODS.test(schemaText)) {
+		return { success: false, error: "Blocked: callback method detected" };
 	}
 
 	try {
-		// Create a sandboxed function with only `z` available
-		const fn = new Function("z", `"use strict"; return (${schemaText});`);
-		const schema = fn(z);
+		const sandbox = { z, result: undefined as unknown };
+		vm.runInNewContext(`result = (${schemaText})`, sandbox, {
+			timeout: 100,
+			filename: "vars-lsp-schema-eval",
+		});
 
-		// Verify it's actually a Zod schema
-		if (!schema || typeof schema !== "object" || !schema._def) {
-			return { success: false, error: "Expression did not return a Zod schema" };
+		if (sandbox.result instanceof z.ZodType) {
+			return { success: true, schema: sandbox.result as z.ZodTypeAny };
 		}
-
-		return { success: true, schema };
+		return { success: false, error: "Expression did not return a Zod schema" };
 	} catch (err) {
 		return {
 			success: false,

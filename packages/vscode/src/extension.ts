@@ -10,9 +10,9 @@ import {
 let client: LanguageClient | undefined;
 
 export function activate(context: ExtensionContext): void {
-	// The server is the @vars/lsp package's built output
+	// The server is bundled alongside the extension
 	const serverModule = context.asAbsolutePath(
-		path.join("node_modules", "@vars", "lsp", "dist", "index.cjs"),
+		path.join("dist", "server.js"),
 	);
 
 	const serverOptions: ServerOptions = {

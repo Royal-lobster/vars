@@ -1,4 +1,5 @@
-import { posix as path } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export interface DefinitionContext {
 	text: string;
@@ -54,13 +55,8 @@ export function computeDefinition(ctx: DefinitionContext): DefinitionResult | nu
  * file:///project/apps/web/.vars + ../../.vars = file:///project/.vars
  */
 function resolveUri(baseUri: string, relativePath: string): string {
-	// Strip the file:// protocol and filename to get the directory
-	const isFileUri = baseUri.startsWith("file://");
-	const basePath = isFileUri ? baseUri.slice("file://".length) : baseUri;
-	const baseDir = basePath.substring(0, basePath.lastIndexOf("/"));
-
-	// Resolve the relative path
-	const resolved = path.resolve(baseDir, relativePath);
-
-	return isFileUri ? `file://${resolved}` : resolved;
+	const basePath = fileURLToPath(baseUri);
+	const baseDir = dirname(basePath);
+	const resolved = resolve(baseDir, relativePath);
+	return pathToFileURL(resolved).href;
 }

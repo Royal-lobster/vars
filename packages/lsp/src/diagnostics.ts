@@ -10,6 +10,7 @@ import { evaluateSchema } from "./zod-introspect.js";
  */
 export function computeDiagnostics(text: string, uri: string): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
+	const lines = text.split("\n");
 
 	// Convert LSP document URI (file://...) to a filesystem path for the parser
 	const filePath = uri.startsWith("file://") ? fileURLToPath(uri) : uri;
@@ -22,7 +23,7 @@ export function computeDiagnostics(text: string, uri: string): Diagnostic[] {
 		// If the parser throws, report a single parse error
 		diagnostics.push({
 			severity: DiagnosticSeverity.Error,
-			range: Range.create(0, 0, 0, text.length > 0 ? text.split("\n")[0].length : 0),
+			range: Range.create(0, 0, 0, (lines[0] ?? "").length),
 			message: err instanceof Error ? err.message : String(err),
 			source: "vars-parse",
 		});
@@ -36,18 +37,18 @@ export function computeDiagnostics(text: string, uri: string): Diagnostic[] {
 		if (!result.success) {
 			diagnostics.push({
 				severity: DiagnosticSeverity.Error,
-				range: lineRange(text, lineIndex, variable.schema),
+				range: lineRange(lines, lineIndex, variable.schema),
 				message: `Invalid schema: ${result.error}`,
 				source: "vars-schema",
 			});
 		}
 
 		// Check metadata
-		checkMetadata(variable, lineIndex, text, diagnostics);
+		checkMetadata(variable, lineIndex, lines, diagnostics);
 	}
 
 	// @refine reference checking
-	checkRefineReferences(parsed, text, diagnostics);
+	checkRefineReferences(parsed, lines, diagnostics);
 
 	return diagnostics;
 }
@@ -56,7 +57,7 @@ export function computeDiagnostics(text: string, uri: string): Diagnostic[] {
  * Check @refine expressions for references to undefined variables.
  * Extracts `env.VARNAME` patterns and verifies each against declared variables.
  */
-function checkRefineReferences(parsed: VarsFile, text: string, diagnostics: Diagnostic[]): void {
+function checkRefineReferences(parsed: VarsFile, lines: string[], diagnostics: Diagnostic[]): void {
 	const declaredNames = new Set(parsed.variables.map((v) => v.name));
 
 	for (const refine of parsed.refines) {
@@ -70,7 +71,7 @@ function checkRefineReferences(parsed: VarsFile, text: string, diagnostics: Diag
 			if (!declaredNames.has(varName)) {
 				diagnostics.push({
 					severity: DiagnosticSeverity.Error,
-					range: lineRange(text, lineIndex, `env.${varName}`),
+					range: lineRange(lines, lineIndex, `env.${varName}`),
 					message: `@refine references undefined variable: ${varName}`,
 					source: "vars-refine",
 				});
@@ -85,7 +86,7 @@ function checkRefineReferences(parsed: VarsFile, text: string, diagnostics: Diag
 function checkMetadata(
 	variable: Variable,
 	lineIndex: number,
-	text: string,
+	lines: string[],
 	diagnostics: Diagnostic[],
 ): void {
 	const { metadata } = variable;
@@ -93,7 +94,7 @@ function checkMetadata(
 	if (metadata.deprecated) {
 		diagnostics.push({
 			severity: DiagnosticSeverity.Warning,
-			range: lineRange(text, lineIndex, variable.name),
+			range: lineRange(lines, lineIndex, variable.name),
 			message: `Deprecated: ${metadata.deprecated}`,
 			source: "vars-deprecated",
 		});
@@ -105,7 +106,7 @@ function checkMetadata(
 		if (expiryDate < now) {
 			diagnostics.push({
 				severity: DiagnosticSeverity.Warning,
-				range: lineRange(text, lineIndex, variable.name),
+				range: lineRange(lines, lineIndex, variable.name),
 				message: `Secret expired on ${metadata.expires} — rotate this value`,
 				source: "vars-expires",
 			});
@@ -115,7 +116,7 @@ function checkMetadata(
 			if (expiryDate.getTime() - now.getTime() < thirtyDays) {
 				diagnostics.push({
 					severity: DiagnosticSeverity.Information,
-					range: lineRange(text, lineIndex, variable.name),
+					range: lineRange(lines, lineIndex, variable.name),
 					message: `Secret expires on ${metadata.expires} — consider rotating soon`,
 					source: "vars-expires",
 				});
@@ -129,8 +130,7 @@ function checkMetadata(
  * If the token is found on the line, highlights just that token.
  * Otherwise, highlights the entire line.
  */
-function lineRange(text: string, lineIndex: number, token?: string): Range {
-	const lines = text.split("\n");
+function lineRange(lines: string[], lineIndex: number, token?: string): Range {
 	const line = lines[lineIndex] ?? "";
 
 	if (token) {
