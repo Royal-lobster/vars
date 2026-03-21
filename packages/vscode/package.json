@@ -1,5 +1,6 @@
 {
 	"name": "@vars/vscode",
+	"private": true,
 	"version": "0.1.0",
 	"displayName": "vars",
 	"description": "Encrypted, typed environment variables",

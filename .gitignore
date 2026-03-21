@@ -17,5 +17,11 @@ dist/
 .vars~
 .vars.bak
 
+# Claude
+.claude/
+
+# Superset
+.superset/
+
 # Editor
 *.generated.ts
