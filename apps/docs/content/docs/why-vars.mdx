@@ -42,7 +42,7 @@ No types. No validation. Two files. Plaintext secrets sitting on disk.
 
 **The `.vars` way:**
 
-```
+```vars
 DATABASE_URL  z.string().url().startsWith("postgres://")
   @dev     = enc:v1:aes256gcm:a1b2c3...:d4e5f6...:g7h8i9...
   @prod    = enc:v1:aes256gcm:j8fn2p...:t9u0v1...:w2x3y4...
