@@ -63,7 +63,7 @@ export function Comparison() {
             <DynamicCodeBlock lang="bash" code={ENV_CODE} codeblock={{ keepBackground: false, allowCopy: false }} />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 px-5 py-5">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-6">
             {[
               'Plaintext secrets on disk',
               'Three files to keep in sync',
@@ -72,8 +72,8 @@ export function Comparison() {
               'Copy-paste between envs',
               'Hope nobody commits prod',
             ].map((problem) => (
-              <div key={problem} className="flex items-start gap-2 text-xs text-red-400/50">
-                <span className="mt-0.5 text-red-500/40">✕</span>
+              <div key={problem} className="flex items-start gap-2.5 text-sm text-red-400/80">
+                <span className="mt-0.5 text-red-500/60 font-medium">✕</span>
                 {problem}
               </div>
             ))}
@@ -96,7 +96,7 @@ export function Comparison() {
             className={`mx-4 mb-1 ${codeBlockStyle}`}
           />
 
-          <div className="grid grid-cols-2 gap-3 px-5 py-5">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-6">
             {[
               'Encrypted, safe to commit',
               'One file, all environments',
@@ -105,8 +105,8 @@ export function Comparison() {
               'Dev plaintext, prod encrypted',
               'Types generated for you',
             ].map((benefit) => (
-              <div key={benefit} className="flex items-start gap-2 text-xs text-green-400/70">
-                <span className="mt-0.5 text-green-500">✓</span>
+              <div key={benefit} className="flex items-start gap-2.5 text-sm text-green-400/90">
+                <span className="mt-0.5 text-green-500 font-medium">✓</span>
                 {benefit}
               </div>
             ))}
