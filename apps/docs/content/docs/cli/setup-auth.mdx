@@ -1,0 +1,112 @@
+---
+title: Setup & Auth
+description: Initialize a project, run health checks, and set up shell completions.
+---
+
+## `vars init`
+
+```bash
+npx vars init
+```
+
+Sets up a new vars project. You'll be prompted for a PIN, then vars creates:
+
+- `.vars/vault.vars` — encrypted secrets file (safe to commit)
+- `.vars/key` — PIN-protected master key (gitignored)
+- A `.gitignore` update so the key and `unlocked.vars` don't get committed
+
+If a `.env` file exists, vars offers to import it. It reads the key-value pairs, guesses Zod schemas from the values, and encrypts everything before writing.
+
+### Flags
+
+| Flag | Default | What it does |
+|------|---------|-------------|
+| `--file`, `-f` | `.env` | Path to the `.env` file to import |
+| `--env` | `dev` | Environment name for imported values |
+
+### Example
+
+```bash
+# Import from a non-default path, label values as "staging"
+npx vars init --file .env.staging --env staging
+```
+
+You'll also be asked whether to install the pre-commit hook. It blocks commits when `unlocked.vars` is still on disk. Say yes.
+
+---
+
+## `vars doctor`
+
+```bash
+npx vars doctor
+```
+
+Runs health checks in three groups and prints a summary. Exits 1 if any check fails.
+
+### Checks
+
+Files:
+- `.vars/vault.vars` exists
+- `.vars/key` exists
+- `vars.generated.ts` up to date
+
+Security:
+- `.vars/key` is gitignored
+- `.vars/unlocked.vars` is gitignored
+- Pre-commit hook installed
+- All values encrypted
+
+Secrets Health:
+- No expiring or deprecated secrets (warns if `@expires` is within 30 days, or past due)
+
+### Example output
+
+```
+◆  Files
+│  ✓ .vars/vault.vars found
+│  ✓ .vars/key found
+│  △ vars.generated.ts up to date
+│      Run vars gen to regenerate vars.generated.ts
+
+◆  Security
+│  ✓ .vars/key is gitignored
+│  ✓ .vars/unlocked.vars is gitignored
+│  △ Pre-commit hook installed
+│      Run vars hook to install
+
+◆  Secrets Health
+│  ✓ No expiring or deprecated secrets
+```
+
+Run it in CI to catch drift before it bites you in prod.
+
+---
+
+## `vars completions`
+
+```bash
+npx vars completions <shell>
+```
+
+Writes a shell completion script to stdout. Redirect it to wherever your shell loads completions from.
+
+### Supported shells
+
+| Shell | Setup |
+|-------|-------|
+| `bash` | `npx vars completions bash >> ~/.bash_completion` |
+| `zsh` | `npx vars completions zsh > ~/.zsh/completions/_vars` |
+| `fish` | `npx vars completions fish > ~/.config/fish/completions/vars.fish` |
+
+Open a new shell after running and tab-completion works for all vars subcommands.
+
+---
+
+## `vars unlock` / `vars lock`
+
+Both deprecated. Skip them.
+
+- `vars unlock` — PIN is prompted on every command now. No explicit unlock step.
+- `vars lock` — keys are never cached, so there's nothing to lock.
+
+If you see these in old scripts, remove them. They're no-ops.
