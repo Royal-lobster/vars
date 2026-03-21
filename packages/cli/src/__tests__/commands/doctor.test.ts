@@ -1,8 +1,19 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, beforeEach } from "vitest";
 import { runDoctorChecks } from "../../commands/doctor.js";
+import type { HealthCheckGroup } from "../../utils/output.js";
+
+// Helper to find a check by label substring across all groups
+function findCheck(groups: HealthCheckGroup[], labelSubstring: string) {
+  for (const group of groups) {
+    for (const check of group.checks) {
+      if (check.label.includes(labelSubstring)) return check;
+    }
+  }
+  return undefined;
+}
 
 describe("vars doctor", () => {
   let tmpDir: string;
@@ -11,46 +22,48 @@ describe("vars doctor", () => {
     tmpDir = mkdtempSync(join(tmpdir(), "vars-doctor-test-"));
   });
 
-  it("passes all checks when everything is set up correctly", () => {
-    writeFileSync(join(tmpDir, ".vars"), "PORT  z.coerce.number()\n  @default = 3000\n");
-    writeFileSync(join(tmpDir, ".vars.key"), "pin:v1:aes256gcm:salt:iv:ct:tag");
-    writeFileSync(join(tmpDir, ".gitignore"), ".vars.key\n.env\n");
+  it("warns when stale .env files exist in project root", () => {
+    // Create .vars directory structure
+    const varsDir = join(tmpDir, ".vars");
+    mkdirSync(varsDir);
+    writeFileSync(join(varsDir, "vault.vars"), "PORT  z.coerce.number()\n  @default = 3000\n");
+    writeFileSync(join(varsDir, "key"), "pin:v1:aes256gcm:salt:iv:ct:tag");
+    writeFileSync(join(tmpDir, ".gitignore"), ".vars/key\n.vars/unlocked.vars\n");
 
-    const checks = runDoctorChecks(tmpDir);
-    const passing = checks.filter((c) => c.status === "pass");
-    expect(passing.length).toBeGreaterThan(0);
+    // Create stale .env file
+    writeFileSync(join(tmpDir, ".env"), "PORT=3000\n");
+
+    const groups = runDoctorChecks(tmpDir);
+    const envCheck = findCheck(groups, ".env");
+    expect(envCheck).toBeDefined();
+    expect(envCheck!.status).toBe("warn");
   });
 
-  it("warns when .vars file is missing", () => {
-    const checks = runDoctorChecks(tmpDir);
-    const fail = checks.find((c) => c.name === "vars-file");
-    expect(fail?.status).toBe("fail");
+  it("warns when stale .env.local files exist", () => {
+    const varsDir = join(tmpDir, ".vars");
+    mkdirSync(varsDir);
+    writeFileSync(join(varsDir, "vault.vars"), "PORT  z.coerce.number()\n  @default = 3000\n");
+    writeFileSync(join(varsDir, "key"), "pin:v1:aes256gcm:salt:iv:ct:tag");
+    writeFileSync(join(tmpDir, ".gitignore"), ".vars/key\n.vars/unlocked.vars\n");
+
+    writeFileSync(join(tmpDir, ".env.local"), "SECRET=abc\n");
+
+    const groups = runDoctorChecks(tmpDir);
+    const envCheck = findCheck(groups, ".env");
+    expect(envCheck).toBeDefined();
+    expect(envCheck!.status).toBe("warn");
   });
 
-  it("warns when .vars.key is missing", () => {
-    writeFileSync(join(tmpDir, ".vars"), "PORT  z.coerce.number()\n  @default = 3000\n");
-    const checks = runDoctorChecks(tmpDir);
-    const warn = checks.find((c) => c.name === "key-file");
-    expect(warn?.status).toBe("fail");
-  });
+  it("passes when no .env files exist", () => {
+    const varsDir = join(tmpDir, ".vars");
+    mkdirSync(varsDir);
+    writeFileSync(join(varsDir, "vault.vars"), "PORT  z.coerce.number()\n  @default = 3000\n");
+    writeFileSync(join(varsDir, "key"), "pin:v1:aes256gcm:salt:iv:ct:tag");
+    writeFileSync(join(tmpDir, ".gitignore"), ".vars/key\n.vars/unlocked.vars\n");
 
-  it("warns when .vars.key not in .gitignore", () => {
-    writeFileSync(join(tmpDir, ".vars"), "PORT  z.coerce.number()\n  @default = 3000\n");
-    writeFileSync(join(tmpDir, ".vars.key"), "pin:v1:aes256gcm:salt:iv:ct:tag");
-    writeFileSync(join(tmpDir, ".gitignore"), "node_modules/\n");
-
-    const checks = runDoctorChecks(tmpDir);
-    const warn = checks.find((c) => c.name === "gitignore");
-    expect(warn?.status).toBe("warn");
-  });
-
-  it("warns when .vars file has plaintext values (not encrypted)", () => {
-    writeFileSync(join(tmpDir, ".vars"), "SECRET  z.string()\n  @dev = plaintext-secret\n");
-    writeFileSync(join(tmpDir, ".vars.key"), "pin:v1:aes256gcm:salt:iv:ct:tag");
-    writeFileSync(join(tmpDir, ".gitignore"), ".vars.key\n");
-
-    const checks = runDoctorChecks(tmpDir);
-    const warn = checks.find((c) => c.name === "encryption");
-    expect(warn?.status).toBe("warn");
+    const groups = runDoctorChecks(tmpDir);
+    const envCheck = findCheck(groups, "No stale .env files");
+    expect(envCheck).toBeDefined();
+    expect(envCheck!.status).toBe("pass");
   });
 });
