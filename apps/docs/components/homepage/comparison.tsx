@@ -17,7 +17,7 @@ DATABASE_URL=postgres://admin:s3cret@staging.db.com/myapp
 API_KEY=stg_lmn456opq789rst012
 PORT=8080`;
 
-const VARS_CODE = `// vault.vars
+const VARS_CODE = `# vault.vars
 DATABASE_URL  z.string().url()
   @dev  = postgres://localhost:5432/myapp
   @stg  = enc:v1:aes256gcm:a3b4c5...
