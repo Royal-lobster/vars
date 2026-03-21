@@ -84,13 +84,14 @@ varsPlugin({
 `@vars/vite` works anywhere Vite plugins are supported:
 
 ```ts
-// SvelteKit — svelte.config.js
+// SvelteKit — vite.config.ts
 import { sveltekit } from "@sveltejs/kit/vite";
 import { varsPlugin } from "@vars/vite";
+import { defineConfig } from "vite";
 
-export default {
+export default defineConfig({
   plugins: [sveltekit(), varsPlugin()],
-};
+});
 ```
 
 ```ts

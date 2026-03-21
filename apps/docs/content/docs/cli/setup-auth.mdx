@@ -48,7 +48,7 @@ Runs health checks in three groups and prints a summary. Exits 1 if any check fa
 Files:
 - `.vars/vault.vars` exists
 - `.vars/key` exists
-- `vars.generated.ts` up to date
+- `env.generated.ts` up to date
 
 Security:
 - `.vars/key` is gitignored
@@ -65,8 +65,8 @@ Secrets Health:
 ◆  Files
 │  ✓ .vars/vault.vars found
 │  ✓ .vars/key found
-│  △ vars.generated.ts up to date
-│      Run vars gen to regenerate vars.generated.ts
+│  △ env.generated.ts up to date
+│      Run vars gen to regenerate env.generated.ts
 
 ◆  Security
 │  ✓ .vars/key is gitignored

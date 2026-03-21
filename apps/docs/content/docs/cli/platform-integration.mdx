@@ -10,7 +10,7 @@ description: Generate .env files from your vault and push/pull vars to deploymen
 ## template
 
 ```bash
-vars template --env prod > .env.production
+npx vars template --env prod > .env.production
 ```
 
 Decrypts your vault for a given environment and writes a valid `.env` to stdout. Pipe it wherever.
@@ -30,13 +30,13 @@ Values with spaces, `#`, or `=` get quoted automatically. Encrypted values are s
 
 ```bash
 # Write a .env file for prod
-vars template --env prod > .env.production
+npx vars template --env prod > .env.production
 
 # Pipe straight into your deploy script
-vars template --env staging | some-deploy-tool --env-file /dev/stdin
+npx vars template --env staging | some-deploy-tool --env-file /dev/stdin
 
 # Use a non-default vault
-vars template --env prod -f .vars/backend.vars > backend.env
+npx vars template --env prod -f .vars/backend.vars > backend.env
 ```
 
 ---
@@ -44,7 +44,7 @@ vars template --env prod -f .vars/backend.vars > backend.env
 ## push <span style={{ color: "var(--color-fd-muted-foreground)", fontSize: "0.75em", fontWeight: "normal", marginLeft: "0.5em" }}>coming soon</span>
 
 ```bash
-vars push --env prod --vercel
+npx vars push --env prod --vercel
 ```
 
 Decrypts your vault and pushes the values to your deployment platform. Prompts for confirmation before writing anything.
@@ -67,7 +67,7 @@ The command exists but none of the platform adapters are wired up yet. It won't 
 ## pull <span style={{ color: "var(--color-fd-muted-foreground)", fontSize: "0.75em", fontWeight: "normal", marginLeft: "0.5em" }}>coming soon</span>
 
 ```bash
-vars pull --vercel
+npx vars pull --vercel
 ```
 
 Pulls environment variables from your platform, encrypts them, and merges them into your `.vars` vault. Existing values aren't overwritten by default.
