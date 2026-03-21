@@ -131,6 +131,42 @@ describe("parser", () => {
     });
   });
 
+  describe("@extends directive", () => {
+    it("parses @extends path", () => {
+      const result = parse(fixture("refine.vars"));
+      expect(result.extendsPath).toBe("../parent.vars");
+    });
+
+    it("returns null when no @extends", () => {
+      const result = parse(fixture("basic.vars"));
+      expect(result.extendsPath).toBeNull();
+    });
+
+    it("throws on multiple @extends", () => {
+      expect(() =>
+        parse("@extends a.vars\n@extends b.vars\n"),
+      ).toThrow("Multiple @extends");
+    });
+  });
+
+  describe("@refine directive", () => {
+    it("parses @refine expressions", () => {
+      const result = parse(fixture("refine.vars"));
+      expect(result.refines).toHaveLength(2);
+    });
+
+    it("captures expression and message", () => {
+      const result = parse(fixture("refine.vars"));
+      expect(result.refines[0].expression).toContain("LOG_LEVEL");
+      expect(result.refines[0].message).toBe("DEBUG must be true when LOG_LEVEL is debug");
+    });
+
+    it("captures line number", () => {
+      const result = parse(fixture("refine.vars"));
+      expect(result.refines[0].line).toBeGreaterThan(0);
+    });
+  });
+
   describe("error handling", () => {
     it("throws ParseError for invalid variable name", () => {
       expect(() => parse("lowercase  z.string()\n  @default = x\n")).toThrow("UPPER_SNAKE_CASE");
