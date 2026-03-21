@@ -86,6 +86,16 @@ export function HeroCodeToggle({ unlocked, vault }: HeroCodeToggleProps) {
           </div>
         </div>
       </div>
+      <div className="mt-3 flex items-center justify-between px-1">
+        <span className="flex items-center gap-2 font-mono text-[11px] text-white/25">
+          <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-green-400/70">vars show</span>
+          <span className="text-white/15">→ enter PIN → edit</span>
+        </span>
+        <span className="flex items-center gap-2 font-mono text-[11px] text-white/25">
+          <span className="text-white/15">done editing →</span>
+          <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-green-400/70">vars hide</span>
+        </span>
+      </div>
     </div>
   );
 }
