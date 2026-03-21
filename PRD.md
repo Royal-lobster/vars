@@ -120,6 +120,13 @@ LEGACY_TOKEN  z.string().min(16)
 # ── Optional ──────────────────────────────────────
 ANALYTICS_ID  z.string().optional()
   @prod    = enc:v1:aes256gcm:i7j8k9...:l0m1n2...:o3p4q5...
+
+# ── Rules ────────────────────────────────────────
+@refine (env) => env.LOG_LEVEL !== "debug" || env.DEBUG === true
+  "DEBUG must be true when LOG_LEVEL is debug"
+
+@refine (env) => !env.API_KEY || env.API_KEY.length >= 32
+  "API_KEY must be at least 32 characters when set"
 ```
 
 > **Note:** All values are encrypted in the committed file. Only the variable names and Zod schemas are readable. Use `vars show` to decrypt in-place for editing, then `vars hide` to re-encrypt.
@@ -169,7 +176,21 @@ ANALYTICS_ID  z.string().optional()
    - Directives vs env values: directives have **no `=`**, env values always have `=`
    - Metadata is informational — it does not affect runtime behavior or type generation
 
-8. **String quoting rules** (applies during `vars edit` when values are decrypted):
+8. **Cross-variable refinements:** `@refine (env) => <expression>` + error message
+   - Top-level directive (not indented under any variable)
+   - First line: `@refine (env) => <boolean expression>` — arrow function receiving the full resolved config object
+   - Second line (indented): string error message shown when refinement returns `false`
+   - Parsed and attached as `.refine()` calls on the assembled `z.object()` during validation
+   - `env` is fully typed — IDE autocomplete works in `vars.config.ts` escape hatch (see below)
+   - Evaluated after all per-variable schemas pass — refinements never run on invalid base data
+   - Common patterns: conditional requirements, mutual exclusion, numeric constraints, env-specific rules
+   - Example:
+     ```
+     @refine (env) => env.EMAIL_PROVIDER !== "smtp" || (!!env.SMTP_HOST && !!env.SMTP_PORT)
+       "SMTP_HOST and SMTP_PORT required when EMAIL_PROVIDER is smtp"
+     ```
+
+9. **String quoting rules** (applies during `vars edit` when values are decrypted):
    - Quotes optional for simple values (no spaces, no special characters)
    - Required for: values with spaces, `#`, leading/trailing whitespace, empty strings
    - Single or double quotes accepted
@@ -904,6 +925,7 @@ vars/
 │   │       ├── validator.ts      # Zod schema parsing + validation
 │   │       ├── redacted.ts       # Redacted<T> type (~20 lines)
 │   │       ├── resolver.ts       # Value resolution: env → default → parent → Zod default
+│   │       ├── refine.ts         # @refine parser + attaches .refine() to z.object()
 │   │       ├── extends.ts        # @extends inheritance (max 3 levels, circular detection)
 │   │       ├── codegen.ts        # Generate env.generated.ts from parsed .vars
 │   │       ├── types.ts          # Shared types (VarsFile, Variable, EncryptedValue, etc.)
@@ -948,11 +970,12 @@ vars/
 │   │   ├── package.json
 │   │   ├── tsconfig.json
 │   │   └── src/
-│   │       ├── index.ts          # LSP server entry
-│   │       ├── diagnostics.ts    # Inline validation errors, warnings
-│   │       ├── completion.ts     # Autocomplete (env names, Zod methods)
-│   │       ├── hover.ts          # Hover info (schema type, metadata)
-│   │       └── definition.ts     # Go-to-definition (@extends paths)
+│   │       ├── index.ts          # LSP server entry, document sync
+│   │       ├── diagnostics.ts    # eval schema with real Zod, @refine ref checks, missing envs
+│   │       ├── completion.ts     # Zod prototype introspection for methods, env names, directives
+│   │       ├── hover.ts          # schema._def.typeName + checks for type info, metadata
+│   │       ├── definition.ts     # Go-to-definition (@extends paths, via core parser)
+│   │       └── zod-introspect.ts # Zod runtime helpers: method discovery, schema eval, _def reading
 │   │
 │   ├── vscode/                   # @vars/vscode — VS Code / Cursor extension
 │   │   ├── package.json
@@ -1061,13 +1084,45 @@ All packages output ESM (`dist/index.mjs`), CJS (`dist/index.cjs`), and types (`
 
 A Language Server Protocol implementation for `.vars` files. Build the LSP once, editor extensions are thin wrappers.
 
+**Core principle: Use Zod as the runtime engine.** The LSP does not reimplement Zod's knowledge — it imports Zod directly and uses it for validation, autocomplete, and type info. When Zod updates, the LSP gets new methods/features for free with zero maintenance.
+
 **Features:**
-- **Syntax highlighting** — variable names, Zod schemas, `@env` values, `@directives`, comments, encrypted vs decrypted values (different colors)
-- **Diagnostics** — inline validation errors, expired secret warnings, deprecation warnings, missing required values per env
-- **Autocomplete** — env names (`@dev`, `@staging`, `@prod`, `@default`), Zod schema methods (`z.string()`, `z.coerce.number()`, etc.), variable names inherited from `@extends` parents
-- **Hover** — show resolved schema type, metadata (`@description`, `@owner`, `@expires`), inheritance source (local vs parent)
-- **Go to definition** — click `@extends ../../.vars` to jump to parent file
-- **Code actions** — "Add missing environments" (if a variable has `@dev` but not `@prod`), "Mark as deprecated"
+
+- **Syntax highlighting** — variable names, Zod schemas, `@env` values, `@directives`, `@refine` blocks, comments, encrypted vs decrypted values (different colors). Implemented as a TextMate grammar (write-once).
+
+- **Diagnostics** — powered by real Zod evaluation:
+  - Schema validation: `eval` the Zod expression with real Zod (`new Function('z', 'return ' + schemaText)(z)`). If it throws, show the error inline. No need to parse or understand Zod syntax ourselves.
+  - `@refine` validation: extract `env.\w+` references from the arrow function body, check against declared variable names. Catches typos like `env.SMTP_HSOT` immediately.
+  - Missing required values per environment, expired secrets (`@expires`), deprecation warnings (`@deprecated`).
+
+- **Autocomplete** — powered by Zod prototype introspection:
+  - Zod methods: when user types `z.string().`, introspect `Object.getOwnPropertyNames(z.string())` to get available methods dynamically. No hardcoded list to maintain — Zod describes itself.
+  - Context-aware: after `z.string()` show string methods (`min`, `max`, `email`, `url`, `uuid`, `regex`, `startsWith`...), after `z.number()` show number methods (`min`, `max`, `int`, `positive`...).
+  - Env names: `@dev`, `@staging`, `@prod`, `@default`, plus any custom envs already used in the file.
+  - Directives: `@description`, `@expires`, `@deprecated`, `@owner`, `@refine`.
+  - `@extends` parents: variable names inherited from parent `.vars` files.
+  - `@refine` body: variable names declared in the file (for `env.` completions).
+
+- **Hover** — powered by Zod schema introspection (`schema._def`):
+  - Show resolved type from `schema._def.typeName` (e.g., "ZodString")
+  - Show constraints from `schema._def.checks` (e.g., "string (url, min length: 32)")
+  - Show metadata: `@description`, `@owner`, `@expires`, inheritance source (local vs parent via `@extends`)
+
+- **Go to definition** — click `@extends ../../.vars` to jump to parent file. Uses path resolution from `@vars/core` parser.
+
+- **Code actions** — "Add missing environments" (if a variable has `@dev` but not `@prod`), "Mark as deprecated", "Add `@refine` rule for this variable"
+
+**Implementation summary — what the LSP owns vs what it reuses:**
+
+| Feature | Source | Maintenance |
+|---------|--------|-------------|
+| Autocomplete (Zod methods) | `Object.getOwnPropertyNames()` on Zod prototypes | Zero — update Zod dep, get new methods |
+| Diagnostics (schema validity) | `eval` with real Zod | Zero — Zod validates itself |
+| Hover (type info) | `schema._def.typeName` + `schema._def.checks` | Zero — Zod describes itself |
+| Diagnostics (`@refine` refs) | Regex `env\.\w+` + check against declared vars | Minimal |
+| Go-to-definition (`@extends`) | `@vars/core` parser | Already exists |
+| Missing env diagnostics | `@vars/core` parser | Already exists |
+| Syntax highlighting | TextMate grammar | Write-once |
 
 **Editor extensions** are thin wrappers that launch the LSP and register `.vars` file associations:
 - `@vars/vscode` — VS Code / Cursor
@@ -1098,7 +1153,7 @@ A Language Server Protocol implementation for `.vars` files. Build the LSP once,
 3. **Encryption format** — `enc:v1:aes256gcm:<iv>:<ciphertext>:<tag>` with version prefix for future algorithm migration.
 4. **Resolution order** — Child `@env` → Child `@default` → Parent `@env` → Parent `@default` → Zod `.default()` → error.
 5. **`VARS_ENV`** — Formal convention for environment selection. Defaults to `development`.
-6. **Conditional requirements** — Out of scope for v0.1. Future approach: Zod `.refine()` with access to other variables.
+6. **Cross-variable constraints** — Supported via `@refine` directive in `.vars` files. Arrow function receives full config object, returns boolean. Error message on next line. Parsed into Zod `.refine()` calls on the assembled `z.object()`. Covers conditional requirements, mutual exclusion, numeric constraints, feature flag cascades, and env-specific rules.
 7. **Parser edge cases** — Empty = empty string, no multiline v0.1, `#` in values requires quotes, `=` in values fine unquoted.
 8. **Variable metadata** — Supported via `@directive value` syntax (no `=`). Directives: `@description`, `@expires`, `@deprecated`, `@owner`. Visually same prefix as env values — differentiated by the `=` sign. No separate sigil needed.
 9. **Metadata vs env disambiguation** — `@dev = value` (has `=`) is an env value. `@expires 2026-06-01` (no `=`) is metadata. Parser has zero ambiguity. VS Code extension can color them differently if needed.
