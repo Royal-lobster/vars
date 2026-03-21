@@ -27,7 +27,7 @@ export function evaluateSchema(schemaText: string): EvalResult {
 	} catch (err) {
 		return {
 			success: false,
-			error: (err as Error).message,
+			error: err instanceof Error ? err.message : String(err),
 		};
 	}
 }
