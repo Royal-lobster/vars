@@ -2,7 +2,6 @@
   "root": true,
   "pages": [
     "why-vars",
-    "---Getting Started---",
     "index",
     "file-format",
     "---CLI---",
