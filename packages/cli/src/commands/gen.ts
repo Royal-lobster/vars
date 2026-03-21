@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse, generateTypes } from "@vars/core";
 import { buildContext } from "../utils/context.js";
+import * as clack from "@clack/prompts";
 import * as output from "../utils/output.js";
 
 export default defineCommand({
@@ -29,11 +30,17 @@ export default defineCommand({
     },
   },
   async run({ args }) {
+    output.intro("gen");
+
     const ctx = buildContext({ file: args.file });
     const outputPath = resolve(ctx.cwd, args.output ?? "env.generated.ts");
 
+    const s = clack.spinner();
+    s.start("Generating typed accessors...");
     generateFromFile(ctx.varsFilePath, outputPath);
-    output.success(`Generated ${outputPath}`);
+    s.stop("Generated typed accessors.");
+
+    output.outro("Generated vars.generated.ts");
   },
 });
 

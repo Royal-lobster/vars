@@ -2,6 +2,7 @@ import { defineCommand } from "citty";
 import { execFileSync } from "node:child_process";
 import { dirname } from "node:path";
 import { buildContext } from "../utils/context.js";
+import * as clack from "@clack/prompts";
 import * as output from "../utils/output.js";
 
 export default defineCommand({
@@ -38,7 +39,7 @@ export default defineCommand({
 
       output.heading(`Blame: ${name}`);
       if (result.trim()) {
-        console.log(result);
+        clack.log.message(result.trim());
       } else {
         output.info(`No git history found for ${name} in ${ctx.varsFilePath}`);
       }

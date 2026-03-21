@@ -24,6 +24,8 @@ export default defineCommand({
     },
   },
   async run({ args }) {
+    output.intro("pull");
+
     const platform = args.vercel ? "vercel" : args.netlify ? "netlify" : null;
     if (!platform) {
       output.error("Specify a platform: --vercel or --netlify");

@@ -31,9 +31,10 @@ export default defineCommand({
         description: "Install the pre-commit hook",
       },
       async run() {
+        output.intro("hook");
         const cwd = process.cwd();
         installHook(cwd);
-        output.success("Pre-commit hook installed. .vars will be auto-encrypted before commits.");
+        output.outro("Pre-commit hook installed.");
       },
     }),
   },

@@ -33,6 +33,8 @@ export default defineCommand({
     },
   },
   async run({ args }) {
+    output.intro("push");
+
     const ctx = buildContext({ file: args.file, env: args.env });
     const key = await requireKey();
 
@@ -65,6 +67,7 @@ export default defineCommand({
     }
 
     output.warn(`${platform} push not yet implemented. Coming soon!`);
+    output.outro(`Push to ${platform} pending implementation.`);
   },
 });
 

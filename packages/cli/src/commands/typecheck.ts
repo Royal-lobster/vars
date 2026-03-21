@@ -3,6 +3,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, extname } from "node:path";
 import { parse } from "@vars/core";
 import { buildContext } from "../utils/context.js";
+import * as clack from "@clack/prompts";
 import * as output from "../utils/output.js";
 import pc from "picocolors";
 
@@ -44,14 +45,10 @@ export default defineCommand({
       output.error(
         `Found ${result.undefined.length} undefined env var reference(s):`,
       );
-      for (const ref of result.references.filter((r) =>
-        result.undefined.includes(r.varName),
-      )) {
-        console.log(
-          `  ${pc.dim(ref.file)}:${pc.yellow(String(ref.line))} \u2014 ${pc.red(ref.varName)}`,
-        );
-      }
-      console.log("");
+      const lines = result.references
+        .filter((r) => result.undefined.includes(r.varName))
+        .map((ref) => `  ${pc.dim(ref.file)}:${pc.yellow(String(ref.line))} \u2014 ${pc.red(ref.varName)}`);
+      clack.log.message(lines.join("\n"));
       output.info("Add these variables to .vars or remove the references.");
       process.exit(1);
     }

@@ -29,6 +29,8 @@ export default defineCommand({
     },
   },
   async run({ args }) {
+    output.intro("remove");
+
     const ctx = buildContext({ file: args.file });
     const name = args.name as string;
 
@@ -41,7 +43,7 @@ export default defineCommand({
     }
 
     removeVariable(ctx.varsFilePath, name);
-    output.success(`Removed ${name} from ${ctx.varsFilePath}`);
+    output.outro(`Removed ${name}`);
   },
 });
 

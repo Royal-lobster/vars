@@ -2,6 +2,7 @@ import { defineCommand } from "citty";
 import { readFileSync } from "node:fs";
 import { parse } from "@vars/core";
 import { buildContext } from "../utils/context.js";
+import * as clack from "@clack/prompts";
 import * as output from "../utils/output.js";
 import pc from "picocolors";
 
@@ -40,13 +41,11 @@ export default defineCommand({
         ? pc.yellow
         : pc.red;
 
-    console.log(`\n  ${color(`${result.percentage}%`)} (${result.covered}/${result.total} required variables)`);
+    clack.log.message(`${color(`${result.percentage}%`)} (${result.covered}/${result.total} required variables)`);
 
     if (result.missing.length > 0) {
-      console.log(`\n  ${pc.red("Missing:")}`);
-      for (const name of result.missing) {
-        console.log(`    ${pc.dim("\u2022")} ${name}`);
-      }
+      const lines = result.missing.map((name) => `  ${pc.dim("\u2022")} ${name}`);
+      clack.log.message(`${pc.red("Missing:")}\n${lines.join("\n")}`);
     }
   },
 });
