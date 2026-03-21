@@ -5,16 +5,16 @@ description: Complete reference for the .vars file format.
 
 Here's a `.vars` file using every feature. Read this first, then use the sections below as a reference.
 
-> **Note:** Examples below show values in plaintext for readability. In your committed `.vars` file, all values are encrypted. Use `vars show` to see plaintext, `vars hide` to encrypt.
+> **Note:** Examples below show values in plaintext (what you see after `vars show`). In your committed `.vars` file, all values are encrypted. See the [Encrypted values](#encrypted-values) section for what that looks like.
 
 ```vars
 # Database config
 DATABASE_URL  z.string().url().startsWith("postgres://")
   @description "Primary database connection"
   @owner       "platform-team"
-  @dev         = enc:v1:aes256gcm:k3m4n5:p6q7r8:s9t0u1
-  @staging     = enc:v1:aes256gcm:a1b2c3:d4e5f6:g7h8i9
-  @prod        = enc:v1:aes256gcm:j8fn2p:t9u0v1:w2x3y4
+  @dev         = postgres://localhost/myapp
+  @staging     = postgres://staging-host/myapp
+  @prod        = postgres://prod-host/myapp
 
 # Port — same across all envs, so @default covers it
 PORT  z.coerce.number().int().min(1024).max(65535)
@@ -23,14 +23,14 @@ PORT  z.coerce.number().int().min(1024).max(65535)
 # Feature flags
 ENABLE_BETA  z.enum(["true", "false"])
   @deprecated "Use FEATURE_FLAGS instead"
-  @dev        = enc:v1:aes256gcm:v2w3x4:y5z6a7:b8c9d0
-  @prod       = enc:v1:aes256gcm:e1f2g3:h4i5j6:k7l8m9
+  @dev        = true
+  @prod       = false
 
 # Expiring API key
 STRIPE_KEY  z.string().startsWith("sk_")
   @expires "2026-01-01"
-  @dev     = enc:v1:aes256gcm:abc123:def456:ghi789
-  @prod    = enc:v1:aes256gcm:xyz987:uvw654:rst321
+  @dev     = sk_test_abc123def456
+  @prod    = sk_live_xyz789uvw321
 
 # Cross-variable constraint
 @refine env.PORT !== 443 || env.DATABASE_URL.startsWith("postgres://")
@@ -73,9 +73,9 @@ Values live inside a variable block, indented at least one space or tab. Tag eac
 
 ```vars
 API_URL  z.string().url()
-  @dev        = enc:v1:aes256gcm:k4m5n6:o7p8q9:r0s1t2
-  @staging    = enc:v1:aes256gcm:u3v4w5:x6y7z8:a9b0c1
-  @prod       = enc:v1:aes256gcm:abc123:def456:ghi789
+  @dev        = http://localhost:3000/api
+  @staging    = https://staging.example.com/api
+  @prod       = https://api.example.com
 ```
 
 Environment names are freeform — `@dev`, `@prod`, `@staging`, `@ci`, whatever you want.
@@ -84,8 +84,8 @@ Environment names are freeform — `@dev`, `@prod`, `@staging`, `@ci`, whatever 
 
 ```vars
 LOG_LEVEL  z.enum(["debug", "info", "warn", "error"])
-  @default  = enc:v1:aes256gcm:d2e3f4:g5h6i7:j8k9l0
-  @dev      = enc:v1:aes256gcm:m1n2o3:p4q5r6:s7t8u9
+  @default  = info
+  @dev      = debug
 ```
 
 Here `@prod`, `@staging`, `@ci` all get the `@default` value. Only `@dev` gets its own value. Use `vars show` to see the plaintext.
@@ -160,7 +160,7 @@ API_KEY  z.string().min(32)
   @description "Third-party service API key"
   @owner       "backend-team"
   @expires     "2026-06-01"
-  @dev         = enc:v1:aes256gcm:abc123:def456:ghi789
+  @dev         = ak_test_1234567890abcdef1234567890abcdef
 ```
 
 ### `@description`
@@ -197,7 +197,7 @@ Still works, but raises a warning with your message.
 ```vars
 OLD_API_URL  z.string().url()
   @deprecated "Use NEW_API_URL instead, migrating by Q2"
-  @default    = enc:v1:aes256gcm:w1x2y3:z4a5b6:c7d8e9
+  @default    = https://old-api.example.com
 ```
 
 ## `@refine`
