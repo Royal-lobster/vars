@@ -3,7 +3,7 @@ import {
   DocsTitle,
   DocsDescription,
   DocsBody,
-} from 'fumadocs-ui/layouts/docs/page';
+} from 'fumadocs-ui/page';
 import { notFound } from 'next/navigation';
 import { source } from '@/lib/source';
 import { getMDXComponents } from '@/components/mdx';
