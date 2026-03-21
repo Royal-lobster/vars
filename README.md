@@ -1,8 +1,9 @@
-# vars
-
-Encrypted, typed, schema-first environment variables.
-
-One file. Zero SaaS. AI-safe by default.
+<div align="center">
+  <img src="./logo.svg" alt="vars logo" width="128" height="128" />
+  <h1>vars</h1>
+  <p><strong>Encrypted, typed, schema-first environment variables.</strong></p>
+  <p>One file. Zero SaaS. AI-safe by default.</p>
+</div>
 
 ## The Problem
 
