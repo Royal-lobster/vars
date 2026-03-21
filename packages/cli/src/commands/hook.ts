@@ -4,16 +4,20 @@ import {
   readFileSync,
   writeFileSync,
   chmodSync,
+  mkdirSync,
 } from "node:fs";
 import { join } from "node:path";
+import { execSync } from "node:child_process";
 import * as output from "../utils/output.js";
 import { HOOK_MARKER } from "../utils/patterns.js";
 const HOOK_SCRIPT = `
 ${HOOK_MARKER}
-# Block commit if .vars/unlocked.vars exists (secrets are decrypted)
+# Block commit if secrets are decrypted
 if [ -f .vars/unlocked.vars ]; then
-  echo "vars: .vars/unlocked.vars exists — secrets are decrypted!"
-  echo "Run 'vars hide' before committing."
+  echo ""
+  echo "\u26a0 vars: secrets are currently decrypted (.vars/unlocked.vars exists)"
+  echo "  Run 'vars hide' to re-encrypt before committing."
+  echo ""
   exit 1
 fi
 `;
@@ -52,9 +56,16 @@ export function installHook(cwd: string): void {
   } else if (existsSync(gitHooksDir)) {
     hookPath = join(gitHooksDir, "pre-commit");
   } else {
-    throw new Error(
-      "No .git/hooks or .husky directory found. Initialize a git repo first.",
-    );
+    // Auto-init git repo if none exists, then use .git/hooks
+    try {
+      execSync("git init", { cwd, stdio: "ignore" });
+    } catch {
+      throw new Error(
+        "No .git/hooks or .husky directory found and could not initialize git.",
+      );
+    }
+    mkdirSync(join(cwd, ".git", "hooks"), { recursive: true });
+    hookPath = join(cwd, ".git", "hooks", "pre-commit");
   }
 
   if (existsSync(hookPath)) {

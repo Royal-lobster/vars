@@ -22,9 +22,9 @@ export function findVarsFile(startDir: string = process.cwd()): string | null {
   while (dir !== root) {
     const candidate = resolve(dir, ".vars", "vault.vars");
     if (existsSync(candidate)) return candidate;
-    // If .vars/unlocked exists, we're in show mode — return the base .vars/vault path
+    // If .vars/unlocked exists, we're in unlocked mode (init or show)
     const decrypted = resolve(dir, ".vars", "unlocked.vars");
-    if (existsSync(decrypted)) return candidate;
+    if (existsSync(decrypted)) return decrypted;
     const parent = dirname(dir);
     if (parent === dir) break;
     dir = parent;

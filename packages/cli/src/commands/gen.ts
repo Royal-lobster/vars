@@ -1,6 +1,6 @@
 import { defineCommand } from "citty";
-import { readFileSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { parse, generateTypes } from "@vars/core";
 import { buildContext } from "../utils/context.js";
 import * as clack from "@clack/prompts";
@@ -40,7 +40,9 @@ export default defineCommand({
     generateFromFile(ctx.varsFilePath, outputPath);
     s.stop("Generated typed accessors.");
 
-    output.outro("Generated vars.generated.ts");
+    addTsconfigPathAlias(ctx.cwd);
+
+    output.outro("Generated .vars/vars.generated.ts");
   },
 });
 
@@ -52,4 +54,23 @@ export function generateFromFile(varsFilePath: string, outputPath: string): void
   const parsed = parse(content, varsFilePath);
   const generated = generateTypes(parsed, varsFilePath);
   writeFileSync(outputPath, generated);
+}
+
+function addTsconfigPathAlias(cwd: string): void {
+  const tsconfigPath = join(cwd, "tsconfig.json");
+  if (!existsSync(tsconfigPath)) return;
+
+  try {
+    const raw = readFileSync(tsconfigPath, "utf8");
+    const tsconfig = JSON.parse(raw);
+
+    if (!tsconfig.compilerOptions) tsconfig.compilerOptions = {};
+    if (!tsconfig.compilerOptions.paths) tsconfig.compilerOptions.paths = {};
+    if (tsconfig.compilerOptions.paths["#vars"]) return;
+
+    tsconfig.compilerOptions.paths["#vars"] = ["./.vars/vars.generated.ts"];
+    writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2) + "\n");
+  } catch {
+    // Silently ignore — tsconfig may have comments or other issues
+  }
 }

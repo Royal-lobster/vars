@@ -1,5 +1,5 @@
 import { defineCommand } from "citty";
-import { existsSync, readFileSync, renameSync } from "node:fs";
+import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { encrypt, isEncrypted, regenerateIfStale } from "@vars/core";
 import { buildContext, requireKey } from "../utils/context.js";
@@ -31,20 +31,7 @@ export default defineCommand({
     const sourcePath = existsSync(decryptedPath) ? decryptedPath : ctx.varsFilePath;
     const varCount = countVariables(sourcePath);
 
-    const s = clack.spinner();
-    s.start("Encrypting...");
     hideVarsFile(ctx.varsFilePath, key);
-    s.stop("Encrypted.");
-
-    output.stateChange("unlocked.vars", "vault.vars");
-
-    clack.note(
-      [
-        "Your changes are saved and encrypted.",
-        "vault.vars is safe to commit.",
-      ].join("\n"),
-      "Locked",
-    );
 
     output.outro(`Locked. ${varCount} variable${varCount !== 1 ? "s" : ""} encrypted.`);
   },
@@ -56,9 +43,12 @@ export default defineCommand({
  * the file is not modified.
  */
 export function hideVarsFile(filePath: string, key: Buffer): void {
-  // Determine source: prefer .vars.unlocked if it exists (show/hide flow)
-  const decryptedPath = resolve(dirname(filePath), "unlocked.vars");
-  const sourcePath = existsSync(decryptedPath) ? decryptedPath : filePath;
+  const varsDir = dirname(filePath);
+  const vaultPath = resolve(varsDir, "vault.vars");
+  const unlockedPath = resolve(varsDir, "unlocked.vars");
+
+  // Determine source: prefer unlocked.vars if it exists
+  const sourcePath = existsSync(unlockedPath) ? unlockedPath : filePath;
 
   const content = readFileSync(sourcePath, "utf8");
   const lines = content.split("\n");
@@ -83,12 +73,14 @@ export function hideVarsFile(filePath: string, key: Buffer): void {
     encryptedLines.push(line);
   }
 
-  // Write encrypted content into source, then rename to .vars
-  atomicWriteFileSync(sourcePath, encryptedLines.join("\n"));
-  if (sourcePath !== filePath) {
-    renameSync(sourcePath, filePath);
+  // Write encrypted content to vault.vars
+  atomicWriteFileSync(vaultPath, encryptedLines.join("\n"));
+
+  // Remove unlocked.vars if it was the source
+  if (sourcePath === unlockedPath && existsSync(unlockedPath)) {
+    unlinkSync(unlockedPath);
   }
 
-  // Regenerate env.generated.ts if schemas changed
-  regenerateIfStale(filePath, ".vars");
+  // Regenerate vars.generated.ts if schemas changed
+  regenerateIfStale(vaultPath, ".vars");
 }

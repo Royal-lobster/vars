@@ -1,9 +1,9 @@
 import { defineCommand } from "citty";
-import { existsSync, readFileSync, renameSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, appendFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { decrypt, isEncrypted, regenerateIfStale } from "@vars/core";
 import { buildContext, requireKey } from "../utils/context.js";
-import { ENV_VALUE_LINE, HOOK_MARKER, countVariables } from "../utils/patterns.js";
+import { ENV_VALUE_LINE, ENV_VALUE_LINE_VALUE_ONLY, HOOK_MARKER, countVariables } from "../utils/patterns.js";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import * as output from "../utils/output.js";
 import * as clack from "@clack/prompts";
@@ -25,67 +25,21 @@ export default defineCommand({
     output.intro("show");
 
     const ctx = buildContext({ file: args.file });
-    const key = await requireKey(ctx);
+
+    // Check if vault has any encrypted values — skip key if none
+    const hasEncrypted = vaultHasEncryptedValues(ctx.varsFilePath);
+    const key = hasEncrypted ? await requireKey(ctx) : null;
 
     // Count variables before decryption
     const varCount = countVariables(ctx.varsFilePath);
 
-    const s = clack.spinner();
-    s.start("Decrypting...");
-    const decryptedPath = showVarsFile(ctx.varsFilePath, key);
-    s.stop("Decrypted.");
-
-    output.stateChange("vault.vars", "unlocked.vars");
-
-    // Run safety checks and display note box
+    // Run safety checks before decrypting
     const projectRoot = findProjectRoot(dirname(ctx.varsFilePath));
-    const checks = buildSafetyChecks(projectRoot);
-    const failCount = checks.filter((c) => c.status !== "pass").length;
+    buildSafetyChecks(projectRoot);
 
-    if (failCount === 0) {
-      clack.note(
-        [
-          "Edit .vars/unlocked.vars in your editor.",
-          "",
-          ...checks.map((c) => `${pc.green("\u2713")} ${c.label}`),
-          "",
-          "Run vars hide when you're done editing.",
-        ].join("\n"),
-        "Ready to edit",
-      );
-    } else if (failCount === checks.length) {
-      clack.note(
-        [
-          "Edit .vars/unlocked.vars in your editor.",
-          "",
-          ...checks.map((c) =>
-            c.status === "pass"
-              ? `${pc.green("\u2713")} ${c.label}`
-              : `${pc.yellow("\u26a0")} ${c.label}${c.fix ? `\n   ${pc.dim(c.fix)}` : ""}`,
-          ),
-          "",
-          pc.yellow("Your decrypted secrets are exposed. Fix the above before continuing."),
-        ].join("\n"),
-        "Safety checks",
-      );
-    } else {
-      clack.note(
-        [
-          "Edit .vars/unlocked.vars in your editor.",
-          "",
-          ...checks.map((c) =>
-            c.status === "pass"
-              ? `${pc.green("\u2713")} ${c.label}`
-              : `${pc.red("\u2717")} ${c.label}${c.fix ? `\n   ${pc.dim(c.fix)}` : ""}`,
-          ),
-          "",
-          "Remember to run vars hide when done \u2014 without the hook, there's no safety net.",
-        ].join("\n"),
-        "Safety checks",
-      );
-    }
+    showVarsFile(ctx.varsFilePath, key);
 
-    output.outro(`Unlocked. ${varCount} variable${varCount !== 1 ? "s" : ""} decrypted.`);
+    output.outro(`Unlocked ${varCount} variable${varCount !== 1 ? "s" : ""}. Edit .vars/unlocked.vars, then run vars hide.`);
   },
 });
 
@@ -105,28 +59,40 @@ export function findProjectRoot(startDir: string): string {
 }
 
 /**
+ * Ensure .gitignore has vars entries. Auto-adds them if missing.
+ */
+function ensureGitignore(projectRoot: string): void {
+  const gitignorePath = join(projectRoot, ".gitignore");
+  const varsEntries = [
+    "",
+    "# vars",
+    ".vars/key",
+    ".vars/key.*",
+    ".vars/unlocked.vars",
+    ".env",
+    ".env.*",
+  ].join("\n");
+
+  if (existsSync(gitignorePath)) {
+    const existing = readFileSync(gitignorePath, "utf8");
+    if (!existing.includes("unlocked.vars")) {
+      appendFileSync(gitignorePath, "\n" + varsEntries + "\n");
+    }
+  } else {
+    writeFileSync(gitignorePath, varsEntries + "\n");
+  }
+}
+
+/**
  * Build safety checks for the show command.
- * Checks: 1) unlocked.vars in .gitignore  2) pre-commit hook with vars marker
+ * Auto-fixes gitignore if missing, then reports remaining issues.
  */
 export function buildSafetyChecks(projectRoot: string): output.SafetyCheck[] {
   const checks: output.SafetyCheck[] = [];
 
-  // Check 1: Is unlocked.vars in .gitignore?
-  const gitignorePath = join(projectRoot, ".gitignore");
-  let gitignoreOk = false;
-  if (existsSync(gitignorePath)) {
-    const gitignoreContent = readFileSync(gitignorePath, "utf8");
-    gitignoreOk = gitignoreContent.includes("unlocked.vars");
-  }
-  checks.push(
-    gitignoreOk
-      ? { label: "unlocked.vars is gitignored", status: "pass" }
-      : {
-          label: "unlocked.vars is not gitignored",
-          status: "fail",
-          fix: 'Add "unlocked.vars" to .gitignore',
-        },
-  );
+  // Check 1: Ensure unlocked.vars is in .gitignore (auto-fix)
+  ensureGitignore(projectRoot);
+  checks.push({ label: "unlocked.vars is gitignored", status: "pass" });
 
   // Check 2: Does a pre-commit hook with vars marker exist?
   let hookOk = false;
@@ -146,7 +112,7 @@ export function buildSafetyChecks(projectRoot: string): output.SafetyCheck[] {
       ? { label: "Pre-commit hook active", status: "pass" }
       : {
           label: "Pre-commit hook not found",
-          status: "fail",
+          status: "warn",
           fix: "Run vars hook to install the pre-commit hook",
         },
   );
@@ -155,11 +121,23 @@ export function buildSafetyChecks(projectRoot: string): output.SafetyCheck[] {
 }
 
 /**
+ * Check whether a vault file contains any encrypted values.
+ */
+export function vaultHasEncryptedValues(filePath: string): boolean {
+  if (!existsSync(filePath)) return false;
+  const content = readFileSync(filePath, "utf8");
+  return content.split("\n").some((line) => {
+    const match = line.match(ENV_VALUE_LINE_VALUE_ONLY);
+    return match && isEncrypted(match[1].trim());
+  });
+}
+
+/**
  * Decrypt all encrypted values in .vars, write decrypted content,
  * then rename .vars → .vars.unlocked.
  * This is a simple rename so the editor follows the file.
  */
-export function showVarsFile(filePath: string, key: Buffer): string {
+export function showVarsFile(filePath: string, key: Buffer | null): string {
   const content = readFileSync(filePath, "utf8");
   const lines = content.split("\n");
   const result: string[] = [];
@@ -170,6 +148,11 @@ export function showVarsFile(filePath: string, key: Buffer): string {
       const prefix = match[1];
       const value = match[2].trim();
       if (isEncrypted(value)) {
+        if (!key) {
+          throw new Error(
+            "Encrypted values found but no key available.\nRun 'vars init' to create a key, or set VARS_KEY env var.",
+          );
+        }
         const decrypted = decrypt(value, key);
         result.push(`${prefix}${decrypted}`);
         continue;
