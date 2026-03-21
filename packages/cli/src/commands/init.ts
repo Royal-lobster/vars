@@ -19,6 +19,7 @@ import * as clack from "@clack/prompts";
 import * as output from "../utils/output.js";
 import { promptConfirm, promptPIN } from "../utils/prompt.js";
 import { detectFramework, wrapDevScript } from "../utils/detect-framework.js";
+import { addTsconfigPathAlias } from "../utils/tsconfig.js";
 import { installHook } from "./hook.js";
 
 export default defineCommand({
@@ -370,30 +371,3 @@ function updateGitignore(cwd: string): void {
   }
 }
 
-/**
- * Add a "#vars" path alias to tsconfig.json so users can:
- *   import { env } from "#vars"
- */
-function addTsconfigPathAlias(cwd: string): boolean {
-  const tsconfigPath = join(cwd, "tsconfig.json");
-  if (!existsSync(tsconfigPath)) return false;
-
-  try {
-    const raw = readFileSync(tsconfigPath, "utf8");
-    const tsconfig = JSON.parse(raw);
-
-    // Ensure compilerOptions.paths exists
-    if (!tsconfig.compilerOptions) tsconfig.compilerOptions = {};
-    if (!tsconfig.compilerOptions.paths) tsconfig.compilerOptions.paths = {};
-
-    // Skip if already configured
-    if (tsconfig.compilerOptions.paths["#vars"]) return true;
-
-    tsconfig.compilerOptions.paths["#vars"] = ["./.vars/vars.generated.ts"];
-
-    writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2) + "\n");
-    return true;
-  } catch {
-    return false;
-  }
-}
