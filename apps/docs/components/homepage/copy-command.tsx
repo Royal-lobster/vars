@@ -8,7 +8,7 @@ export function CopyCommand({ command }: { command: string }) {
   return (
     <button
       type="button"
-      className="group flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.03] px-4 py-2.5 font-mono text-sm transition-all hover:border-green-500/20 hover:bg-white/[0.05]"
+      className="group flex h-11 items-center gap-3 rounded-lg border border-white/[0.06] bg-black/40 px-4 font-mono text-sm backdrop-blur-sm transition-all hover:border-green-500/20 hover:bg-black/50"
       onClick={() => {
         navigator.clipboard.writeText(command);
         setCopied(true);

@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { CopyCommand } from './copy-command';
 
 export function CTA() {
   return (
@@ -12,16 +13,13 @@ export function CTA() {
         <p className="mx-auto mt-4 max-w-[450px] text-base leading-relaxed text-white/50">
           One command. Five minutes. Never worry about plaintext secrets again.
         </p>
-        <Button
-          size="lg"
-          className="mt-8 bg-green-500 px-10 text-[15px] font-semibold text-black shadow-[0_0_30px] shadow-green-500/30 hover:bg-green-400 hover:shadow-green-500/50"
-        >
-          Read the Docs →
-        </Button>
-        <div className="mt-5 font-mono text-sm text-white/25">
-          <code className="rounded-lg border border-white/[0.06] bg-white/[0.04] px-4 py-1.5">
-            npx vars init
-          </code>
+        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <Button
+            className="h-11 bg-green-500 px-6 text-sm font-semibold text-black shadow-[0_0_30px] shadow-green-500/30 hover:bg-green-400 hover:shadow-green-500/50"
+          >
+            Read the Docs →
+          </Button>
+          <CopyCommand command="npx vars init" />
         </div>
       </div>
     </section>

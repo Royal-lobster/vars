@@ -55,10 +55,9 @@ export function Hero() {
           variables. PIN-per-command security. One vault your whole team can share.
         </p>
 
-        <div className="mt-9 flex flex-col items-center gap-4">
+        <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
           <Button
-            size="lg"
-            className="bg-green-500 text-black font-semibold shadow-[0_0_30px] shadow-green-500/30 hover:bg-green-400 hover:shadow-green-500/50"
+            className="h-11 bg-green-500 px-6 text-sm text-black font-semibold shadow-[0_0_30px] shadow-green-500/30 hover:bg-green-400 hover:shadow-green-500/50"
           >
             Get Started →
           </Button>
