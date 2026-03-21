@@ -1,2 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Turbo
+.turbo/
+
+# vars runtime files
+.vars.key
+.vars.key.*
+.env
+.env.*
+.vars.swp
+.vars.swo
+.vars~
+.vars.bak
+
+# Claude
+.claude/
+
 # Superset
 .superset/
+
+# Editor
+*.generated.ts
