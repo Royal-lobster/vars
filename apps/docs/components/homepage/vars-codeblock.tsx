@@ -1,4 +1,4 @@
-import { codeToHast, type BundledTheme } from 'shiki';
+import { createHighlighter } from 'shiki';
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime';
 import { Fragment, type JSX } from 'react';
 import { jsx, jsxs } from 'react/jsx-runtime';
@@ -10,20 +10,34 @@ interface VarsCodeBlockProps {
   className?: string;
 }
 
+let highlighterPromise: ReturnType<typeof createHighlighter> | null = null;
+
+function getHighlighter() {
+  if (!highlighterPromise) {
+    highlighterPromise = createHighlighter({
+      themes: ['github-dark', 'github-light'],
+      langs: [varsLanguage],
+    });
+  }
+  return highlighterPromise;
+}
+
 export async function VarsDynamicCodeBlock({ code, className }: VarsCodeBlockProps) {
-  const hast = await codeToHast(code, {
-    lang: varsLanguage,
+  const highlighter = await getHighlighter();
+
+  const hast = highlighter.codeToHast(code, {
+    lang: 'vars',
     themes: {
-      light: 'github-light' as BundledTheme,
-      dark: 'github-dark' as BundledTheme,
+      light: 'github-light',
+      dark: 'github-dark',
     },
     defaultColor: false,
   });
 
   const rendered = toJsxRuntime(hast, {
     Fragment,
-    jsx: jsx as any,
-    jsxs: jsxs as any,
+    jsx,
+    jsxs,
     components: {
       pre: (props) => (
         <CodeBlock keepBackground={false} {...props}>

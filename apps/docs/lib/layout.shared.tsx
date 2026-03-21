@@ -14,7 +14,7 @@ export function baseOptions(): BaseLayoutProps {
         </span>
       ),
     },
-    githubUrl: 'https://github.com/user/vars',
+    githubUrl: 'https://github.com/Royal-lobster/vars',
     links: [
       { text: 'Documentation', url: '/docs' },
     ],
