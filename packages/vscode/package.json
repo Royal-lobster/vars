@@ -1,27 +1,42 @@
 {
-	"name": "@vars/vscode",
+	"name": "vars",
 	"private": true,
 	"displayName": "vars",
 	"description": "Encrypted, typed environment variables — syntax highlighting, validation, autocomplete for .vars files",
 	"version": "0.1.0",
 	"publisher": "vars",
 	"license": "MIT",
+	"icon": "icon.png",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/vars/vars"
+		"url": "https://github.com/Royal-lobster/vars"
 	},
 	"engines": {
 		"vscode": "^1.85.0"
 	},
-	"categories": ["Programming Languages", "Linters", "Snippets"],
-	"activationEvents": ["onLanguage:vars", "workspaceContains:**/.vars"],
-	"main": "./dist/extension.cjs",
+	"categories": [
+		"Programming Languages",
+		"Linters",
+		"Snippets"
+	],
+	"activationEvents": [
+		"onLanguage:vars",
+		"workspaceContains:**/.vars"
+	],
+	"main": "./dist/extension.js",
 	"contributes": {
 		"languages": [
 			{
 				"id": "vars",
-				"aliases": ["vars", "Vars", "envx"],
-				"extensions": [".vars"],
+				"aliases": [
+					"vars",
+					"Vars",
+					"envx"
+				],
+				"extensions": [
+					".vars",
+					".vars.decrypted"
+				],
 				"configuration": "./language-configuration.json",
 				"icon": {
 					"light": "./icons/vars-light.png",
@@ -36,12 +51,180 @@
 				"path": "./src/syntaxes/vars.tmLanguage.json"
 			}
 		],
+		"commands": [
+			{
+				"command": "vars.toggle",
+				"title": "Toggle Encryption",
+				"icon": "$(eye)",
+				"category": "vars"
+			},
+			{
+				"command": "vars.show",
+				"title": "Decrypt Values (Show)",
+				"icon": "$(eye)",
+				"category": "vars"
+			},
+			{
+				"command": "vars.hide",
+				"title": "Encrypt Values (Hide)",
+				"icon": "$(eye-closed)",
+				"category": "vars"
+			}
+		],
+		"menus": {
+			"editor/title": [
+				{
+					"command": "vars.show",
+					"when": "resourceLangId == vars && resourceFilename == .vars",
+					"group": "navigation"
+				},
+				{
+					"command": "vars.hide",
+					"when": "resourceLangId == vars && resourceFilename == .vars.decrypted",
+					"group": "navigation"
+				}
+			]
+		},
+		"configurationDefaults": {
+			"editor.tokenColorCustomizations": {
+				"textMateRules": [
+					{
+						"scope": "variable.other.constant.vars",
+						"settings": { "foreground": "#4FC1FF", "fontStyle": "bold" }
+					},
+					{
+						"scope": "support.class.vars",
+						"settings": { "foreground": "#C586C0" }
+					},
+					{
+						"scope": "entity.name.type.vars",
+						"settings": { "foreground": "#4EC9B0" }
+					},
+					{
+						"scope": "entity.name.function.vars",
+						"settings": { "foreground": "#DCDCAA" }
+					},
+					{
+						"scope": "entity.name.tag.vars",
+						"settings": { "foreground": "#D7BA7D" }
+					},
+					{
+						"scope": "keyword.control.flow.vars",
+						"settings": { "foreground": "#C586C0", "fontStyle": "bold" }
+					},
+					{
+						"scope": "keyword.control.import.vars",
+						"settings": { "foreground": "#C586C0", "fontStyle": "bold" }
+					},
+					{
+						"scope": "keyword.operator.assignment.vars",
+						"settings": { "foreground": "#D4D4D4" }
+					},
+					{
+						"scope": "keyword.operator.comparison.vars",
+						"settings": { "foreground": "#D4D4D4" }
+					},
+					{
+						"scope": "storage.type.function.arrow.vars",
+						"settings": { "foreground": "#C586C0" }
+					},
+					{
+						"scope": "constant.numeric.decimal.vars",
+						"settings": { "foreground": "#B5CEA8" }
+					},
+					{
+						"scope": "constant.numeric.date.vars",
+						"settings": { "foreground": "#B5CEA8" }
+					},
+					{
+						"scope": "constant.language.boolean.vars",
+						"settings": { "foreground": "#569CD6" }
+					},
+					{
+						"scope": "constant.language.vars",
+						"settings": { "foreground": "#569CD6" }
+					},
+					{
+						"scope": "string.quoted.double.vars",
+						"settings": { "foreground": "#CE9178" }
+					},
+					{
+						"scope": "string.quoted.single.vars",
+						"settings": { "foreground": "#CE9178" }
+					},
+					{
+						"scope": "string.unquoted.value.vars",
+						"settings": { "foreground": "#CE9178" }
+					},
+					{
+						"scope": "string.unquoted.path.vars",
+						"settings": { "foreground": "#CE9178" }
+					},
+					{
+						"scope": "string.other.encrypted.iv.vars",
+						"settings": { "foreground": "#6A9955", "fontStyle": "italic" }
+					},
+					{
+						"scope": "string.other.encrypted.ciphertext.vars",
+						"settings": { "foreground": "#6A9955", "fontStyle": "italic" }
+					},
+					{
+						"scope": "string.other.encrypted.tag.vars",
+						"settings": { "foreground": "#6A9955", "fontStyle": "italic" }
+					},
+					{
+						"scope": "keyword.other.vars",
+						"settings": { "foreground": "#569CD6" }
+					},
+					{
+						"scope": "markup.underline.link.vars",
+						"settings": { "foreground": "#9CDCFE", "fontStyle": "underline" }
+					},
+					{
+						"scope": "variable.other.readwrite.vars",
+						"settings": { "foreground": "#9CDCFE" }
+					},
+					{
+						"scope": "variable.parameter.function.vars",
+						"settings": { "foreground": "#9CDCFE" }
+					},
+					{
+						"scope": "invalid.deprecated.vars",
+						"settings": { "foreground": "#D4D4D4", "fontStyle": "strikethrough" }
+					},
+					{
+						"scope": "comment.line.number-sign.vars",
+						"settings": { "foreground": "#6A9955" }
+					},
+					{
+						"scope": "punctuation.accessor.dot.vars",
+						"settings": { "foreground": "#D4D4D4" }
+					},
+					{
+						"scope": "punctuation.brackets.round.vars",
+						"settings": { "foreground": "#D4D4D4" }
+					},
+					{
+						"scope": "punctuation.separator.vars",
+						"settings": { "foreground": "#808080" }
+					},
+					{
+						"scope": "constant.other.vars",
+						"settings": { "foreground": "#9CDCFE" }
+					}
+				]
+			}
+		},
 		"configuration": {
 			"title": "vars",
 			"properties": {
 				"vars.trace.server": {
 					"type": "string",
-					"enum": ["off", "messages", "verbose"],
+					"enum": [
+						"off",
+						"messages",
+						"verbose"
+					],
 					"default": "off",
 					"description": "Traces the communication between VS Code and the vars language server."
 				}

@@ -1,5 +1,5 @@
 import { defineCommand } from "citty";
-import { readFileSync } from "node:fs";
+import { readFileSync, renameSync } from "node:fs";
 import { decrypt, isEncrypted } from "@vars/core";
 import { buildContext, requireKey } from "../utils/context.js";
 import { ENV_VALUE_LINE } from "../utils/patterns.js";
@@ -9,7 +9,7 @@ import * as output from "../utils/output.js";
 export default defineCommand({
   meta: {
     name: "show",
-    description: "Decrypt all values in-place within .vars for editing",
+    description: "Decrypt all values and rename to .vars.decrypted for safe editing",
   },
   args: {
     file: {
@@ -21,15 +21,18 @@ export default defineCommand({
   async run({ args }) {
     const ctx = buildContext({ file: args.file });
     const key = await requireKey();
-    showVarsFile(ctx.varsFilePath, key);
-    output.success("Values decrypted in-place. Run 'vars hide' when done editing.");
+    const decryptedPath = showVarsFile(ctx.varsFilePath, key);
+    output.success(`Values decrypted → ${decryptedPath}`);
+    output.info("Run 'vars hide' when done editing.");
   },
 });
 
 /**
- * Decrypt all encrypted values in a .vars file in-place.
+ * Decrypt all encrypted values in .vars, write decrypted content,
+ * then rename .vars → .vars.decrypted.
+ * This is a simple rename so the editor follows the file.
  */
-export function showVarsFile(filePath: string, key: Buffer): void {
+export function showVarsFile(filePath: string, key: Buffer): string {
   const content = readFileSync(filePath, "utf8");
   const lines = content.split("\n");
   const result: string[] = [];
@@ -48,6 +51,9 @@ export function showVarsFile(filePath: string, key: Buffer): void {
     result.push(line);
   }
 
+  // Write decrypted content into .vars, then rename to .vars.decrypted
   atomicWriteFileSync(filePath, result.join("\n"));
+  const decryptedPath = filePath + ".decrypted";
+  renameSync(filePath, decryptedPath);
+  return decryptedPath;
 }
-

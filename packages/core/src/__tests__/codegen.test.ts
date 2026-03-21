@@ -11,16 +11,15 @@ describe("codegen", () => {
   it("generates valid TypeScript", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
-    expect(output).toContain("import { z } from");
     expect(output).toContain("import { loadEnvx");
+    expect(output).not.toContain("import { z }");
   });
 
-  it("includes all variable schemas in z.object()", () => {
+  it("generates loadEnvx call with type cast", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
-    expect(output).toContain("DATABASE_URL: z.string().url()");
-    expect(output).toContain("PORT: z.coerce.number()");
-    expect(output).toContain("ANALYTICS_ID: z.string().optional()");
+    expect(output).toContain("as unknown as Env");
+    expect(output).not.toContain("schema,");
   });
 
   it("generates Env type with Redacted<string> for strings", () => {

@@ -1,5 +1,4 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
-import argon2 from "argon2";
 import { CryptoError, KeyError } from "./errors.js";
 
 const IV_LENGTH = 12;
@@ -76,8 +75,9 @@ export function parseKeyFile(encoded: string): KeyFileComponents {
 }
 
 async function deriveKey(pin: string, salt: Buffer): Promise<Buffer> {
-  const hash = await argon2.hash(pin, {
-    type: argon2.argon2id,
+  const argon2 = await import("argon2");
+  const hash = await argon2.default.hash(pin, {
+    type: argon2.default.argon2id,
     salt,
     hashLength: KEY_LENGTH,
     memoryCost: 65536,
