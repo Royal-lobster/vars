@@ -50,8 +50,8 @@
     C384 348, 370 370, 344 370
   " stroke="url(#icon)" stroke-width="26" stroke-linecap="round" fill="none"/>
 
-  <!-- Lock shackle — centered at brace midpoint y=264 -->
-  <path d="M214 260 V206 C214 170, 232 148, 256 148 C280 148, 298 170, 298 206 V260"
+  <!-- Lock shackle — shorter arc -->
+  <path d="M214 260 V222 C214 194, 232 176, 256 176 C280 176, 298 194, 298 222 V260"
         stroke="url(#icon)" stroke-width="24" stroke-linecap="round" fill="none"/>
 
   <!-- Lock body -->
