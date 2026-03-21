@@ -37,7 +37,7 @@ z.enum(["development", "staging", "production"])`,
     label: 'CLI',
     title: 'Powerful tooling',
     description:
-      'init, unlock, run, check, gen — everything from the command line. Scriptable and CI-friendly.',
+      'init, show, hide, run, gen, check — everything from the command line. Scriptable and CI-friendly.',
     image: '/images/aurora.webp',
     span: 'narrow',
   },
@@ -52,9 +52,7 @@ z.enum(["development", "staging", "production"])`,
 ];
 
 const REFINE_CODE = `// Cross-variable constraint
-@refine (env) =>
-  env.LOG_LEVEL !== "debug"
-  || env.DEBUG === true
+@refine env.LOG_LEVEL !== "debug" || env.DEBUG === true
   "DEBUG must be true when LOG_LEVEL is debug"`;
 
 function spanClass(span: BentoItem['span']) {

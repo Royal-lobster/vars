@@ -4,7 +4,7 @@ const ITEMS = [
   { label: 'AES-256-GCM' },
   { label: 'Zod' },
   { label: 'PIN-per-command' },
-  { label: '6 framework plugins' },
+  { label: '4 framework plugins' },
   { label: 'LSP + VS Code' },
   { label: 'AI-safe by design' },
 ];

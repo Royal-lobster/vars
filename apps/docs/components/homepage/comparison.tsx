@@ -28,9 +28,8 @@ API_KEY  z.string().min(32)
   @prod  = enc:v1:aes256gcm:9c2b...
 
 // Cross-variable constraint
-@refine (env) =>
-  env.LOG_LEVEL !== "debug"
-  || env.DEBUG === true`;
+@refine env.LOG_LEVEL !== "debug" || env.DEBUG === true
+  "DEBUG must be true when LOG_LEVEL is debug"`;
 
 const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-xs [&_pre]:!leading-[1.9]';
 
