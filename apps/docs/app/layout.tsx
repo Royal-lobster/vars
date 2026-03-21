@@ -2,6 +2,10 @@ import './global.css';
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import type { ReactNode } from 'react';
 import { instrumentSans, jetbrainsMono, newsreader } from '@/lib/fonts';
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata = {
   title: {
@@ -16,7 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${instrumentSans.variable} ${jetbrainsMono.variable} ${newsreader.variable}`}
+      className={cn(instrumentSans.variable, jetbrainsMono.variable, newsreader.variable, "font-sans", geist.variable)}
       suppressHydrationWarning
     >
       <body className="flex min-h-screen flex-col">
