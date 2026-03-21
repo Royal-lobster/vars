@@ -1,32 +1,60 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#6366f1"/>
-      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0c0a1d"/>
+      <stop offset="100%" stop-color="#1a1145"/>
     </linearGradient>
-    <linearGradient id="lock" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.95"/>
-      <stop offset="100%" style="stop-color:#e0e7ff;stop-opacity:0.9"/>
+    <linearGradient id="brace" x1="0" y1="120" x2="0" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#c7d2fe"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="lockbody" x1="0" y1="210" x2="0" y2="370" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#e0e7ff"/>
+      <stop offset="100%" stop-color="#a5b4fc"/>
+    </linearGradient>
+    <linearGradient id="shackle" x1="0" y1="110" x2="0" y2="230" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#e0e7ff"/>
+      <stop offset="100%" stop-color="#a5b4fc"/>
+    </linearGradient>
+    <linearGradient id="keyhole-grad" x1="256" y1="260" x2="256" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#312e81"/>
     </linearGradient>
   </defs>
 
-  <!-- Rounded square background -->
-  <rect x="16" y="16" width="480" height="480" rx="96" fill="url(#bg)"/>
+  <!-- Background -->
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
 
-  <!-- Lock shackle (top arc) -->
-  <path d="M196 220V172c0-33.1 26.9-60 60-60s60 26.9 60 60v48"
-        stroke="url(#lock)" stroke-width="28" stroke-linecap="round" fill="none"/>
+  <!-- Left brace — bold, prominent -->
+  <path d="
+    M128 130
+    C92 130, 72 155, 72 185
+    L72 228
+    C72 248, 56 264, 36 264
+    C56 264, 72 280, 72 300
+    L72 343
+    C72 373, 92 398, 128 398
+  " stroke="url(#brace)" stroke-width="32" stroke-linecap="round" fill="none"/>
+
+  <!-- Right brace -->
+  <path d="
+    M384 130
+    C420 130, 440 155, 440 185
+    L440 228
+    C440 248, 456 264, 476 264
+    C456 264, 440 280, 440 300
+    L440 343
+    C440 373, 420 398, 384 398
+  " stroke="url(#brace)" stroke-width="32" stroke-linecap="round" fill="none"/>
+
+  <!-- Lock shackle -->
+  <path d="M208 232 V184 C208 148, 228 120, 256 120 C284 120, 304 148, 304 184 V232"
+        stroke="url(#shackle)" stroke-width="28" stroke-linecap="round" fill="none"/>
 
   <!-- Lock body -->
-  <rect x="168" y="220" width="176" height="144" rx="24" fill="url(#lock)"/>
+  <rect x="188" y="232" width="136" height="116" rx="22" fill="url(#lockbody)"/>
 
   <!-- Keyhole -->
-  <circle cx="256" cy="278" r="22" fill="#6366f1"/>
-  <rect x="248" y="290" width="16" height="40" rx="8" fill="#6366f1"/>
-
-  <!-- Curly braces — code/schema hint -->
-  <path d="M108 180c-20 0-32 12-32 32v40c0 16-12 24-24 24 12 0 24 8 24 24v40c0 20 12 32 32 32"
-        stroke="url(#lock)" stroke-width="18" stroke-linecap="round" fill="none" opacity="0.6"/>
-  <path d="M404 180c20 0 32 12 32 32v40c0 16 12 24 24 24-12 0-24 8-24 24v40c0 20-12 32-32 32"
-        stroke="url(#lock)" stroke-width="18" stroke-linecap="round" fill="none" opacity="0.6"/>
+  <circle cx="256" cy="278" r="20" fill="url(#keyhole-grad)"/>
+  <path d="M248 290 L256 322 L264 290 Z" fill="url(#keyhole-grad)"/>
 </svg>
