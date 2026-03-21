@@ -70,6 +70,67 @@ describe("parser", () => {
     });
   });
 
+  describe("metadata directives", () => {
+    it("parses @description", () => {
+      const result = parse(fixture("metadata.vars"));
+      const apiKey = result.variables.find((v) => v.name === "API_KEY")!;
+      expect(apiKey.metadata.description).toBe("Primary API key for external service");
+    });
+
+    it("parses @expires", () => {
+      const result = parse(fixture("metadata.vars"));
+      const apiKey = result.variables.find((v) => v.name === "API_KEY")!;
+      expect(apiKey.metadata.expires).toBe("2026-09-01");
+    });
+
+    it("parses @owner", () => {
+      const result = parse(fixture("metadata.vars"));
+      const apiKey = result.variables.find((v) => v.name === "API_KEY")!;
+      expect(apiKey.metadata.owner).toBe("backend-team");
+    });
+
+    it("parses @deprecated", () => {
+      const result = parse(fixture("metadata.vars"));
+      const legacy = result.variables.find((v) => v.name === "LEGACY_TOKEN")!;
+      expect(legacy.metadata.deprecated).toBe("Use API_KEY instead");
+    });
+  });
+
+  describe("string quoting", () => {
+    it("strips double quotes from values", () => {
+      const result = parse(fixture("metadata.vars"));
+      const quoted = result.variables.find((v) => v.name === "QUOTED_VAR")!;
+      expect(quoted.values.find((v) => v.env === "dev")?.value).toBe("value with spaces");
+    });
+
+    it("strips single quotes from values", () => {
+      const result = parse(fixture("metadata.vars"));
+      const quoted = result.variables.find((v) => v.name === "QUOTED_VAR")!;
+      expect(quoted.values.find((v) => v.env === "staging")?.value).toBe("single quoted");
+    });
+
+    it("passes through unquoted values", () => {
+      const result = parse(fixture("metadata.vars"));
+      const quoted = result.variables.find((v) => v.name === "QUOTED_VAR")!;
+      expect(quoted.values.find((v) => v.env === "prod")?.value).toBe("simple");
+    });
+
+    it("handles empty quoted strings", () => {
+      const result = parse(fixture("metadata.vars"));
+      const empty = result.variables.find((v) => v.name === "EMPTY_VAR")!;
+      expect(empty.values.find((v) => v.env === "dev")?.value).toBe("");
+    });
+  });
+
+  describe("encrypted values", () => {
+    it("preserves encrypted value strings as-is", () => {
+      const result = parse(fixture("metadata.vars"));
+      const apiKey = result.variables.find((v) => v.name === "API_KEY")!;
+      const prodVal = apiKey.values.find((v) => v.env === "prod");
+      expect(prodVal?.value).toMatch(/^enc:v1:aes256gcm:/);
+    });
+  });
+
   describe("error handling", () => {
     it("throws ParseError for invalid variable name", () => {
       expect(() => parse("lowercase  z.string()\n  @default = x\n")).toThrow("UPPER_SNAKE_CASE");
