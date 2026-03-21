@@ -1,0 +1,127 @@
+---
+title: Running Apps
+description: Inject secrets, generate typed accessors, and validate your env.
+---
+
+`run`, `gen`, `check`, `typecheck`. Four commands, most of what you'll actually use day to day.
+
+---
+
+## run
+
+```bash
+npx vars run --env <env> -- <command> [args...]
+```
+
+Decrypts the vault for the given env and injects the values into a child process. Nothing touches disk. Secrets exist only in that process and are gone when it exits.
+
+```bash
+# Start your dev server with dev secrets
+npx vars run --env dev -- npm run dev
+
+# Run a script with prod secrets
+npx vars run --env prod -- node scripts/migrate.js
+```
+
+vars also sets `VARS_ENV` in the child's environment so your app knows which env it's running under.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--env <name>` | | Which environment to decrypt (required) |
+| `--file <path>` | `-f` | Use a different vault file |
+
+The `--` separator is required. Everything after it is the command vars runs.
+
+---
+
+## gen
+
+```bash
+npx vars gen
+```
+
+Generates a typed TypeScript file with accessor functions for every variable in your vault. Default output is `env.generated.ts`. Import it instead of reading `process.env` directly and you get autocomplete and type safety.
+
+```bash
+# Generate with defaults
+npx vars gen
+
+# Write to a custom path
+npx vars gen --output src/lib/env.ts
+```
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--output <path>` | `-o` | Output file path (default: `env.generated.ts`) |
+| `--lang <lang>` | | Language target (`ts` only for now) |
+| `--file <path>` | `-f` | Use a different vault file |
+
+`hide` reruns `gen` automatically if your schemas changed since the last run, so you won't call this often.
+
+---
+
+## check
+
+```bash
+npx vars check
+```
+
+Validates every env against your Zod schemas. No `--env` flag means all envs get checked.
+
+```bash
+# Validate all envs
+npx vars check
+
+# Validate staging only
+npx vars check --env staging
+```
+
+It checks:
+
+- Missing required values
+- Schema conformance (shows expected vs. got on failure)
+- Expired secrets (errors on past expiry, warns if expiring within 30 days)
+- Deprecated variables still in use
+- `@refine` cross-variable validations
+
+Exits 1 on errors. Encrypted values that can't be decrypted in the current context are skipped.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--env <name>` | | Validate a specific environment only |
+| `--file <path>` | `-f` | Use a different vault file |
+
+---
+
+## typecheck
+
+```bash
+npx vars typecheck
+```
+
+Scans your codebase for `process.env.*` and `import.meta.env.*` references and flags any that aren't defined in your `.vars` file.
+
+```bash
+# Scan the default src/ directory
+npx vars typecheck
+
+# Scan a different directory
+npx vars typecheck --dir app
+```
+
+Scans `.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.cts` files. Skips `node_modules`, `dist`, and `.git`. Reports file path, line number, and variable name for each undefined reference.
+
+Exits 1 if any are found.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--dir <path>` | | Directory to scan (default: `src`) |
+| `--file <path>` | `-f` | Use a different vault file |
