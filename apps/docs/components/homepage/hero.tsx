@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { VarsDynamicCodeBlock } from './vars-codeblock';
+import { CopyPrompt } from './copy-prompt';
 
 const HERO_CODE = `DATABASE_URL  z.string().url().startsWith("postgres://")
   @dev   = enc:v1:aes256gcm:7f3a9b2c...
@@ -54,20 +55,24 @@ export function Hero() {
           variables. PIN-per-command security. One vault your whole team can share.
         </p>
 
-        <div className="mt-9 flex flex-wrap items-center justify-center gap-3.5">
-          <Button
-            size="lg"
-            className="bg-green-500 text-black font-semibold shadow-[0_0_30px] shadow-green-500/30 hover:bg-green-400 hover:shadow-green-500/50"
-          >
-            Get Started →
-          </Button>
-          <Button
-            variant="outline"
-            size="lg"
-            className="border-white/[0.06] bg-white/[0.04] text-white/50 hover:border-green-500/15 hover:text-white"
-          >
-            npx vars init
-          </Button>
+        <div className="mt-9 flex flex-col items-center gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-3.5">
+            <Button
+              size="lg"
+              className="bg-green-500 text-black font-semibold shadow-[0_0_30px] shadow-green-500/30 hover:bg-green-400 hover:shadow-green-500/50"
+            >
+              Get Started →
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-white/[0.06] bg-white/[0.04] text-white/50 hover:border-green-500/15 hover:text-white"
+            >
+              Read the Docs
+            </Button>
+          </div>
+
+          <CopyPrompt />
         </div>
 
         <VarsDynamicCodeBlock
