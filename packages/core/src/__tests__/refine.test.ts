@@ -82,5 +82,19 @@ describe("refine", () => {
       expect(refined.safeParse({ A: -1, B: 2 }).success).toBe(false);
       expect(refined.safeParse({ A: 5, B: 3 }).success).toBe(false);
     });
+
+    it("blocks global access in refine expressions", () => {
+      const baseSchema = z.object({ A: z.number() });
+      const refines: Refine[] = [{
+        expression: '(env) => { const g = []["flat"]["constructor"]("return this")(); return typeof g.process !== "undefined" }',
+        message: "exploit",
+        line: 1,
+      }];
+      const refined = applyRefines(baseSchema, refines);
+      // The sandbox prevents access to real globals — process should be undefined
+      // so the refine returns false and validation fails
+      const result = refined.safeParse({ A: 1 });
+      expect(result.success).toBe(false);
+    });
   });
 });

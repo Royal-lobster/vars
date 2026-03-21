@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import vm from "node:vm";
 import type { Refine } from "./types.js";
 import { VarsError } from "./errors.js";
 
@@ -31,18 +32,33 @@ export function applyRefines<T extends z.ZodObject<z.ZodRawShape>>(
 }
 
 function compileRefineExpression(expression: string, line: number): (env: Record<string, unknown>) => boolean {
-  // Safety: only allow env.VARNAME references, comparison operators, logical operators, literals
-  const dangerous = ["process", "require", "import", "eval", "Function", "globalThis", "window", "fetch"];
-  for (const word of dangerous) {
-    if (expression.includes(word)) {
-      throw new VarsError(`@refine at line ${line}: contains forbidden keyword "${word}"`);
-    }
+  // Validate expression is an arrow function shape
+  if (!expression.trim().startsWith("(env)") && !expression.trim().startsWith("env =>")) {
+    throw new VarsError(`@refine at line ${line}: must be an arrow function starting with (env) =>`);
   }
 
   try {
-    const fn = new Function("env", `"use strict"; return (${expression})(env)`);
-    return (env: Record<string, unknown>) => fn(env) as boolean;
+    // Pre-compile the function in a sandbox
+    const sandbox = { compiledFn: undefined as unknown };
+    vm.runInNewContext(`compiledFn = ${expression}`, sandbox, {
+      timeout: 100,
+      filename: "vars-refine-eval",
+    });
+
+    if (typeof sandbox.compiledFn !== "function") {
+      throw new Error("Expression did not produce a function");
+    }
+
+    const fn = sandbox.compiledFn as (env: Record<string, unknown>) => boolean;
+
+    // Return a wrapper that runs the function in a sandbox too
+    return (env: Record<string, unknown>) => {
+      const execSandbox = { fn, env, result: false };
+      vm.runInNewContext(`result = fn(env)`, execSandbox, { timeout: 100 });
+      return execSandbox.result as boolean;
+    };
   } catch (err) {
+    if (err instanceof VarsError) throw err;
     throw new VarsError(
       `@refine at line ${line}: invalid expression — ${(err as Error).message}`,
     );

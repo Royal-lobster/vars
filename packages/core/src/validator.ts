@@ -1,40 +1,34 @@
 import { z } from "zod";
+import vm from "node:vm";
 import { ValidationError } from "./errors.js";
 
-// Allowlist: only permit z.* method chains — no arbitrary code execution
-const SAFE_SCHEMA_PATTERN = /^z\.[\w.(),"'\[\]\s:>=<|&!+\-\/]+$/;
+// Reject schemas that contain callback-accepting Zod methods (code execution vectors)
+const CALLBACK_METHODS = /\.(transform|refine|superRefine|preprocess|pipe)\s*\(/;
 
 /** Alias: evaluateSchema is the internal name, parseSchema matches the PRD public API */
 export const parseSchema = evaluateSchema;
 
 export function evaluateSchema(schemaText: string): z.ZodType {
-  if (!SAFE_SCHEMA_PATTERN.test(schemaText)) {
+  // Block callback-accepting methods — these allow arbitrary code in Zod's execution
+  if (CALLBACK_METHODS.test(schemaText)) {
     throw new ValidationError(
-      `Unsafe schema expression: ${schemaText}`,
-      [{ variable: "", message: "Schema contains disallowed characters" }],
+      `Schema contains forbidden callback method: ${schemaText}`,
+      [{ variable: "", message: "Callback methods (.transform, .refine, etc.) are not allowed in .vars schemas" }],
     );
   }
 
-  // Additional safety: reject known dangerous patterns
-  const dangerous = ["process", "require", "import", "eval", "Function", "globalThis", "window"];
-  for (const word of dangerous) {
-    if (schemaText.includes(word)) {
-      throw new ValidationError(
-        `Schema contains forbidden keyword: ${word}`,
-        [{ variable: "", message: `Forbidden keyword: ${word}` }],
-      );
-    }
-  }
-
   try {
-    const fn = new Function("z", `"use strict"; return (${schemaText})`);
-    const schema = fn(z);
+    const sandbox = { z, result: undefined as unknown };
+    vm.runInNewContext(`result = (${schemaText})`, sandbox, {
+      timeout: 100,
+      filename: "vars-schema-eval",
+    });
 
-    if (!(schema instanceof z.ZodType)) {
+    if (!(sandbox.result instanceof z.ZodType)) {
       throw new Error("Expression did not return a Zod schema");
     }
 
-    return schema;
+    return sandbox.result;
   } catch (err) {
     if (err instanceof ValidationError) throw err;
     throw new ValidationError(

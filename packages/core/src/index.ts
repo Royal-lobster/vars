@@ -32,7 +32,9 @@ export function loadEnvx(
     ? typeof options.key === "string"
       ? Buffer.from(options.key, "base64")
       : options.key
-    : undefined;
+    : process.env.VARS_KEY
+      ? Buffer.from(process.env.VARS_KEY, "base64")
+      : undefined;
 
   // 1. Parse (with @extends resolution)
   const varsFile = resolveExtends(filePath);

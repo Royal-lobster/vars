@@ -10,6 +10,9 @@ const ALG_NAME = "aes256gcm";
 const PREFIX = `enc:${VERSION}:${ALG_NAME}:`;
 
 export function encrypt(plaintext: string, key: Buffer): string {
+  if (key.length !== 32) {
+    throw new CryptoError(`Key must be exactly 32 bytes (got ${key.length})`);
+  }
   const iv = randomBytes(IV_LENGTH);
   const cipher = createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
 
@@ -23,6 +26,9 @@ export function encrypt(plaintext: string, key: Buffer): string {
 }
 
 export function decrypt(encoded: string, key: Buffer): string {
+  if (key.length !== 32) {
+    throw new CryptoError(`Key must be exactly 32 bytes (got ${key.length})`);
+  }
   const parsed = parseEncryptedValue(encoded);
 
   if (parsed.version !== VERSION) {

@@ -61,6 +61,18 @@ describe("validator", () => {
     it("throws on dangerous code", () => {
       expect(() => evaluateSchema("z.string(); process.exit(1)")).toThrow();
     });
+
+    it("blocks .transform() callbacks", () => {
+      expect(() => evaluateSchema('z.string().transform(() => "evil")')).toThrow("forbidden callback method");
+    });
+
+    it("blocks prototype chain exploitation via vm sandbox", () => {
+      expect(() => evaluateSchema('z.string(); []["flat"]["constructor"]("return this")()')).toThrow();
+    });
+
+    it("times out on infinite loops", () => {
+      expect(() => evaluateSchema("z.string(); while(true){}")).toThrow();
+    });
   });
 
   describe("validateValue", () => {

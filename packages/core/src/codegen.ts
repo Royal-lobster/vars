@@ -30,7 +30,6 @@ export function generateTypes(varsFile: VarsFile, envFile = ".vars"): string {
   // Server env export
   lines.push(`export const env: Env = loadEnvx("${envFile}", {`);
   lines.push('  env: process.env.VARS_ENV || "development",');
-  lines.push("  schema,");
   lines.push("});");
   lines.push("");
 
