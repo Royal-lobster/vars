@@ -40,7 +40,7 @@ export function Comparison() {
                 'STRIPE_KEY=sk_live_abc123def456',
               ].map((line, i) => (
                 <div key={i} className="flex">
-                  <span className="mr-4 inline-block w-5 select-none text-right font-mono tabular-nums text-[10px] leading-[2] text-neutral-700">{i + 1}</span>
+                  <span className="mr-4 shrink-0 w-5 select-none text-right text-neutral-600">{i + 1}</span>
                   <span className="text-white/60">{line}</span>
                 </div>
               ))}
@@ -117,7 +117,7 @@ export function Comparison() {
                 ],
               ] as { text: string; cls: string }[][]).map((tokens, i) => (
                 <div key={i} className="flex">
-                  <span className="mr-4 inline-block w-5 select-none text-right font-mono tabular-nums text-[10px] leading-[2] text-neutral-700">{i + 1}</span>
+                  <span className="mr-4 shrink-0 w-5 select-none text-right text-neutral-600">{i + 1}</span>
                   <span>
                     {tokens.map((t, j) => (
                       <span key={j} className={t.cls}>{t.text}</span>
