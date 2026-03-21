@@ -17,14 +17,26 @@ export function extractValue(value: unknown): string {
 }
 
 /**
- * Read the decryption key from a varskey file if it exists.
+ * Read the decryption key from VARS_KEY env var.
+ * This is the only way adapters get the key:
+ * - Local dev: `vars run --env dev -- pnpm dev` sets VARS_KEY in the child process
+ * - CI/CD: VARS_KEY set in platform env vars (Vercel, GitHub Actions, etc.)
  */
 export function readKeyFile(envFile: string): string | undefined {
-	const keyPath = resolve(process.cwd(), ".vars", "key");
-	if (existsSync(keyPath)) {
-		return readFileSync(keyPath, "utf8").trim();
-	}
-	return undefined;
+	return process.env.VARS_KEY;
+}
+
+/**
+ * Resolve the vars file path, preferring unlocked.vars over vault.vars.
+ * During development (after `vars show` or `vars init`), unlocked.vars exists with plaintext values.
+ * In production/CI, only vault.vars exists with encrypted values.
+ * Returns { path, unlocked } so adapters know whether to skip decryption.
+ */
+export function resolveVarsFile(envFile: string): { path: string; unlocked: boolean } {
+	const varsDir = resolve(process.cwd(), ".vars");
+	const unlockedPath = resolve(varsDir, "unlocked.vars");
+	if (existsSync(unlockedPath)) return { path: unlockedPath, unlocked: true };
+	return { path: resolve(process.cwd(), envFile), unlocked: false };
 }
 
 /**
@@ -33,7 +45,7 @@ export function readKeyFile(envFile: string): string | undefined {
 export function regenerateIfStale(envFilePath: string, envFile: string): void {
 	if (!existsSync(envFilePath)) return;
 
-	const generatedPath = resolve(dirname(envFilePath), "..", "vars.generated.ts");
+	const generatedPath = resolve(dirname(envFilePath), "vars.generated.ts");
 	const varsModified = statSync(envFilePath).mtimeMs;
 
 	if (existsSync(generatedPath)) {

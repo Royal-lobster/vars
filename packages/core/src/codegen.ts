@@ -8,8 +8,8 @@ export function generateTypes(varsFile: VarsFile, envFile = ".vars"): string {
   lines.push("// loads .vars into process.env at build time.");
   lines.push("");
 
-  // Env type
-  lines.push("export type Env = {");
+  // Var type
+  lines.push("export type Var = {");
   for (const v of varsFile.variables) {
     const optional = v.schema.includes(".optional()");
     const tsType = inferTsType(v);
@@ -34,8 +34,8 @@ export function generateTypes(varsFile: VarsFile, envFile = ".vars"): string {
   lines.push("}");
   lines.push("");
 
-  // Server env export
-  lines.push("export const env: Env = {");
+  // Server vars export
+  lines.push("export const vars: Var = {");
   for (const v of varsFile.variables) {
     const accessor = getAccessor(v);
     lines.push(`  ${v.name}: ${accessor},`);
@@ -49,7 +49,7 @@ export function generateTypes(varsFile: VarsFile, envFile = ".vars"): string {
   );
   if (clientVars.length > 0) {
     const pickKeys = clientVars.map((v) => `"${v.name}"`).join(" | ");
-    lines.push(`export const clientEnv: Pick<Env, ${pickKeys}> = {`);
+    lines.push(`export const clientVars: Pick<Var, ${pickKeys}> = {`);
     for (const v of clientVars) {
       const accessor = getAccessor(v);
       lines.push(`  ${v.name}: ${accessor},`);

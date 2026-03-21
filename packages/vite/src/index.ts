@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { extractValue, loadVars, readKeyFile, regenerateIfStale } from "@vars/core";
+import { extractValue, loadVars as coreLoadVars, readKeyFile, regenerateIfStale, resolveVarsFile } from "@vars/core";
 import type { Plugin } from "vite";
 
 export interface VarsOptions {
@@ -27,17 +27,17 @@ export function varsPlugin(options: VarsOptions = {}): Plugin {
 
 	function loadVars(): Record<string, unknown> {
 		const env = options.env ?? process.env.VARS_ENV ?? "development";
-		const key = options.key ?? process.env.VARS_KEY ?? readKeyFile(envFile);
-		const envFilePath = resolve(process.cwd(), envFile);
+		const { path: envFilePath, unlocked } = resolveVarsFile(envFile);
+		const key = unlocked ? undefined : (options.key ?? process.env.VARS_KEY ?? readKeyFile(envFile));
 
-		// Auto-regenerate env.generated.ts if .vars changed
+		// Auto-regenerate vars.generated.ts if .vars changed
 		regenerateIfStale(envFilePath, envFile);
 
 		const loadOptions: Record<string, unknown> = { env };
 		if (key) loadOptions.key = key;
 
 		try {
-			return loadVars(envFilePath, loadOptions as { env?: string; key?: string });
+			return coreLoadVars(envFilePath, loadOptions as { env?: string; key?: string });
 		} catch (err) {
 			throw new Error(`[@vars/vite] Failed to load ${envFile}: ${(err as Error).message}`);
 		}
