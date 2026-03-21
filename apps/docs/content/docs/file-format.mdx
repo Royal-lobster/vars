@@ -5,6 +5,8 @@ description: Complete reference for the .vars file format.
 
 Here's a `.vars` file using every feature. Read this first, then use the sections below as a reference.
 
+> **Note:** Examples below show values in plaintext for readability. In your committed `.vars` file, all values are encrypted. Use `vars show` to see plaintext, `vars hide` to encrypt.
+
 ```vars
 # Database config
 DATABASE_URL  z.string().url().startsWith("postgres://")
@@ -24,7 +26,7 @@ ENABLE_BETA  z.enum(["true", "false"])
   @dev        = true
   @prod       = false
 
-# Expiring API key
+# Expiring API key — after `vars hide`, all values above become encrypted too
 STRIPE_KEY  z.string().startsWith("sk_")
   @expires "2026-01-01"
   @dev     = enc:v1:aes256gcm:abc123:def456:ghi789
@@ -71,8 +73,8 @@ Values live inside a variable block, indented at least one space or tab. Tag eac
 
 ```vars
 API_URL  z.string().url()
-  @dev        = https://api.dev.example.com
-  @staging    = https://api.staging.example.com
+  @dev        = enc:v1:aes256gcm:k4m5n6:o7p8q9:r0s1t2
+  @staging    = enc:v1:aes256gcm:u3v4w5:x6y7z8:a9b0c1
   @prod       = enc:v1:aes256gcm:abc123:def456:ghi789
 ```
 
@@ -82,17 +84,20 @@ Environment names are freeform — `@dev`, `@prod`, `@staging`, `@ci`, whatever 
 
 ```vars
 LOG_LEVEL  z.enum(["debug", "info", "warn", "error"])
-  @default  = info
-  @dev      = debug
+  @default  = enc:v1:aes256gcm:d2e3f4:g5h6i7:j8k9l0
+  @dev      = enc:v1:aes256gcm:m1n2o3:p4q5r6:s7t8u9
 ```
 
-Here `@prod`, `@staging`, `@ci` all get `info`. Only `@dev` gets `debug`.
+Here `@prod`, `@staging`, `@ci` all get the `@default` value. Only `@dev` gets its own value. Use `vars show` to see the plaintext.
 
 ### Value quoting
 
 Quoted or unquoted both work. Quotes get stripped before use.
 
+When editing with `vars edit`, you'll see plaintext values. Quoting rules apply here:
+
 ```vars
+# What you see during `vars edit`
 APP_NAME  z.string()
   @default = "My App"    # same result as: My App
 
@@ -106,6 +111,8 @@ Inline comments work on unquoted values — the parser drops everything from ` #
 PORT  z.coerce.number()
   @default = 3000 # this comment is ignored
 ```
+
+After `vars hide`, these all become encrypted.
 
 ## Encrypted values
 
@@ -137,6 +144,7 @@ Start a line with `#` to comment it out. For inline comments on unquoted values,
 ```vars
 # This whole line is a comment
 
+# During `vars edit`, inline comments work on plaintext values:
 DATABASE_URL  z.string().url()
   @dev = postgres://localhost/myapp  # dev DB, no auth needed
 ```
@@ -188,8 +196,8 @@ Still works, but raises a warning with your message.
 
 ```vars
 OLD_API_URL  z.string().url()
-  @deprecated "Use NEW_API_URL instead — migrating by Q2"
-  @default    = https://old.api.example.com
+  @deprecated "Use NEW_API_URL instead, migrating by Q2"
+  @default    = enc:v1:aes256gcm:w1x2y3:z4a5b6:c7d8e9
 ```
 
 ## `@refine`
@@ -221,7 +229,7 @@ Pulls in variables from a base file. Your values win on conflicts.
 Paths are relative to the current file. Only one `@extends` per file.
 
 ```vars
-# base.vars
+# base.vars (shown unlocked for clarity)
 LOG_LEVEL  z.enum(["debug", "info", "warn", "error"])
   @default = info
 
