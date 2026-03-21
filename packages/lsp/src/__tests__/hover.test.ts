@@ -107,6 +107,19 @@ describe("hover", () => {
 		expect(result).toBeNull();
 	});
 
+	it("shows schema info when hovering on the schema portion", () => {
+		const text = ["DATABASE_URL  z.string().url()", "  @dev = postgres://localhost/db"].join("\n");
+		const result = computeHover({
+			text,
+			line: 0,
+			character: 20, // inside "z.string().url()"
+			uri: "/test/.vars",
+		});
+		expect(result).not.toBeNull();
+		expect(result?.contents).toContain("z.string().url()");
+		expect(result?.contents).toContain("ZodString");
+	});
+
 	it("returns null for env value lines", () => {
 		const text = ["PORT  z.coerce.number()", "  @dev = 3000"].join("\n");
 		const result = computeHover({

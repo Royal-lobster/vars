@@ -47,11 +47,6 @@ export function computeHover(ctx: HoverContext): HoverResult | null {
 	const varName = varMatch[1];
 	const schemaText = varMatch[2];
 
-	// Check if cursor is on the variable name
-	if (ctx.character > varName.length) {
-		return null; // Cursor is on the schema part, not the name
-	}
-
 	// Collect metadata from subsequent indented lines
 	const metadata = collectMetadata(lines, ctx.line);
 
@@ -66,40 +61,52 @@ export function computeHover(ctx: HoverContext): HoverResult | null {
 		typeInfo = `**Type:** Error evaluating schema — ${evalResult.error}`;
 	}
 
+	// Determine hover range based on cursor position
+	const schemaStart = currentLine.indexOf(schemaText);
+	const onSchema = ctx.character >= schemaStart && schemaStart >= 0;
+
 	// Build hover contents
 	const parts: string[] = [];
-	parts.push(`**\`${varName}\`**`);
-	parts.push("");
-	parts.push(typeInfo);
 
-	if (metadata.description) {
+	if (onSchema) {
+		// Hovering on the schema portion — show schema expression + type details
+		parts.push(`\`\`\`\n${schemaText}\n\`\`\``);
 		parts.push("");
-		parts.push(`**Description:** ${metadata.description}`);
+		parts.push(typeInfo);
+	} else {
+		// Hovering on the variable name — show full variable info
+		parts.push(`**\`${varName}\`**`);
+		parts.push("");
+		parts.push(typeInfo);
+
+		if (metadata.description) {
+			parts.push("");
+			parts.push(`**Description:** ${metadata.description}`);
+		}
+
+		if (metadata.deprecated) {
+			parts.push("");
+			parts.push(`**Deprecated:** ${metadata.deprecated}`);
+		}
+
+		if (metadata.expires) {
+			parts.push("");
+			parts.push(`**Expires:** ${metadata.expires}`);
+		}
+
+		if (metadata.owner) {
+			parts.push("");
+			parts.push(`**Owner:** ${metadata.owner}`);
+		}
 	}
 
-	if (metadata.deprecated) {
-		parts.push("");
-		parts.push(`**Deprecated:** ${metadata.deprecated}`);
-	}
-
-	if (metadata.expires) {
-		parts.push("");
-		parts.push(`**Expires:** ${metadata.expires}`);
-	}
-
-	if (metadata.owner) {
-		parts.push("");
-		parts.push(`**Owner:** ${metadata.owner}`);
-	}
+	const range = onSchema
+		? { startLine: ctx.line, startChar: schemaStart, endLine: ctx.line, endChar: schemaStart + schemaText.length }
+		: { startLine: ctx.line, startChar: 0, endLine: ctx.line, endChar: varName.length };
 
 	return {
 		contents: parts.join("\n"),
-		range: {
-			startLine: ctx.line,
-			startChar: 0,
-			endLine: ctx.line,
-			endChar: varName.length,
-		},
+		range,
 	};
 }
 

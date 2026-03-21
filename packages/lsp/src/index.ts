@@ -47,17 +47,37 @@ connection.onInitialize((_params: InitializeParams): InitializeResult => {
 	};
 });
 
-// ─── Diagnostics (on document change) ───────────────
+// ─── Diagnostics (on document change, debounced) ────
+
+const diagnosticTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 documents.onDidChangeContent((change) => {
-	const textDocument = change.document;
-	const text = textDocument.getText();
-	const rawDiagnostics = computeDiagnostics(text, textDocument.uri);
+	const { uri } = change.document;
 
-	connection.sendDiagnostics({
-		uri: textDocument.uri,
-		diagnostics: rawDiagnostics,
-	});
+	// Clear any pending diagnostic run for this document
+	const existing = diagnosticTimers.get(uri);
+	if (existing) clearTimeout(existing);
+
+	diagnosticTimers.set(
+		uri,
+		setTimeout(() => {
+			diagnosticTimers.delete(uri);
+			const doc = documents.get(uri);
+			if (!doc) return;
+
+			const rawDiagnostics = computeDiagnostics(doc.getText(), uri);
+			connection.sendDiagnostics({ uri, diagnostics: rawDiagnostics });
+		}, 250),
+	);
+});
+
+// Clean up timers when documents close
+documents.onDidClose((e) => {
+	const timer = diagnosticTimers.get(e.document.uri);
+	if (timer) {
+		clearTimeout(timer);
+		diagnosticTimers.delete(e.document.uri);
+	}
 });
 
 // ─── Completion ─────────────────────────────────────
