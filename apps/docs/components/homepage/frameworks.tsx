@@ -123,8 +123,13 @@ export function Frameworks() {
                   {fw.name}
                 </span>
               </div>
-              <div className="mx-4 mb-4 [&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11px] [&_pre]:!leading-[1.8]">
+              <div className="mx-4 [&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11px] [&_pre]:!leading-[1.8]">
                 <DynamicCodeBlock lang={fw.lang} code={fw.code} codeblock={{ keepBackground: false }} />
+              </div>
+              <div className="px-5 pb-4 pt-2">
+                <span className="font-mono text-[11px] text-white/30 transition-colors group-hover:text-green-500">
+                  Read more →
+                </span>
               </div>
             </div>
           ))}
