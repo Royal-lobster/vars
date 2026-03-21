@@ -5,15 +5,17 @@ import { VarsDynamicCodeBlock } from './vars-codeblock';
 import { CopyCommand } from './copy-command';
 
 const HERO_CODE = `DATABASE_URL  z.string().url().startsWith("postgres://")
-  @dev   = enc:v1:aes256gcm:7f3a9b2c...
+  @dev   = postgres://localhost:5432/myapp
   @prod  = enc:v1:aes256gcm:e8d1f0a3...
 
-PORT  z.coerce.number().int().min(1024)
-  @default = enc:v1:aes256gcm:2c4b8e...
+PORT  z.coerce.number().int().min(1024).max(65535)
+  @default = 3000
 
-// Cross-variable refinement
-@refine (env) => env.LOG_LEVEL !== "debug" || env.DEBUG === true
-  "DEBUG must be true when LOG_LEVEL is debug"`;
+API_KEY  z.string().min(32)
+  @description "Primary API key"
+  @expires     "2026-09-01"
+  @dev   = mykey_test_abc123def456ghi789jkl
+  @prod  = enc:v1:aes256gcm:9c2b4f7a...`;
 
 export function Hero() {
   return (
@@ -52,7 +54,7 @@ export function Hero() {
 
         <p className="mt-6 max-w-[520px] text-[clamp(15px,2vw,17px)] leading-relaxed text-white/50">
           vars replaces .env with encrypted, schema-validated, multi-environment
-          variables. PIN-per-command security. One vault your whole team can share.
+          variables. Commit the vault, share with your team, no external services needed.
         </p>
 
         <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">

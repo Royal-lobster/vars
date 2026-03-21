@@ -11,14 +11,14 @@ export function CTA() {
           <em className="font-serif italic text-green-500 font-normal">today.</em>
         </h2>
         <p className="mx-auto mt-4 max-w-[450px] text-base leading-relaxed text-white/50">
-          One command. Five minutes. Never worry about plaintext secrets again.
+          One command. Five minutes. Your whole team gets every secret, no Slack DMs required.
         </p>
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Link
-            href="/docs"
+            href="/docs/why-vars"
             className="inline-flex h-11 items-center justify-center rounded-lg bg-green-500 px-6 text-sm font-semibold text-black shadow-[0_0_30px] shadow-green-500/30 transition-all hover:bg-green-400 hover:shadow-green-500/50"
           >
-            Read the Docs →
+            Why vars? →
           </Link>
           <CopyCommand command="npx vars init" />
         </div>
