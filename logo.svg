@@ -1,92 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0f0f14"/>
-      <stop offset="100%" style="stop-color:#1a1a2e"/>
-    </linearGradient>
-    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#a78bfa"/>
-      <stop offset="50%" style="stop-color:#818cf8"/>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#818cf8"/>
       <stop offset="100%" style="stop-color:#6366f1"/>
     </linearGradient>
-    <linearGradient id="green" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#34d399"/>
-      <stop offset="100%" style="stop-color:#10b981"/>
-    </linearGradient>
-    <!-- Glitch/scramble mask -->
-    <clipPath id="glitch-clip">
-      <rect x="290" y="140" width="200" height="28"/>
-      <rect x="310" y="180" width="180" height="28"/>
-      <rect x="275" y="220" width="215" height="28"/>
-      <rect x="300" y="260" width="190" height="28"/>
-      <rect x="280" y="300" width="200" height="28"/>
-      <rect x="295" y="340" width="195" height="28"/>
-    </clipPath>
   </defs>
 
-  <!-- Dark background -->
-  <rect width="512" height="512" rx="80" fill="url(#bg)"/>
+  <!-- V shape formed by two halves — left half solid (revealed), right half dashed/fragmented (encrypted) -->
 
-  <!-- Terminal-style content area -->
-  <rect x="40" y="100" width="432" height="312" rx="16" fill="#12121a" stroke="#2a2a3d" stroke-width="2"/>
+  <!-- Left arm of V — solid, clean -->
+  <path d="M96 112L256 400" stroke="url(#grad)" stroke-width="56" stroke-linecap="round"/>
 
-  <!-- Terminal dots -->
-  <circle cx="68" cy="124" r="6" fill="#ef4444" opacity="0.8"/>
-  <circle cx="88" cy="124" r="6" fill="#eab308" opacity="0.8"/>
-  <circle cx="108" cy="124" r="6" fill="#22c55e" opacity="0.8"/>
-
-  <!-- Line 1: variable name (clear) + encrypted value -->
-  <text x="64" y="178" font-family="monospace" font-size="20" font-weight="bold" fill="#c4b5fd">API_KEY</text>
-  <text x="170" y="178" font-family="monospace" font-size="20" fill="#4b5563">=</text>
-
-  <!-- Encrypted blocks (scrambled rectangles representing ciphertext) -->
-  <g opacity="0.7">
-    <rect x="190" y="162" width="32" height="20" rx="3" fill="#6366f1"/>
-    <rect x="226" y="162" width="24" height="20" rx="3" fill="#818cf8"/>
-    <rect x="254" y="162" width="40" height="20" rx="3" fill="#6366f1"/>
-    <rect x="298" y="162" width="28" height="20" rx="3" fill="#a78bfa"/>
-    <rect x="330" y="162" width="36" height="20" rx="3" fill="#818cf8"/>
-    <rect x="370" y="162" width="20" height="20" rx="3" fill="#6366f1"/>
-    <rect x="394" y="162" width="44" height="20" rx="3" fill="#a78bfa"/>
-  </g>
-
-  <!-- Line 2: variable name (clear) + plain value (revealed) -->
-  <text x="64" y="226" font-family="monospace" font-size="20" font-weight="bold" fill="#c4b5fd">DB_URL</text>
-  <text x="162" y="226" font-family="monospace" font-size="20" fill="#4b5563">=</text>
-  <text x="182" y="226" font-family="monospace" font-size="20" fill="url(#green)">postgres://loc</text>
-
-  <!-- Transition zone: text dissolving into encrypted blocks -->
-  <text x="332" y="226" font-family="monospace" font-size="20" fill="#34d399" opacity="0.5">al</text>
-  <rect x="358" y="210" width="24" height="20" rx="3" fill="#6366f1" opacity="0.4"/>
-  <rect x="386" y="210" width="32" height="20" rx="3" fill="#818cf8" opacity="0.3"/>
-  <rect x="422" y="210" width="28" height="20" rx="3" fill="#a78bfa" opacity="0.2"/>
-
-  <!-- Line 3: another encrypted line -->
-  <text x="64" y="274" font-family="monospace" font-size="20" font-weight="bold" fill="#c4b5fd">SECRET</text>
-  <text x="162" y="274" font-family="monospace" font-size="20" fill="#4b5563">=</text>
-  <g opacity="0.7">
-    <rect x="182" y="258" width="28" height="20" rx="3" fill="#818cf8"/>
-    <rect x="214" y="258" width="44" height="20" rx="3" fill="#6366f1"/>
-    <rect x="262" y="258" width="20" height="20" rx="3" fill="#a78bfa"/>
-    <rect x="286" y="258" width="36" height="20" rx="3" fill="#6366f1"/>
-    <rect x="326" y="258" width="32" height="20" rx="3" fill="#818cf8"/>
-    <rect x="362" y="258" width="24" height="20" rx="3" fill="#a78bfa"/>
-    <rect x="390" y="258" width="48" height="20" rx="3" fill="#6366f1"/>
-  </g>
-
-  <!-- Line 4: schema hint -->
-  <text x="64" y="322" font-family="monospace" font-size="16" fill="#4b5563">z.string().min(32)</text>
-
-  <!-- Cursor blink -->
-  <rect x="232" y="308" width="10" height="20" rx="2" fill="#a78bfa" opacity="0.8">
-    <animate attributeName="opacity" values="0.8;0.2;0.8" dur="1.2s" repeatCount="indefinite"/>
-  </rect>
-
-  <!-- Bottom bar: vars show/hide toggle hint -->
-  <rect x="40" y="388" width="432" height="24" rx="0 0 16 16" fill="#1e1e2e"/>
-  <text x="64" y="404" font-family="monospace" font-size="12" fill="#6366f1" font-weight="bold">$</text>
-  <text x="78" y="404" font-family="monospace" font-size="12" fill="#9ca3af">vars toggle</text>
-
-  <!-- "vars" wordmark below -->
-  <text x="256" y="476" font-family="monospace" font-size="40" font-weight="bold" fill="url(#accent)" text-anchor="middle" letter-spacing="8">vars</text>
+  <!-- Right arm of V — fragmented/dissolving into segments -->
+  <path d="M416 112L384 176" stroke="#6366f1" stroke-width="56" stroke-linecap="round"/>
+  <path d="M368 208L340 264" stroke="#6366f1" stroke-width="56" stroke-linecap="round" opacity="0.7"/>
+  <path d="M324 296L296 352" stroke="#818cf8" stroke-width="56" stroke-linecap="round" opacity="0.45"/>
+  <path d="M280 368L256 400" stroke="#a78bfa" stroke-width="56" stroke-linecap="round" opacity="0.2"/>
 </svg>
