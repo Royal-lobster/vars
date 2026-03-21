@@ -133,7 +133,7 @@ function getZodContext(
 
 function analyzeZodPrefix(
   zodText: string,
-): { isTopLevel: boolean; isCoerce: boolean; schemaPrefix: string | null } {
+): { isTopLevel: boolean; isCoerce: boolean; schemaPrefix: string | null } | null {
   // "z." exactly — top level
   if (zodText === "z.") {
     return { isTopLevel: true, isCoerce: false, schemaPrefix: null };
