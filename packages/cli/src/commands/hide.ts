@@ -6,6 +6,7 @@ import { buildContext, requireKey } from "../utils/context.js";
 import { ENV_VALUE_LINE } from "../utils/patterns.js";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import * as output from "../utils/output.js";
+import * as clack from "@clack/prompts";
 
 export default defineCommand({
   meta: {
@@ -20,12 +21,43 @@ export default defineCommand({
     },
   },
   async run({ args }) {
+    output.intro("hide");
+
     const ctx = buildContext({ file: args.file });
-    const key = await requireKey();
+    const key = await requireKey(ctx);
+
+    // Count variables before encryption
+    const decryptedPath = resolve(dirname(ctx.varsFilePath), "unlocked.vars");
+    const sourcePath = existsSync(decryptedPath) ? decryptedPath : ctx.varsFilePath;
+    const varCount = countVariables(sourcePath);
+
+    const s = clack.spinner();
+    s.start("Encrypting...");
     hideVarsFile(ctx.varsFilePath, key);
-    output.success("All values encrypted → .vars restored.");
+    s.stop("Encrypted.");
+
+    output.stateChange("unlocked.vars", "vault.vars");
+
+    clack.note(
+      [
+        "Your changes are saved and encrypted.",
+        "vault.vars is safe to commit.",
+      ].join("\n"),
+      "Locked",
+    );
+
+    output.outro(`Locked. ${varCount} variable${varCount !== 1 ? "s" : ""} encrypted.`);
   },
 });
+
+/**
+ * Count the number of ENV_VALUE_LINE matches in a file.
+ */
+function countVariables(filePath: string): number {
+  const content = readFileSync(filePath, "utf8");
+  const lines = content.split("\n");
+  return lines.filter((line) => ENV_VALUE_LINE.test(line)).length;
+}
 
 /**
  * Encrypt all plaintext values and rename .vars.unlocked → .vars.
