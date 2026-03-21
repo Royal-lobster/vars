@@ -21,14 +21,14 @@ export function generateTypes(varsFile: VarsFile, envFile = ".vars"): string {
   lines.push("export const schema = z.object({");
   for (const v of varsFile.variables) {
     const schemaExpr = v.schema.includes("z.coerce.boolean()")
-      ? v.schema.replace("z.coerce.boolean()", "envBoolean()")
+      ? v.schema.replaceAll("z.coerce.boolean()", "envBoolean()")
       : v.schema;
     lines.push(`  ${v.name}: ${schemaExpr},`);
   }
   lines.push("});");
   lines.push("");
 
-  // Env type — use z.infer but wrap string fields with Redacted
+  // Env type — wrap only plain string fields with Redacted (not enums, numbers, booleans)
   lines.push("export type Env = {");
   for (const v of varsFile.variables) {
     const optional = v.schema.includes(".optional()");
@@ -39,13 +39,18 @@ export function generateTypes(varsFile: VarsFile, envFile = ".vars"): string {
   lines.push("};");
   lines.push("");
 
-  // Parse helper — validates + wraps strings in Redacted
+  // Parse helper — validates + wraps plain strings in Redacted
   lines.push("function parseEnv(input: Record<string, unknown>): Env {");
   lines.push("  const parsed = schema.parse(input);");
   lines.push("  return {");
   for (const v of varsFile.variables) {
-    if (isStringType(v)) {
-      lines.push(`    ${v.name}: new Redacted(parsed.${v.name}),`);
+    const optional = v.schema.includes(".optional()");
+    if (isSecretStringType(v)) {
+      if (optional) {
+        lines.push(`    ${v.name}: parsed.${v.name} != null ? new Redacted(parsed.${v.name}) : undefined,`);
+      } else {
+        lines.push(`    ${v.name}: new Redacted(parsed.${v.name}),`);
+      }
     } else {
       lines.push(`    ${v.name}: parsed.${v.name},`);
     }
@@ -70,7 +75,27 @@ export function generateTypes(varsFile: VarsFile, envFile = ".vars"): string {
     }
     lines.push("});");
     lines.push(`export type ClientEnv = Pick<Env, ${pickKeys}>;`);
-    lines.push("export const clientEnv: ClientEnv = parseEnv(process.env) as unknown as ClientEnv;");
+
+    // Parse only client vars — server-only vars may not exist in client builds
+    lines.push("function parseClientEnv(input: Record<string, unknown>): ClientEnv {");
+    lines.push("  const parsed = clientSchema.parse(input);");
+    lines.push("  return {");
+    for (const v of clientVars) {
+      const optional = v.schema.includes(".optional()");
+      if (isSecretStringType(v)) {
+        if (optional) {
+          lines.push(`    ${v.name}: parsed.${v.name} != null ? new Redacted(parsed.${v.name}) : undefined,`);
+        } else {
+          lines.push(`    ${v.name}: new Redacted(parsed.${v.name}),`);
+        }
+      } else {
+        lines.push(`    ${v.name}: parsed.${v.name},`);
+      }
+    }
+    lines.push("  } as ClientEnv;");
+    lines.push("}");
+
+    lines.push("export const clientEnv: ClientEnv = parseClientEnv(process.env);");
     lines.push("");
   }
 
@@ -90,7 +115,7 @@ function inferTsType(variable: Variable): string {
     return "boolean";
   }
 
-  // Enum types — extract literal union
+  // Enum types — bare literal union (not secrets)
   const enumMatch = schema.match(/z\.enum\(\[([^\]]+)\]\)/);
   if (enumMatch) {
     return enumMatch[1]
@@ -99,14 +124,16 @@ function inferTsType(variable: Variable): string {
       .join(" | ");
   }
 
-  // String types — wrapped in Redacted
+  // Plain string types — wrapped in Redacted
   return "Redacted<string>";
 }
 
-function isStringType(variable: Variable): boolean {
+/** Returns true for plain string types that should be wrapped in Redacted.
+ *  Enums, numbers, and booleans are not secrets. */
+function isSecretStringType(variable: Variable): boolean {
   const schema = variable.schema;
   if (schema.includes("z.number()") || schema.includes("z.coerce.number()")) return false;
   if (schema.includes("z.boolean()") || schema.includes("z.coerce.boolean()")) return false;
-  // Enums are string-based, wrap them too
+  if (schema.match(/z\.enum\(/)) return false;
   return true;
 }

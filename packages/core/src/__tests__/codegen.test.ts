@@ -38,16 +38,24 @@ describe("codegen", () => {
     expect(output).toContain("DEBUG: boolean");
   });
 
-  it("generates enum literal union types", () => {
+  it("does not wrap enum types in Redacted", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
+    // Enum type should be a bare literal union, not Redacted
     expect(output).toContain('"debug" | "info" | "warn" | "error"');
+    expect(output).not.toContain("Redacted<\"debug\"");
   });
 
   it("marks optional fields with ?", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
     expect(output).toContain("ANALYTICS_ID?: Redacted<string>");
+  });
+
+  it("guards optional string fields against undefined", () => {
+    const parsed = parse(fixture("basic.vars"));
+    const output = generateTypes(parsed);
+    expect(output).toContain("parsed.ANALYTICS_ID != null ? new Redacted(parsed.ANALYTICS_ID) : undefined");
   });
 
   it("includes auto-generated header comment", () => {
@@ -62,5 +70,25 @@ describe("codegen", () => {
     const output = generateTypes(parsed);
     expect(output).toContain("schema.parse(");
     expect(output).toContain("export const env: Env = parseEnv(process.env)");
+  });
+
+  it("generates clientEnv using clientSchema.parse for PUBLIC_ vars", () => {
+    const parsed = parse(
+      [
+        "SECRET_KEY  z.string()",
+        "  @default = shhh",
+        "",
+        "NEXT_PUBLIC_API_URL  z.string().url()",
+        "  @default = https://api.example.com",
+      ].join("\n"),
+    );
+    const output = generateTypes(parsed);
+
+    // Should use clientSchema.parse, not schema.parse for client env
+    expect(output).toContain("clientSchema.parse(input)");
+    expect(output).toContain("export const clientEnv: ClientEnv = parseClientEnv(process.env)");
+
+    // Should NOT parse all vars for client env
+    expect(output).not.toContain("clientEnv: ClientEnv = parseEnv(");
   });
 });
