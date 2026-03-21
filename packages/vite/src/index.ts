@@ -72,12 +72,12 @@ export function varsPlugin(options: VarsOptions = {}): Plugin {
 		},
 
 		configureServer(server) {
-			const envFilePath = resolve(process.cwd(), envFile);
-			server.watcher.add(envFilePath);
+			const { path: watchPath } = resolveVarsFile(envFile);
+			server.watcher.add(watchPath);
 			server.watcher.on("change", (changedPath: string) => {
-				if (resolve(changedPath) === envFilePath) {
+				if (resolve(changedPath) === watchPath) {
 					resolvedVars = loadVars();
-					server.restart(); // Force Vite to re-evaluate config with new define values
+					server.restart();
 				}
 			});
 		},
