@@ -1,0 +1,100 @@
+---
+title: Platform Integration
+description: Generate .env files from your vault and push/pull vars to deployment platforms.
+---
+
+`template` works. `push` and `pull` are coming.
+
+---
+
+## template
+
+```bash
+npx vars template --env prod > .env.production
+```
+
+Decrypts your vault for a given environment and writes a valid `.env` to stdout. Pipe it wherever.
+
+stdout gets the `.env`. stderr gets status messages. Pipes work fine.
+
+Values with spaces, `#`, or `=` get quoted automatically. Encrypted values are skipped in non-interactive mode (CI, pipes) so you don't get a passphrase prompt halfway through a pipeline.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--env <name>` | | Environment to render (default: `dev`) |
+| `--file <path>` | `-f` | Use a different vault file |
+
+**Examples**
+
+```bash
+# Write a .env file for prod
+npx vars template --env prod > .env.production
+
+# Pipe straight into your deploy script
+npx vars template --env staging | some-deploy-tool --env-file /dev/stdin
+
+# Use a non-default vault
+npx vars template --env prod -f .vars/backend.vars > backend.env
+```
+
+---
+
+## push <span style={{ color: "var(--color-fd-muted-foreground)", fontSize: "0.75em", fontWeight: "normal", marginLeft: "0.5em" }}>coming soon</span>
+
+```bash
+npx vars push --env prod --vercel
+```
+
+Decrypts your vault and pushes the values to your deployment platform. Prompts for confirmation before writing anything.
+
+The command exists but none of the platform adapters are wired up yet. It won't do anything useful right now.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--env <name>` | | Environment to push (required) |
+| `--file <path>` | `-f` | Use a different vault file |
+| `--vercel` | | Push to Vercel |
+| `--netlify` | | Push to Netlify |
+| `--railway` | | Push to Railway |
+| `--fly` | | Push to Fly.io |
+
+---
+
+## pull <span style={{ color: "var(--color-fd-muted-foreground)", fontSize: "0.75em", fontWeight: "normal", marginLeft: "0.5em" }}>coming soon</span>
+
+```bash
+npx vars pull --vercel
+```
+
+Pulls environment variables from your platform, encrypts them, and merges them into your `.vars` vault. Existing values aren't overwritten by default.
+
+Same deal — scaffolded, not implemented.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--env <name>` | | Environment to pull (default: `prod`) |
+| `--file <path>` | `-f` | Use a different vault file |
+| `--vercel` | | Pull from Vercel |
+| `--netlify` | | Pull from Netlify |
+
+---
+
+## What works right now
+
+| Command | Status |
+|---------|--------|
+| `template` | Working |
+| `push --vercel` | Coming soon |
+| `push --netlify` | Coming soon |
+| `push --railway` | Coming soon |
+| `push --fly` | Coming soon |
+| `pull --vercel` | Coming soon |
+| `pull --netlify` | Coming soon |
+
+For CI, `template` covers most cases. Generate the `.env`, hand it to your deploy tool.

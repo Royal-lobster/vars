@@ -124,6 +124,19 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@utility animate-marquee {
+  animation: marquee 20s linear infinite;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

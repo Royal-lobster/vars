@@ -29,17 +29,26 @@ z.enum(["development", "staging", "production"])`,
     label: 'Multi-env',
     title: 'One file, all environments',
     description:
-      'dev, staging, prod — all in one .vars file. No more .env.local, .env.production, .env.staging sprawl.',
+      'dev, staging, prod in one .vars file. No more .env.local, .env.production, .env.staging sprawl.',
     image: '/images/fireflies.webp',
     span: 'narrow',
+    lang: 'vars',
+    code: `PORT  z.coerce.number()
+  @default = 3000
+  @prod    = 8080`,
   },
   {
     label: 'CLI',
     title: 'Powerful tooling',
     description:
-      'init, unlock, run, check, gen — everything from the command line. Scriptable and CI-friendly.',
+      'Everything from the command line. Scriptable and CI-friendly.',
     image: '/images/aurora.webp',
-    span: 'narrow',
+    span: 'wide',
+    lang: 'bash',
+    code: `$ vars show     # decrypt, edit
+$ vars hide     # re-encrypt
+$ vars run      # inject & run
+$ vars gen      # typed exports`,
   },
   {
     label: 'Editor Intelligence',
@@ -47,14 +56,32 @@ z.enum(["development", "staging", "production"])`,
     description:
       'Autocomplete, inline validation, hover docs — your .vars file gets first-class editor support through a dedicated language server.',
     image: '/images/neural-mesh.webp',
+    span: 'narrow',
+  },
+  {
+    label: 'Team Sharing',
+    title: 'Commit your secrets',
+    description:
+      'The vault is encrypted, so it goes straight into git. New teammate? Clone and enter the PIN. No Slack DMs. No 1Password vaults. No Doppler.',
+    image: '/images/crystal.webp',
+    span: 'narrow',
+  },
+  {
+    label: 'Platform Sync',
+    title: 'Push and pull from your hosting',
+    description:
+      'Sync secrets with Vercel, Netlify, Railway, and Fly.io. Push from your vault to the platform, or pull existing vars back into your encrypted file.',
+    image: '/images/fireflies.webp',
     span: 'wide',
+    lang: 'bash',
+    code: `$ vars push --env prod --vercel   # vault → Vercel
+$ vars pull --netlify             # Netlify → vault
+$ vars template --env prod > .env # generate .env`,
   },
 ];
 
-const REFINE_CODE = `// Cross-variable constraint
-@refine (env) =>
-  env.LOG_LEVEL !== "debug"
-  || env.DEBUG === true
+const REFINE_CODE = `# Cross-variable constraint
+@refine env.LOG_LEVEL !== "debug" || env.DEBUG === true
   "DEBUG must be true when LOG_LEVEL is debug"`;
 
 function spanClass(span: BentoItem['span']) {

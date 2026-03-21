@@ -1,0 +1,79 @@
+---
+title: NestJS
+description: Load encrypted vars as an injectable module in NestJS.
+---
+
+## Install
+
+```bash
+pnpm add @vars/nestjs
+```
+
+## Configure
+
+Import `EnvxModule` in your root `AppModule`:
+
+```ts title="app.module.ts"
+import { Module } from "@nestjs/common";
+import { EnvxModule } from "@vars/nestjs";
+
+@Module({
+  imports: [
+    EnvxModule.forRoot({ env: "production" }),
+  ],
+})
+export class AppModule {}
+```
+
+vars decrypts `.vars/vault.vars` at startup, validates your schemas, and makes the result available globally via DI. Any service can inject it from there.
+
+## Access variables
+
+Inject using the `VARS` token:
+
+```ts title="app.service.ts"
+import { Injectable, Inject } from "@nestjs/common";
+import { VARS } from "@vars/nestjs";
+
+@Injectable()
+export class AppService {
+  constructor(@Inject(VARS) private env: Record<string, unknown>) {}
+
+  getDatabaseUrl(): string {
+    return this.env.DATABASE_URL as string;
+  }
+}
+```
+
+If you generate typed accessors with `vars gen`, you can type `env` more precisely:
+
+```ts
+import type { Env } from "../env.generated";
+
+constructor(@Inject(VARS) private env: Env) {}
+```
+
+## Options
+
+```ts
+EnvxModule.forRoot({
+  envFile: ".vars/vault.vars", // path to vault file
+  env: "production",           // which environment to load
+  key: "your-key",             // decryption key (omit to use key file)
+})
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `envFile` | `.vars/vault.vars` | Path to the vault file |
+| `env` | `VARS_ENV` env var, then `"development"` | Which environment to decrypt |
+| `key` | `VARS_KEY` env var, then key file | Decryption key |
+
+In CI and production, set `VARS_KEY` as a secret and don't ship the key file.
+
+## Tips
+
+- `EnvxModule` is global. Import it once in `AppModule` and every service can inject `VARS` without re-importing anything.
+- NestJS is server-only, so there's no client/server split to worry about.
+- If the vault can't be decrypted (wrong key, missing file), `forRoot` throws at startup. Your app won't boot with bad vars.
+- vars loads the vault synchronously, so `forRoot` is all you need. No async setup required.

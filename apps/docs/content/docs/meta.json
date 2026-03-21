@@ -1,4 +1,14 @@
 {
   "root": true,
-  "pages": ["---Getting Started---", "index"]
+  "pages": [
+    "why-vars",
+    "index",
+    "file-format",
+    "---CLI---",
+    "...cli",
+    "---Frameworks---",
+    "...frameworks",
+    "---",
+    "encryption-security"
+  ]
 }

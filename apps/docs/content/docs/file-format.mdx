@@ -1,0 +1,249 @@
+---
+title: File Format
+description: Complete reference for the .vars file format.
+---
+
+Here's a `.vars` file using every feature. Read this first, then use the sections below as a reference.
+
+```vars
+# Database config
+DATABASE_URL  z.string().url().startsWith("postgres://")
+  @description "Primary database connection"
+  @owner       "platform-team"
+  @dev         = postgres://localhost:5432/myapp
+  @staging     = enc:v1:aes256gcm:a1b2c3:d4e5f6:g7h8i9
+  @prod        = enc:v1:aes256gcm:j8fn2p:t9u0v1:w2x3y4
+
+# Port — same across all envs, so @default covers it
+PORT  z.coerce.number().int().min(1024).max(65535)
+  @default = 3000
+
+# Feature flags
+ENABLE_BETA  z.enum(["true", "false"])
+  @deprecated "Use FEATURE_FLAGS instead"
+  @dev        = true
+  @prod       = false
+
+# Expiring API key
+STRIPE_KEY  z.string().startsWith("sk_")
+  @expires "2026-01-01"
+  @dev     = enc:v1:aes256gcm:abc123:def456:ghi789
+  @prod    = enc:v1:aes256gcm:xyz987:uvw654:rst321
+
+# Cross-variable constraint
+@refine env.PORT !== 443 || env.DATABASE_URL.startsWith("postgres://")
+  "Port 443 requires a postgres:// DATABASE_URL"
+
+# Inherit shared base config
+@extends ./base.vars
+```
+
+---
+
+## Variable declarations
+
+Name on the left, Zod schema on the right, separated by two or more spaces (or tabs).
+
+```vars
+VARIABLE_NAME  z.string()
+```
+
+- Name must be `UPPER_SNAKE_CASE` — starts with a capital letter, then uppercase letters, digits, and underscores
+- Schema is any valid Zod expression starting with `z.`
+- The separator needs to be at least two spaces (one space won't parse)
+
+```vars
+# Valid
+DATABASE_URL   z.string().url()
+PORT           z.coerce.number().int()
+NODE_ENV       z.enum(["development", "production", "test"])
+TIMEOUT_MS     z.number().positive().default(5000)
+
+# These will error
+database_url   z.string()   # lowercase name
+DATABASE_URL z.string()     # only one space
+DATABASE_URL                # missing schema
+```
+
+## Environment blocks
+
+Values live inside a variable block, indented at least one space or tab. Tag each value with `@env-name`.
+
+```vars
+API_URL  z.string().url()
+  @dev        = https://api.dev.example.com
+  @staging    = https://api.staging.example.com
+  @prod       = enc:v1:aes256gcm:abc123:def456:ghi789
+```
+
+Environment names are freeform — `@dev`, `@prod`, `@staging`, `@ci`, whatever you want.
+
+`@default` is the catch-all. It applies when no environment-specific value matches.
+
+```vars
+LOG_LEVEL  z.enum(["debug", "info", "warn", "error"])
+  @default  = info
+  @dev      = debug
+```
+
+Here `@prod`, `@staging`, `@ci` all get `info`. Only `@dev` gets `debug`.
+
+### Value quoting
+
+Quoted or unquoted both work. Quotes get stripped before use.
+
+```vars
+APP_NAME  z.string()
+  @default = "My App"    # same result as: My App
+
+SECRET    z.string()
+  @dev     = 'my-secret' # single or double, doesn't matter
+```
+
+Inline comments work on unquoted values — the parser drops everything from ` #` onward.
+
+```vars
+PORT  z.coerce.number()
+  @default = 3000 # this comment is ignored
+```
+
+## Encrypted values
+
+After `vars hide`, values become encrypted blobs:
+
+```
+enc:v1:aes256gcm:<iv>:<ciphertext>:<tag>
+```
+
+Always six colon-separated segments. All three data parts are base64-encoded.
+
+| Part | What it is |
+|------|-----------|
+| `enc` | Literal prefix |
+| `v1` | Format version |
+| `aes256gcm` | AES-256-GCM |
+| `<iv>` | 12-byte initialization vector |
+| `<ciphertext>` | The encrypted value |
+| `<tag>` | 16-byte auth tag |
+
+You never write these by hand. `vars hide` produces them, `vars show` decrypts them.
+
+The auth tag catches tampering — decryption fails loudly rather than giving you corrupted data.
+
+## Comments
+
+Start a line with `#` to comment it out. For inline comments on unquoted values, use ` #` (space then hash).
+
+```vars
+# This whole line is a comment
+
+DATABASE_URL  z.string().url()
+  @dev = postgres://localhost/myapp  # dev DB, no auth needed
+```
+
+Inside a quoted string, `#` is part of the value and won't be stripped.
+
+## Metadata
+
+Metadata lives inside a variable block, indented like env values, but with no `=` sign.
+
+```vars
+API_KEY  z.string().min(32)
+  @description "Third-party service API key"
+  @owner       "backend-team"
+  @expires     "2026-06-01"
+  @dev         = enc:v1:aes256gcm:abc123:def456:ghi789
+```
+
+### `@description`
+
+What the variable is for.
+
+```vars
+REDIS_URL  z.string().url()
+  @description "Redis connection for session storage"
+```
+
+### `@owner`
+
+Who's responsible for it. Pays off in big repos where many teams share one file.
+
+```vars
+PAYMENT_WEBHOOK_SECRET  z.string()
+  @owner "payments-team"
+```
+
+### `@expires`
+
+Rotation date. vars warns you when it's coming up.
+
+```vars
+OAUTH_CLIENT_SECRET  z.string()
+  @expires "2026-03-01"
+```
+
+### `@deprecated`
+
+Still works, but raises a warning with your message.
+
+```vars
+OLD_API_URL  z.string().url()
+  @deprecated "Use NEW_API_URL instead — migrating by Q2"
+  @default    = https://old.api.example.com
+```
+
+## `@refine`
+
+Validates relationships between variables. Two lines: an expression, then an indented error message.
+
+```vars
+@refine env.DATABASE_URL.includes("localhost") || env.NODE_ENV !== "production"
+  "Production must not use localhost DATABASE_URL"
+```
+
+The expression runs after all values are loaded. Reference any variable with `env.VARIABLE_NAME`.
+
+```vars
+@refine env.MAX_CONNECTIONS >= env.MIN_CONNECTIONS
+  "MAX_CONNECTIONS must be >= MIN_CONNECTIONS"
+```
+
+One `@refine` per constraint. Stack as many as you need.
+
+## `@extends`
+
+Pulls in variables from a base file. Your values win on conflicts.
+
+```vars
+@extends ./base.vars
+```
+
+Paths are relative to the current file. Only one `@extends` per file.
+
+```vars
+# base.vars
+LOG_LEVEL  z.enum(["debug", "info", "warn", "error"])
+  @default = info
+
+# app.vars
+@extends ./base.vars
+
+LOG_LEVEL  z.enum(["debug", "info", "warn", "error"])
+  @dev = debug   # overrides the base @default for dev
+```
+
+## Quick reference
+
+| Syntax | Effect |
+|--------|--------|
+| `NAME  z.schema()` | Variable declaration |
+| `  @env = value` | Value for a specific environment |
+| `  @default = value` | Fallback value |
+| `  @description "..."` | Description annotation |
+| `  @owner "..."` | Owner annotation |
+| `  @expires "..."` | Expiry date |
+| `  @deprecated "..."` | Deprecation warning |
+| `@refine expr` + indented message | Cross-variable constraint |
+| `@extends ./path` | Inherit from another file |
+| `# comment` | Line comment |
+| `enc:v1:aes256gcm:iv:ct:tag` | Encrypted value (from `vars hide`) |

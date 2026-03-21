@@ -1,0 +1,84 @@
+---
+title: Next.js
+description: Encrypted, typed env vars in your Next.js app. Zero dotenv files.
+---
+
+## Install
+
+```bash
+pnpm add @vars/next
+```
+
+## Configure
+
+```ts
+// next.config.ts
+import { withEnvx } from "@vars/next";
+
+export default withEnvx({
+  reactStrictMode: true,
+});
+```
+
+`withEnvx` wraps your existing Next.js config. On every build and `next dev`, it decrypts `.vars/vault.vars`, validates against your Zod schemas, and injects into `process.env`.
+
+## Access variables
+
+Run `npx vars gen` to get `env.generated.ts`. It auto-regenerates when your `.vars` file changes, so types stay current.
+
+```ts
+import { env } from "./env.generated";
+
+// server component or API route
+const db = env.DATABASE_URL; // string, not string | undefined
+```
+
+Typed, autocompleted, no guessing. This is the recommended way to access your variables.
+
+`process.env` still works if you prefer it — vars injects everything there too. But you lose the type safety.
+
+## Client-side variables
+
+Prefix with `NEXT_PUBLIC_`:
+
+```vars
+NEXT_PUBLIC_API_URL  z.string().url()
+  @dev  = http://localhost:3000
+  @prod = https://api.yourapp.com
+```
+
+Anything starting with `NEXT_PUBLIC_` gets merged into Next.js's `env` config automatically. It lands in the client bundle without extra wiring.
+
+```ts
+// any client component
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+```
+
+## Options
+
+Pass a second argument to `withEnvx`:
+
+```ts
+export default withEnvx(
+  { reactStrictMode: true },
+  {
+    envFile: ".vars/vault.vars", // path to your vault
+    env: "production",           // override VARS_ENV
+    key: process.env.VARS_KEY,   // override key lookup
+  },
+);
+```
+
+| Option | Type | Default |
+|--------|------|---------|
+| `envFile` | `string` | `.vars/vault.vars` |
+| `env` | `string` | `VARS_ENV` env var, then `"development"` |
+| `key` | `string` | `VARS_KEY` env var, then reads `.vars/key` file |
+
+## Tips
+
+In CI, set `VARS_KEY` as a secret. vars reads it from `process.env` — no code changes needed.
+
+Schema failures throw at build time. A bad URL or wrong type blows up before anything ships, not after.
+
+Only `NEXT_PUBLIC_*` vars reach the browser. Everything else is server-only, even if you forget to think about it.

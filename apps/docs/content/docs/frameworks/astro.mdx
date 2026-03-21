@@ -1,0 +1,72 @@
+---
+title: Astro
+description: Load encrypted vars in Astro with one integration.
+---
+
+## Install
+
+```bash
+pnpm add @vars/astro
+```
+
+## Configure
+
+```ts title="astro.config.mjs"
+import { defineConfig } from "astro/config";
+import { varsIntegration } from "@vars/astro";
+
+export default defineConfig({
+  integrations: [varsIntegration()],
+});
+```
+
+That's it. On every build or dev server start, vars decrypts `.vars/vault.vars`, validates your schemas, and injects everything into `process.env`.
+
+## Access variables
+
+Server-side (`.astro` components, API routes, SSR):
+
+```ts
+const dbUrl = process.env.DATABASE_URL;
+```
+
+Client-side: prefix the variable name with `PUBLIC_`:
+
+```vars
+// .vars/unlocked.vars
+PUBLIC_API_URL  z.string().url()
+  @dev  = http://localhost:3000
+  @prod = https://api.example.com
+```
+
+Then access it in any component, including client scripts:
+
+```ts
+const apiUrl = import.meta.env.PUBLIC_API_URL;
+```
+
+Astro uses `PUBLIC_*`, not `VITE_*`. The integration injects those into Vite's `define` map so they're available on the client at build time.
+
+## Options
+
+```ts
+varsIntegration({
+  envFile: ".vars/vault.vars", // path to vault file
+  env: "production",           // which environment to load
+  key: "your-key",             // decryption key (omit to use key file)
+})
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `envFile` | `.vars/vault.vars` | Path to the vault file |
+| `env` | `VARS_ENV` env var, then `"development"` | Which environment to decrypt |
+| `key` | `VARS_KEY` env var, then key file | Decryption key |
+
+In CI and production, set `VARS_KEY` as a secret and don't ship the key file.
+
+## Tips
+
+- Hooks into `astro:config:setup`, which runs before Astro processes anything else. Your vars are ready before any page or endpoint sees them.
+- Auto-regenerates `env.generated.ts` when the vault changes. No need to run `vars gen` by hand.
+- Only `PUBLIC_*` vars reach the client. Everything else is server-only.

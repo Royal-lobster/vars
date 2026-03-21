@@ -20,10 +20,10 @@ const FRAMEWORKS: {
   {
     name: 'Next.js',
     lang: 'js',
-    code: `// next.config.mjs
-import { withVars } from "@vars/next";
+    code: `// next.config.ts
+import { withEnvx } from "@vars/next";
 
-export default withVars({
+export default withEnvx({
   // your next config
 });`,
     color: 'from-white/5 to-white/[0.02]',
@@ -60,10 +60,10 @@ export default defineConfig({
     name: 'NestJS',
     lang: 'ts',
     code: `// app.module.ts
-import { VarsModule } from "@vars/nestjs";
+import { EnvxModule } from "@vars/nestjs";
 
 @Module({
-  imports: [VarsModule.forRoot()],
+  imports: [EnvxModule.forRoot()],
 })`,
     color: 'from-red-500/5 to-red-500/[0.02]',
     Icon: SiNestjs,

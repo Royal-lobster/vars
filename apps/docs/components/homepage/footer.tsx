@@ -1,19 +1,20 @@
+import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 
 const COLUMNS = [
   {
     title: 'Product',
     links: [
-      { label: 'Documentation', href: '/docs' },
+      { label: 'Why vars?', href: '/docs/why-vars' },
       { label: 'Getting Started', href: '/docs' },
     ],
   },
   {
     title: 'Integrations',
     links: [
-      { label: 'Next.js', href: '/docs' },
-      { label: 'Vite', href: '/docs' },
-      { label: 'Astro', href: '/docs' },
+      { label: 'Next.js', href: '/docs/frameworks/nextjs' },
+      { label: 'Vite', href: '/docs/frameworks/vite' },
+      { label: 'Astro', href: '/docs/frameworks/astro' },
     ],
   },
   {
@@ -32,11 +33,7 @@ export function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2.5 font-bold">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-green-600 shadow-sm shadow-green-500/20">
-                <span className="font-mono text-[11px] font-bold text-green-50">
-                  {'{ }'}
-                </span>
-              </span>
+              <Image src="/logo.svg" alt="vars" width={28} height={28} className="rounded-lg" />
               vars
             </div>
             <p className="mt-3 max-w-[280px] text-[13px] leading-relaxed text-white/25">
