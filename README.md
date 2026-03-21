@@ -65,8 +65,8 @@ vars run --env dev -- npm start
 
 ```typescript
 // next.config.ts
-import { withEnvx } from '@vars/next'
-export default withEnvx()
+import { withVars } from '@vars/next'
+export default withVars()
 
 // vite.config.ts
 import { varsPlugin } from '@vars/vite'

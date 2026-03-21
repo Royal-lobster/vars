@@ -1,15 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { EnvxModule, VARS } from "../index.js";
+import { VarsModule, VARS } from "../index.js";
 
 // Mock @vars/core
 vi.mock("@vars/core", () => ({
-	loadEnvx: vi.fn(),
+	loadVars: vi.fn(),
 	readKeyFile: vi.fn(),
 }));
 
-import { loadEnvx, readKeyFile } from "@vars/core";
+import { loadVars, readKeyFile } from "@vars/core";
 
-const mockLoadEnvx = vi.mocked(loadEnvx);
+const mockLoadVars = vi.mocked(loadVars);
 const mockReadKeyFile = vi.mocked(readKeyFile);
 
 describe("@vars/nestjs", () => {
@@ -28,39 +28,39 @@ describe("@vars/nestjs", () => {
 		});
 	});
 
-	describe("EnvxModule", () => {
+	describe("VarsModule", () => {
 		it("has a forRoot static method", () => {
-			expect(typeof EnvxModule.forRoot).toBe("function");
+			expect(typeof VarsModule.forRoot).toBe("function");
 		});
 
 		it("forRoot returns a DynamicModule with VARS provider", () => {
-			mockLoadEnvx.mockReturnValue({
+			mockLoadVars.mockReturnValue({
 				DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 				PORT: 3000,
 			});
-			const dynamicModule = EnvxModule.forRoot();
-			expect(dynamicModule.module).toBe(EnvxModule);
+			const dynamicModule = VarsModule.forRoot();
+			expect(dynamicModule.module).toBe(VarsModule);
 			expect(dynamicModule.providers).toBeDefined();
 			expect(dynamicModule.exports).toBeDefined();
 		});
 
 		it("forRoot accepts VarsOptions", () => {
-			mockLoadEnvx.mockReturnValue({});
-			const dynamicModule = EnvxModule.forRoot({
+			mockLoadVars.mockReturnValue({});
+			const dynamicModule = VarsModule.forRoot({
 				envFile: "custom.vars",
 				env: "staging",
 				key: "test-key",
 			});
-			expect(dynamicModule.module).toBe(EnvxModule);
-			expect(mockLoadEnvx).toHaveBeenCalledWith(
+			expect(dynamicModule.module).toBe(VarsModule);
+			expect(mockLoadVars).toHaveBeenCalledWith(
 				expect.stringContaining("custom.vars"),
 				expect.objectContaining({ env: "staging", key: "test-key" }),
 			);
 		});
 
 		it("forRoot creates a provider with VARS token", () => {
-			mockLoadEnvx.mockReturnValue({ PORT: 3000 });
-			const dynamicModule = EnvxModule.forRoot();
+			mockLoadVars.mockReturnValue({ PORT: 3000 });
+			const dynamicModule = VarsModule.forRoot();
 			const varsProvider = dynamicModule.providers?.find(
 				(p: { provide?: symbol }) => p.provide === VARS,
 			);
@@ -72,8 +72,8 @@ describe("@vars/nestjs", () => {
 				DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 				PORT: 3000,
 			};
-			mockLoadEnvx.mockReturnValue(resolved);
-			const dynamicModule = EnvxModule.forRoot();
+			mockLoadVars.mockReturnValue(resolved);
+			const dynamicModule = VarsModule.forRoot();
 			const varsProvider = dynamicModule.providers?.find(
 				(p: { provide?: symbol }) => p.provide === VARS,
 			) as { provide: symbol; useValue: Record<string, unknown> };
@@ -81,14 +81,14 @@ describe("@vars/nestjs", () => {
 		});
 
 		it("forRoot exports the VARS provider for injection", () => {
-			mockLoadEnvx.mockReturnValue({});
-			const dynamicModule = EnvxModule.forRoot();
+			mockLoadVars.mockReturnValue({});
+			const dynamicModule = VarsModule.forRoot();
 			expect(dynamicModule.exports).toContain(VARS);
 		});
 
 		it("marks module as global so VARS is available everywhere", () => {
-			mockLoadEnvx.mockReturnValue({});
-			const dynamicModule = EnvxModule.forRoot();
+			mockLoadVars.mockReturnValue({});
+			const dynamicModule = VarsModule.forRoot();
 			expect(dynamicModule.global).toBe(true);
 		});
 
@@ -96,9 +96,9 @@ describe("@vars/nestjs", () => {
 			const originalEnv = { ...process.env };
 			process.env.VARS_ENV = "production";
 			process.env.VARS_KEY = "env-key";
-			mockLoadEnvx.mockReturnValue({});
-			EnvxModule.forRoot();
-			expect(mockLoadEnvx).toHaveBeenCalledWith(
+			mockLoadVars.mockReturnValue({});
+			VarsModule.forRoot();
+			expect(mockLoadVars).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ env: "production", key: "env-key" }),
 			);
@@ -109,9 +109,9 @@ describe("@vars/nestjs", () => {
 			const originalEnv = { ...process.env };
 			process.env.VARS_KEY = undefined;
 			mockReadKeyFile.mockReturnValue("file-key-base64");
-			mockLoadEnvx.mockReturnValue({});
-			EnvxModule.forRoot();
-			expect(mockLoadEnvx).toHaveBeenCalledWith(
+			mockLoadVars.mockReturnValue({});
+			VarsModule.forRoot();
+			expect(mockLoadVars).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ key: "file-key-base64" }),
 			);

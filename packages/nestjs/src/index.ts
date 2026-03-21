@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { loadEnvx, readKeyFile } from "@vars/core";
+import { loadVars, readKeyFile } from "@vars/core";
 import { Module, type DynamicModule } from "@nestjs/common";
 
 export interface VarsOptions {
@@ -30,16 +30,16 @@ export const VARS: unique symbol = Symbol("VARS");
  * @example
  * ```ts
  * // app.module.ts
- * import { EnvxModule, VARS } from '@vars/nestjs'
+ * import { VarsModule, VARS } from '@vars/nestjs'
  *
  * @Module({
- *   imports: [EnvxModule.forRoot({ env: 'production' })],
+ *   imports: [VarsModule.forRoot({ env: 'production' })],
  * })
  * export class AppModule {}
  * ```
  */
 // biome-ignore lint/complexity/noStaticOnlyClass: NestJS module pattern requires a class for DI
-export class EnvxModule {
+export class VarsModule {
 	static forRoot(options: VarsOptions = {}): DynamicModule {
 		const envFile = options.envFile ?? ".vars/vault.vars";
 		const env = options.env ?? process.env.VARS_ENV ?? "development";
@@ -52,13 +52,13 @@ export class EnvxModule {
 
 		let resolved: Record<string, unknown>;
 		try {
-			resolved = loadEnvx(envFilePath, loadOptions as { env?: string; key?: string });
+			resolved = loadVars(envFilePath, loadOptions as { env?: string; key?: string });
 		} catch (err) {
 			throw new Error(`[@vars/nestjs] Failed to load ${envFile}: ${(err as Error).message}`);
 		}
 
 		return {
-			module: EnvxModule,
+			module: VarsModule,
 			global: true,
 			providers: [
 				{

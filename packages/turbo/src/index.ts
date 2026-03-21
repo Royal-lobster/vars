@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
-import { generateTypes, loadEnvx, parse } from "@vars/core";
+import { generateTypes, loadVars, parse } from "@vars/core";
 
 export interface VarsOptions {
 	envFile?: string;
@@ -90,7 +90,7 @@ export function checkAll(rootDir: string, options: VarsOptions = {}): CheckResul
 			const loadOptions: Record<string, unknown> = { env };
 			if (key) loadOptions.key = key;
 
-			loadEnvx(file, loadOptions as { env?: string; key?: string });
+			loadVars(file, loadOptions as { env?: string; key?: string });
 			results.push({ file: relative(rootDir, file), ok: true });
 		} catch (err) {
 			results.push({

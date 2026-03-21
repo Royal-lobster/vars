@@ -3,7 +3,7 @@ import { varsPlugin } from "../index.js";
 
 // Mock @vars/core
 vi.mock("@vars/core", () => ({
-	loadEnvx: vi.fn(),
+	loadVars: vi.fn(),
 	generateTypes: vi.fn(),
 	parse: vi.fn(),
 	extractValue: vi.fn((value: unknown) => {
@@ -21,9 +21,9 @@ vi.mock("@vars/core", () => ({
 	regenerateIfStale: vi.fn(),
 }));
 
-import { extractValue, loadEnvx, readKeyFile, regenerateIfStale } from "@vars/core";
+import { extractValue, loadVars, readKeyFile, regenerateIfStale } from "@vars/core";
 
-const mockLoadEnvx = vi.mocked(loadEnvx);
+const mockLoadVars = vi.mocked(loadVars);
 const mockExtractValue = vi.mocked(extractValue);
 const mockReadKeyFile = vi.mocked(readKeyFile);
 const mockRegenerateIfStale = vi.mocked(regenerateIfStale);
@@ -54,13 +54,13 @@ describe("varsPlugin", () => {
 	});
 
 	it("returns a Vite plugin object with name 'vars'", () => {
-		mockLoadEnvx.mockReturnValue({});
+		mockLoadVars.mockReturnValue({});
 		const plugin = varsPlugin();
 		expect(plugin.name).toBe("vars");
 	});
 
 	it("has a config hook that returns define replacements", () => {
-		mockLoadEnvx.mockReturnValue({
+		mockLoadVars.mockReturnValue({
 			VITE_API_URL: { unwrap: () => "https://api.example.com", toString: () => "<redacted>" },
 			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 		});
@@ -73,7 +73,7 @@ describe("varsPlugin", () => {
 	});
 
 	it("only exposes VITE_* vars via import.meta.env replacements", () => {
-		mockLoadEnvx.mockReturnValue({
+		mockLoadVars.mockReturnValue({
 			VITE_API_URL: { unwrap: () => "https://api.example.com", toString: () => "<redacted>" },
 			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 		});
@@ -85,7 +85,7 @@ describe("varsPlugin", () => {
 	});
 
 	it("injects ALL vars into process.env for server-side access", () => {
-		mockLoadEnvx.mockReturnValue({
+		mockLoadVars.mockReturnValue({
 			VITE_API_URL: { unwrap: () => "https://api.example.com", toString: () => "<redacted>" },
 			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 			PORT: 3000,
@@ -97,8 +97,8 @@ describe("varsPlugin", () => {
 		expect(process.env.PORT).toBe("3000");
 	});
 
-	it("accepts VarsOptions and passes them to loadEnvx", () => {
-		mockLoadEnvx.mockReturnValue({});
+	it("accepts VarsOptions and passes them to loadVars", () => {
+		mockLoadVars.mockReturnValue({});
 		const plugin = varsPlugin({
 			envFile: "custom.vars",
 			env: "staging",
@@ -106,20 +106,20 @@ describe("varsPlugin", () => {
 		});
 		const configHook = plugin.config as () => unknown;
 		configHook();
-		expect(mockLoadEnvx).toHaveBeenCalledWith(
+		expect(mockLoadVars).toHaveBeenCalledWith(
 			expect.stringContaining("custom.vars"),
 			expect.objectContaining({ env: "staging", key: "test-key" }),
 		);
 	});
 
 	it("has configureServer hook for HMR on .vars change", () => {
-		mockLoadEnvx.mockReturnValue({});
+		mockLoadVars.mockReturnValue({});
 		const plugin = varsPlugin();
 		expect(plugin.configureServer).toBeDefined();
 	});
 
 	it("calls regenerateIfStale during config", () => {
-		mockLoadEnvx.mockReturnValue({});
+		mockLoadVars.mockReturnValue({});
 		const plugin = varsPlugin();
 		const configHook = plugin.config as () => unknown;
 		configHook();
@@ -130,7 +130,7 @@ describe("varsPlugin", () => {
 	});
 
 	it("handles non-VITE_ vars with primitive types correctly", () => {
-		mockLoadEnvx.mockReturnValue({
+		mockLoadVars.mockReturnValue({
 			VITE_DEBUG: true,
 			VITE_PORT: 8080,
 			VITE_NAME: { unwrap: () => "app", toString: () => "<redacted>" },

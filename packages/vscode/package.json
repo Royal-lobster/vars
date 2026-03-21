@@ -30,8 +30,7 @@
 				"id": "vars",
 				"aliases": [
 					"vars",
-					"Vars",
-					"envx"
+					"Vars"
 				],
 				"extensions": [
 					".vars"

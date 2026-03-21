@@ -4,9 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, beforeEach } from "vitest";
 import { encrypt } from "../crypto.js";
-import { loadEnvx, Redacted } from "../index.js";
+import { loadVars, Redacted } from "../index.js";
 
-describe("loadEnvx", () => {
+describe("loadVars", () => {
   let tmpDir: string;
   let key: Buffer;
 
@@ -28,7 +28,7 @@ describe("loadEnvx", () => {
       "  @default = localhost",
     ].join("\n"));
 
-    const config = loadEnvx(join(tmpDir, ".vars"), {
+    const config = loadVars(join(tmpDir, ".vars"), {
       env: "dev",
       key,
     });
@@ -50,7 +50,7 @@ describe("loadEnvx", () => {
       `  @default = ${encHost}`,
     ].join("\n"));
 
-    const config = loadEnvx(join(tmpDir, ".vars"), {
+    const config = loadVars(join(tmpDir, ".vars"), {
       env: "prod",
       key,
     });
@@ -71,7 +71,7 @@ describe("loadEnvx", () => {
       "  @default = true",
     ].join("\n"));
 
-    const config = loadEnvx(join(tmpDir, ".vars"), { env: "dev", key });
+    const config = loadVars(join(tmpDir, ".vars"), { env: "dev", key });
 
     expect(config.SECRET).toBeInstanceOf(Redacted);
     expect(typeof config.PORT).toBe("number");
@@ -85,7 +85,7 @@ describe("loadEnvx", () => {
     ].join("\n"));
 
     expect(() =>
-      loadEnvx(join(tmpDir, ".vars"), { env: "prod", key }),
+      loadVars(join(tmpDir, ".vars"), { env: "prod", key }),
     ).toThrow();
   });
 
@@ -96,7 +96,7 @@ describe("loadEnvx", () => {
     ].join("\n"));
 
     expect(() =>
-      loadEnvx(join(tmpDir, ".vars"), { env: "dev", key }),
+      loadVars(join(tmpDir, ".vars"), { env: "dev", key }),
     ).toThrow();
   });
 
@@ -113,7 +113,7 @@ describe("loadEnvx", () => {
     ].join("\n"));
 
     expect(() =>
-      loadEnvx(join(tmpDir, ".vars"), { env: "dev", key }),
+      loadVars(join(tmpDir, ".vars"), { env: "dev", key }),
     ).toThrow("DEBUG must be true");
   });
 
@@ -123,7 +123,7 @@ describe("loadEnvx", () => {
       "  @default = 3000",
     ].join("\n"));
 
-    const config = loadEnvx(join(tmpDir, ".vars"), { key });
+    const config = loadVars(join(tmpDir, ".vars"), { key });
     expect(config.PORT).toBe(3000);
   });
 });
