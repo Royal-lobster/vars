@@ -58,6 +58,26 @@ $ vars gen      # typed exports`,
     image: '/images/neural-mesh.webp',
     span: 'narrow',
   },
+  {
+    label: 'Team Sharing',
+    title: 'Commit your secrets',
+    description:
+      'The vault is encrypted, so it goes straight into git. New teammate? Clone and enter the PIN. No Slack DMs. No 1Password vaults. No Doppler.',
+    image: '/images/crystal.webp',
+    span: 'narrow',
+  },
+  {
+    label: 'Platform Sync',
+    title: 'Push and pull from your hosting',
+    description:
+      'Sync secrets with Vercel, Netlify, Railway, and Fly.io. Push from your vault to the platform, or pull existing vars back into your encrypted file.',
+    image: '/images/fireflies.webp',
+    span: 'wide',
+    lang: 'bash',
+    code: `$ vars push --env prod --vercel   # vault → Vercel
+$ vars pull --netlify             # Netlify → vault
+$ vars template --env prod > .env # generate .env`,
+  },
 ];
 
 const REFINE_CODE = `// Cross-variable constraint
