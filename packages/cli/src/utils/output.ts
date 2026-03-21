@@ -115,12 +115,17 @@ export function warning(title: string, bullets: string[]): void {
 
 export function healthCheck(groups: HealthCheckGroup[]): void {
   const suggestions: string[] = [];
+  let warnCount = 0;
+  let failCount = 0;
 
   for (const group of groups) {
-    clack.log.message(pc.bold(pc.underline(group.name)));
+    clack.log.message(pc.bold(group.name));
     for (const check of group.checks) {
       const icon = statusIcon(check.status);
-      clack.log.message(`  ${icon}  ${check.label}  ${pc.dim(check.message)}`);
+      const messageStr = check.message ? `  ${pc.dim(check.message)}` : "";
+      clack.log.message(`  ${icon} ${check.label}${messageStr}`);
+      if (check.status === "warn") warnCount++;
+      if (check.status === "fail") failCount++;
       if (check.status !== "pass" && check.suggestion) {
         suggestions.push(check.suggestion);
       }
@@ -128,8 +133,12 @@ export function healthCheck(groups: HealthCheckGroup[]): void {
   }
 
   if (suggestions.length > 0) {
-    const body = suggestions.map((s) => `\u2022 ${s}`).join("\n");
-    clack.note(body, "Suggestions");
+    const parts: string[] = [];
+    if (warnCount > 0) parts.push(`${warnCount} warning${warnCount !== 1 ? "s" : ""}`);
+    if (failCount > 0) parts.push(`${failCount} failure${failCount !== 1 ? "s" : ""}`);
+    const title = parts.join(" · ");
+    const body = suggestions.map((s) => `\u2192 ${s}`).join("\n");
+    clack.note(body, title);
   }
 }
 
