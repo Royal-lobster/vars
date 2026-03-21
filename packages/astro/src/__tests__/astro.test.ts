@@ -6,25 +6,27 @@ vi.mock("@vars/core", () => ({
 	loadEnvx: vi.fn(),
 	generateTypes: vi.fn(),
 	parse: vi.fn(),
+	extractValue: vi.fn((value: unknown) => {
+		if (value === null || value === undefined) return "";
+		if (typeof value === "object" && typeof (value as { unwrap?: () => unknown }).unwrap === "function") {
+			return String((value as { unwrap: () => unknown }).unwrap());
+		}
+		if (typeof value === "object" && typeof (value as { valueOf: () => unknown }).valueOf === "function") {
+			const inner = (value as { valueOf: () => unknown }).valueOf();
+			if (inner !== value) return String(inner);
+		}
+		return String(value);
+	}),
+	readKeyFile: vi.fn(),
+	regenerateIfStale: vi.fn(),
 }));
 
-vi.mock("node:fs", () => ({
-	readFileSync: vi.fn(),
-	existsSync: vi.fn(),
-	statSync: vi.fn(),
-	writeFileSync: vi.fn(),
-}));
-
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { generateTypes, loadEnvx, parse } from "@vars/core";
+import { extractValue, loadEnvx, readKeyFile, regenerateIfStale } from "@vars/core";
 
 const mockLoadEnvx = vi.mocked(loadEnvx);
-const mockGenerateTypes = vi.mocked(generateTypes);
-const mockParse = vi.mocked(parse);
-const mockExistsSync = vi.mocked(existsSync);
-const mockStatSync = vi.mocked(statSync);
-const mockReadFileSync = vi.mocked(readFileSync);
-const mockWriteFileSync = vi.mocked(writeFileSync);
+const mockExtractValue = vi.mocked(extractValue);
+const mockReadKeyFile = vi.mocked(readKeyFile);
+const mockRegenerateIfStale = vi.mocked(regenerateIfStale);
 
 describe("varsIntegration", () => {
 	const originalEnv = { ...process.env };
@@ -32,16 +34,19 @@ describe("varsIntegration", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		process.env = { ...originalEnv };
-		mockExistsSync.mockImplementation((path) => {
-			if (String(path).endsWith(".vars")) return true;
-			if (String(path).endsWith("env.generated.ts")) return false;
-			if (String(path).endsWith(".vars.key")) return false;
-			return false;
+		// Re-apply extractValue default implementation after clearAllMocks
+		mockExtractValue.mockImplementation((value: unknown) => {
+			if (value === null || value === undefined) return "";
+			if (typeof value === "object" && typeof (value as { unwrap?: () => unknown }).unwrap === "function") {
+				return String((value as { unwrap: () => unknown }).unwrap());
+			}
+			if (typeof value === "object" && typeof (value as { valueOf: () => unknown }).valueOf === "function") {
+				const inner = (value as { valueOf: () => unknown }).valueOf();
+				if (inner !== value) return String(inner);
+			}
+			return String(value);
 		});
-		mockStatSync.mockReturnValue({ mtimeMs: 1000 } as ReturnType<typeof statSync>);
-		mockReadFileSync.mockReturnValue("");
-		mockParse.mockReturnValue({ variables: [], refines: [], extendsPath: null });
-		mockGenerateTypes.mockReturnValue("// generated");
+		mockReadKeyFile.mockReturnValue(undefined);
 	});
 
 	afterEach(() => {
@@ -63,7 +68,7 @@ describe("varsIntegration", () => {
 
 	it("injects all vars into process.env during config:setup", () => {
 		mockLoadEnvx.mockReturnValue({
-			DATABASE_URL: { valueOf: () => "postgres://localhost/db", toString: () => "[REDACTED]" },
+			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 			PORT: 3000,
 		});
 		const integration = varsIntegration();
@@ -79,9 +84,9 @@ describe("varsIntegration", () => {
 
 	it("splits PUBLIC_* vars and adds them to Vite define for client", () => {
 		mockLoadEnvx.mockReturnValue({
-			DATABASE_URL: { valueOf: () => "postgres://localhost/db", toString: () => "[REDACTED]" },
-			PUBLIC_API_URL: { valueOf: () => "https://api.example.com", toString: () => "[REDACTED]" },
-			PUBLIC_APP_NAME: { valueOf: () => "MyApp", toString: () => "[REDACTED]" },
+			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
+			PUBLIC_API_URL: { unwrap: () => "https://api.example.com", toString: () => "<redacted>" },
+			PUBLIC_APP_NAME: { unwrap: () => "MyApp", toString: () => "<redacted>" },
 		});
 		const integration = varsIntegration();
 		const setupHook = integration.hooks["astro:config:setup"] as (options: {
@@ -102,7 +107,7 @@ describe("varsIntegration", () => {
 
 	it("does not call updateConfig when there are no PUBLIC_* vars", () => {
 		mockLoadEnvx.mockReturnValue({
-			DATABASE_URL: { valueOf: () => "postgres://localhost/db", toString: () => "[REDACTED]" },
+			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 		});
 		const integration = varsIntegration();
 		const setupHook = integration.hooks["astro:config:setup"] as (options: {
@@ -132,16 +137,7 @@ describe("varsIntegration", () => {
 		);
 	});
 
-	it("regenerates env.generated.ts when .vars is newer", () => {
-		mockExistsSync.mockImplementation((path) => {
-			if (String(path).endsWith(".vars")) return true;
-			if (String(path).endsWith("env.generated.ts")) return true;
-			return false;
-		});
-		mockStatSync.mockImplementation((path) => {
-			if (String(path).endsWith(".vars")) return { mtimeMs: 2000 } as ReturnType<typeof statSync>;
-			return { mtimeMs: 1000 } as ReturnType<typeof statSync>;
-		});
+	it("calls regenerateIfStale during config:setup", () => {
 		mockLoadEnvx.mockReturnValue({});
 		const integration = varsIntegration();
 		const setupHook = integration.hooks["astro:config:setup"] as (options: {
@@ -149,6 +145,9 @@ describe("varsIntegration", () => {
 			updateConfig: (config: Record<string, unknown>) => void;
 		}) => void;
 		setupHook({ config: {}, updateConfig: vi.fn() });
-		expect(mockWriteFileSync).toHaveBeenCalled();
+		expect(mockRegenerateIfStale).toHaveBeenCalledWith(
+			expect.stringContaining(".vars"),
+			".vars",
+		);
 	});
 });

@@ -4,29 +4,18 @@ import { EnvxModule, VARS } from "../index.js";
 // Mock @vars/core
 vi.mock("@vars/core", () => ({
 	loadEnvx: vi.fn(),
-	generateTypes: vi.fn(),
-	parse: vi.fn(),
+	readKeyFile: vi.fn(),
 }));
 
-vi.mock("node:fs", () => ({
-	readFileSync: vi.fn(),
-	existsSync: vi.fn(),
-	statSync: vi.fn(),
-	writeFileSync: vi.fn(),
-}));
-
-import { existsSync, readFileSync } from "node:fs";
-import { loadEnvx } from "@vars/core";
+import { loadEnvx, readKeyFile } from "@vars/core";
 
 const mockLoadEnvx = vi.mocked(loadEnvx);
-const mockExistsSync = vi.mocked(existsSync);
-const mockReadFileSync = vi.mocked(readFileSync);
+const mockReadKeyFile = vi.mocked(readKeyFile);
 
 describe("@vars/nestjs", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockExistsSync.mockReturnValue(false);
-		mockReadFileSync.mockReturnValue("");
+		mockReadKeyFile.mockReturnValue(undefined);
 	});
 
 	describe("VARS token", () => {
@@ -46,7 +35,7 @@ describe("@vars/nestjs", () => {
 
 		it("forRoot returns a DynamicModule with VARS provider", () => {
 			mockLoadEnvx.mockReturnValue({
-				DATABASE_URL: { valueOf: () => "postgres://localhost/db", toString: () => "[REDACTED]" },
+				DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 				PORT: 3000,
 			});
 			const dynamicModule = EnvxModule.forRoot();
@@ -80,7 +69,7 @@ describe("@vars/nestjs", () => {
 
 		it("VARS provider value is the resolved env object", () => {
 			const resolved = {
-				DATABASE_URL: { valueOf: () => "postgres://localhost/db", toString: () => "[REDACTED]" },
+				DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 				PORT: 3000,
 			};
 			mockLoadEnvx.mockReturnValue(resolved);
@@ -112,6 +101,19 @@ describe("@vars/nestjs", () => {
 			expect(mockLoadEnvx).toHaveBeenCalledWith(
 				expect.any(String),
 				expect.objectContaining({ env: "production", key: "env-key" }),
+			);
+			process.env = originalEnv;
+		});
+
+		it("reads key from .vars.key file via readKeyFile", () => {
+			const originalEnv = { ...process.env };
+			process.env.VARS_KEY = undefined;
+			mockReadKeyFile.mockReturnValue("file-key-base64");
+			mockLoadEnvx.mockReturnValue({});
+			EnvxModule.forRoot();
+			expect(mockLoadEnvx).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ key: "file-key-base64" }),
 			);
 			process.env = originalEnv;
 		});

@@ -6,25 +6,27 @@ vi.mock("@vars/core", () => ({
 	loadEnvx: vi.fn(),
 	generateTypes: vi.fn(),
 	parse: vi.fn(),
+	extractValue: vi.fn((value: unknown) => {
+		if (value === null || value === undefined) return "";
+		if (typeof value === "object" && typeof (value as { unwrap?: () => unknown }).unwrap === "function") {
+			return String((value as { unwrap: () => unknown }).unwrap());
+		}
+		if (typeof value === "object" && typeof (value as { valueOf: () => unknown }).valueOf === "function") {
+			const inner = (value as { valueOf: () => unknown }).valueOf();
+			if (inner !== value) return String(inner);
+		}
+		return String(value);
+	}),
+	readKeyFile: vi.fn(),
+	regenerateIfStale: vi.fn(),
 }));
 
-vi.mock("node:fs", () => ({
-	readFileSync: vi.fn(),
-	existsSync: vi.fn(),
-	statSync: vi.fn(),
-	writeFileSync: vi.fn(),
-}));
-
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { generateTypes, loadEnvx, parse } from "@vars/core";
+import { extractValue, loadEnvx, readKeyFile, regenerateIfStale } from "@vars/core";
 
 const mockLoadEnvx = vi.mocked(loadEnvx);
-const mockGenerateTypes = vi.mocked(generateTypes);
-const mockParse = vi.mocked(parse);
-const mockExistsSync = vi.mocked(existsSync);
-const mockStatSync = vi.mocked(statSync);
-const mockReadFileSync = vi.mocked(readFileSync);
-const mockWriteFileSync = vi.mocked(writeFileSync);
+const mockExtractValue = vi.mocked(extractValue);
+const mockReadKeyFile = vi.mocked(readKeyFile);
+const mockRegenerateIfStale = vi.mocked(regenerateIfStale);
 
 describe("varsPlugin", () => {
 	const originalEnv = { ...process.env };
@@ -32,16 +34,19 @@ describe("varsPlugin", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		process.env = { ...originalEnv };
-		mockExistsSync.mockImplementation((path) => {
-			if (String(path).endsWith(".vars")) return true;
-			if (String(path).endsWith("env.generated.ts")) return false;
-			if (String(path).endsWith(".vars.key")) return false;
-			return false;
+		// Re-apply extractValue default implementation after clearAllMocks
+		mockExtractValue.mockImplementation((value: unknown) => {
+			if (value === null || value === undefined) return "";
+			if (typeof value === "object" && typeof (value as { unwrap?: () => unknown }).unwrap === "function") {
+				return String((value as { unwrap: () => unknown }).unwrap());
+			}
+			if (typeof value === "object" && typeof (value as { valueOf: () => unknown }).valueOf === "function") {
+				const inner = (value as { valueOf: () => unknown }).valueOf();
+				if (inner !== value) return String(inner);
+			}
+			return String(value);
 		});
-		mockStatSync.mockReturnValue({ mtimeMs: 1000 } as ReturnType<typeof statSync>);
-		mockReadFileSync.mockReturnValue("");
-		mockParse.mockReturnValue({ variables: [], refines: [], extendsPath: null });
-		mockGenerateTypes.mockReturnValue("// generated");
+		mockReadKeyFile.mockReturnValue(undefined);
 	});
 
 	afterEach(() => {
@@ -56,8 +61,8 @@ describe("varsPlugin", () => {
 
 	it("has a config hook that returns define replacements", () => {
 		mockLoadEnvx.mockReturnValue({
-			VITE_API_URL: { valueOf: () => "https://api.example.com", toString: () => "[REDACTED]" },
-			DATABASE_URL: { valueOf: () => "postgres://localhost/db", toString: () => "[REDACTED]" },
+			VITE_API_URL: { unwrap: () => "https://api.example.com", toString: () => "<redacted>" },
+			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 		});
 		const plugin = varsPlugin();
 		const configHook = plugin.config as () => { define: Record<string, string> };
@@ -69,8 +74,8 @@ describe("varsPlugin", () => {
 
 	it("only exposes VITE_* vars via import.meta.env replacements", () => {
 		mockLoadEnvx.mockReturnValue({
-			VITE_API_URL: { valueOf: () => "https://api.example.com", toString: () => "[REDACTED]" },
-			DATABASE_URL: { valueOf: () => "postgres://localhost/db", toString: () => "[REDACTED]" },
+			VITE_API_URL: { unwrap: () => "https://api.example.com", toString: () => "<redacted>" },
+			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 		});
 		const plugin = varsPlugin();
 		const configHook = plugin.config as () => { define: Record<string, string> };
@@ -81,8 +86,8 @@ describe("varsPlugin", () => {
 
 	it("injects ALL vars into process.env for server-side access", () => {
 		mockLoadEnvx.mockReturnValue({
-			VITE_API_URL: { valueOf: () => "https://api.example.com", toString: () => "[REDACTED]" },
-			DATABASE_URL: { valueOf: () => "postgres://localhost/db", toString: () => "[REDACTED]" },
+			VITE_API_URL: { unwrap: () => "https://api.example.com", toString: () => "<redacted>" },
+			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 			PORT: 3000,
 		});
 		const plugin = varsPlugin();
@@ -113,28 +118,22 @@ describe("varsPlugin", () => {
 		expect(plugin.configureServer).toBeDefined();
 	});
 
-	it("regenerates env.generated.ts when .vars is newer", () => {
-		mockExistsSync.mockImplementation((path) => {
-			if (String(path).endsWith(".vars")) return true;
-			if (String(path).endsWith("env.generated.ts")) return true;
-			return false;
-		});
-		mockStatSync.mockImplementation((path) => {
-			if (String(path).endsWith(".vars")) return { mtimeMs: 2000 } as ReturnType<typeof statSync>;
-			return { mtimeMs: 1000 } as ReturnType<typeof statSync>;
-		});
+	it("calls regenerateIfStale during config", () => {
 		mockLoadEnvx.mockReturnValue({});
 		const plugin = varsPlugin();
 		const configHook = plugin.config as () => unknown;
 		configHook();
-		expect(mockWriteFileSync).toHaveBeenCalled();
+		expect(mockRegenerateIfStale).toHaveBeenCalledWith(
+			expect.stringContaining(".vars"),
+			".vars",
+		);
 	});
 
 	it("handles non-VITE_ vars with primitive types correctly", () => {
 		mockLoadEnvx.mockReturnValue({
 			VITE_DEBUG: true,
 			VITE_PORT: 8080,
-			VITE_NAME: { valueOf: () => "app", toString: () => "[REDACTED]" },
+			VITE_NAME: { unwrap: () => "app", toString: () => "<redacted>" },
 		});
 		const plugin = varsPlugin();
 		const configHook = plugin.config as () => { define: Record<string, string> };

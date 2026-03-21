@@ -6,26 +6,27 @@ vi.mock("@vars/core", () => ({
 	loadEnvx: vi.fn(),
 	generateTypes: vi.fn(),
 	parse: vi.fn(),
+	extractValue: vi.fn((value: unknown) => {
+		if (value === null || value === undefined) return "";
+		if (typeof value === "object" && typeof (value as { unwrap?: () => unknown }).unwrap === "function") {
+			return String((value as { unwrap: () => unknown }).unwrap());
+		}
+		if (typeof value === "object" && typeof (value as { valueOf: () => unknown }).valueOf === "function") {
+			const inner = (value as { valueOf: () => unknown }).valueOf();
+			if (inner !== value) return String(inner);
+		}
+		return String(value);
+	}),
+	readKeyFile: vi.fn(),
+	regenerateIfStale: vi.fn(),
 }));
 
-// Mock node:fs for .vars file stat checks
-vi.mock("node:fs", () => ({
-	readFileSync: vi.fn(),
-	existsSync: vi.fn(),
-	statSync: vi.fn(),
-	writeFileSync: vi.fn(),
-}));
-
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { generateTypes, loadEnvx, parse } from "@vars/core";
+import { extractValue, loadEnvx, readKeyFile, regenerateIfStale } from "@vars/core";
 
 const mockLoadEnvx = vi.mocked(loadEnvx);
-const mockGenerateTypes = vi.mocked(generateTypes);
-const mockParse = vi.mocked(parse);
-const mockExistsSync = vi.mocked(existsSync);
-const mockStatSync = vi.mocked(statSync);
-const mockReadFileSync = vi.mocked(readFileSync);
-const mockWriteFileSync = vi.mocked(writeFileSync);
+const mockExtractValue = vi.mocked(extractValue);
+const mockReadKeyFile = vi.mocked(readKeyFile);
+const mockRegenerateIfStale = vi.mocked(regenerateIfStale);
 
 describe("withEnvx", () => {
 	const originalEnv = { ...process.env };
@@ -33,17 +34,19 @@ describe("withEnvx", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		process.env = { ...originalEnv };
-		// Default: .vars exists, no generated file yet
-		mockExistsSync.mockImplementation((path) => {
-			if (String(path).endsWith(".vars")) return true;
-			if (String(path).endsWith("env.generated.ts")) return false;
-			if (String(path).endsWith(".vars.key")) return false;
-			return false;
+		// Re-apply extractValue default implementation after clearAllMocks
+		mockExtractValue.mockImplementation((value: unknown) => {
+			if (value === null || value === undefined) return "";
+			if (typeof value === "object" && typeof (value as { unwrap?: () => unknown }).unwrap === "function") {
+				return String((value as { unwrap: () => unknown }).unwrap());
+			}
+			if (typeof value === "object" && typeof (value as { valueOf: () => unknown }).valueOf === "function") {
+				const inner = (value as { valueOf: () => unknown }).valueOf();
+				if (inner !== value) return String(inner);
+			}
+			return String(value);
 		});
-		mockStatSync.mockReturnValue({ mtimeMs: 1000 } as ReturnType<typeof statSync>);
-		mockReadFileSync.mockReturnValue("");
-		mockParse.mockReturnValue({ variables: [], refines: [], extendsPath: null });
-		mockGenerateTypes.mockReturnValue("// generated");
+		mockReadKeyFile.mockReturnValue(undefined);
 	});
 
 	afterEach(() => {
@@ -85,7 +88,7 @@ describe("withEnvx", () => {
 
 	it("injects resolved vars into process.env", () => {
 		mockLoadEnvx.mockReturnValue({
-			DATABASE_URL: { valueOf: () => "postgres://localhost/db", toString: () => "[REDACTED]" },
+			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 			PORT: 3000,
 			DEBUG: true,
 		});
@@ -97,12 +100,12 @@ describe("withEnvx", () => {
 
 	it("splits NEXT_PUBLIC_* vars into env config for client bundle", () => {
 		mockLoadEnvx.mockReturnValue({
-			DATABASE_URL: { valueOf: () => "postgres://localhost/db", toString: () => "[REDACTED]" },
+			DATABASE_URL: { unwrap: () => "postgres://localhost/db", toString: () => "<redacted>" },
 			NEXT_PUBLIC_API_URL: {
-				valueOf: () => "https://api.example.com",
-				toString: () => "[REDACTED]",
+				unwrap: () => "https://api.example.com",
+				toString: () => "<redacted>",
 			},
-			NEXT_PUBLIC_APP_NAME: { valueOf: () => "MyApp", toString: () => "[REDACTED]" },
+			NEXT_PUBLIC_APP_NAME: { unwrap: () => "MyApp", toString: () => "<redacted>" },
 		});
 		const config = withEnvx();
 		expect(config.env).toEqual({
@@ -114,8 +117,8 @@ describe("withEnvx", () => {
 	it("merges NEXT_PUBLIC_* env with existing env config", () => {
 		mockLoadEnvx.mockReturnValue({
 			NEXT_PUBLIC_API_URL: {
-				valueOf: () => "https://api.example.com",
-				toString: () => "[REDACTED]",
+				unwrap: () => "https://api.example.com",
+				toString: () => "<redacted>",
 			},
 		});
 		const config = withEnvx({ env: { EXISTING: "value" } });
@@ -155,47 +158,18 @@ describe("withEnvx", () => {
 		);
 	});
 
-	it("regenerates env.generated.ts when .vars is newer", () => {
-		mockExistsSync.mockImplementation((path) => {
-			if (String(path).endsWith(".vars")) return true;
-			if (String(path).endsWith("env.generated.ts")) return true;
-			return false;
-		});
-		mockStatSync.mockImplementation((path) => {
-			if (String(path).endsWith(".vars")) return { mtimeMs: 2000 } as ReturnType<typeof statSync>;
-			return { mtimeMs: 1000 } as ReturnType<typeof statSync>;
-		});
+	it("calls regenerateIfStale with correct paths", () => {
 		mockLoadEnvx.mockReturnValue({});
 		withEnvx();
-		expect(mockWriteFileSync).toHaveBeenCalled();
+		expect(mockRegenerateIfStale).toHaveBeenCalledWith(
+			expect.stringContaining(".vars"),
+			".vars",
+		);
 	});
 
-	it("skips codegen when env.generated.ts is up to date", () => {
-		mockExistsSync.mockImplementation((path) => {
-			if (String(path).endsWith(".vars")) return true;
-			if (String(path).endsWith("env.generated.ts")) return true;
-			return false;
-		});
-		mockStatSync.mockImplementation((path) => {
-			if (String(path).endsWith(".vars")) return { mtimeMs: 1000 } as ReturnType<typeof statSync>;
-			return { mtimeMs: 2000 } as ReturnType<typeof statSync>;
-		});
-		mockLoadEnvx.mockReturnValue({});
-		withEnvx();
-		expect(mockWriteFileSync).not.toHaveBeenCalled();
-	});
-
-	it("reads key from .vars.key file when no key in env or options", () => {
+	it("reads key from .vars.key file via readKeyFile when no key in env or options", () => {
 		process.env.VARS_KEY = undefined;
-		mockExistsSync.mockImplementation((path) => {
-			if (String(path).endsWith(".vars")) return true;
-			if (String(path).endsWith(".vars.key")) return true;
-			return false;
-		});
-		mockReadFileSync.mockImplementation((path) => {
-			if (String(path).toString().endsWith(".vars.key")) return "file-key-base64\n";
-			return "";
-		});
+		mockReadKeyFile.mockReturnValue("file-key-base64");
 		mockLoadEnvx.mockReturnValue({});
 		withEnvx();
 		expect(mockLoadEnvx).toHaveBeenCalledWith(
@@ -204,11 +178,10 @@ describe("withEnvx", () => {
 		);
 	});
 
-	it("extracts Redacted values using valueOf() for process.env injection", () => {
+	it("extracts Redacted values using unwrap() for process.env injection", () => {
 		const redactedValue = {
-			valueOf: () => "secret-value",
-			toString: () => "[REDACTED]",
-			[Symbol.toPrimitive]: (hint: string) => (hint === "string" ? "[REDACTED]" : "secret-value"),
+			unwrap: () => "secret-value",
+			toString: () => "<redacted>",
 		};
 		mockLoadEnvx.mockReturnValue({ SECRET: redactedValue });
 		withEnvx();

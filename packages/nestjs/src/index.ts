@@ -1,6 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { loadEnvx } from "@vars/core";
+import { loadEnvx, readKeyFile } from "@vars/core";
 import { Module, type DynamicModule } from "@nestjs/common";
 
 export interface VarsOptions {
@@ -70,12 +69,4 @@ export class EnvxModule {
 			exports: [VARS],
 		};
 	}
-}
-
-function readKeyFile(envFile: string): string | undefined {
-	const keyPath = resolve(process.cwd(), `${envFile}.key`);
-	if (existsSync(keyPath)) {
-		return readFileSync(keyPath, "utf8").trim();
-	}
-	return undefined;
 }
