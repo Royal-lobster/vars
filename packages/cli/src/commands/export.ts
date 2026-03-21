@@ -1,5 +1,5 @@
 import { defineCommand } from "citty";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse, decrypt, isEncrypted, resolveValue } from "@vars/core";
 import { buildContext, requireKey, getKeyFromEnv, findVarsFile } from "../utils/context.js";
@@ -55,7 +55,7 @@ export default defineCommand({
     // Resolve env: flag > interactive picker > "dev" fallback
     let env = args.env;
 
-    if (!env && canPrompt) {
+    if (!env && canPrompt && existsSync(varsFilePath)) {
       const envs = listEnvironments(varsFilePath);
       if (envs.length > 0) {
         output.intro("export");
