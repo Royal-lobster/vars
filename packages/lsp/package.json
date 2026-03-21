@@ -11,10 +11,14 @@
 			"require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
 		}
 	},
+	"bin": {
+		"vars-lsp": "./dist/index.cjs"
+	},
 	"files": ["dist"],
 	"scripts": {
 		"build": "tsup",
 		"test": "vitest run",
+		"test:watch": "vitest",
 		"typecheck": "tsc --noEmit",
 		"clean": "rm -rf dist"
 	},
