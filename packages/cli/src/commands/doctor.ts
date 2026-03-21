@@ -237,6 +237,38 @@ export function runDoctorChecks(cwd: string): HealthCheckGroup[] {
     suggestion: encryptionStatus !== "pass" ? encryptionSuggestion : undefined,
   });
 
+  // Stale .env file detection
+  const envFilePatterns = [
+    ".env",
+    ".env.local",
+    ".env.development",
+    ".env.development.local",
+    ".env.production",
+    ".env.production.local",
+    ".env.staging",
+    ".env.test",
+    ".env.test.local",
+  ];
+
+  const foundEnvFiles = envFilePatterns.filter((f) =>
+    existsSync(join(projectRoot, f)),
+  );
+
+  if (foundEnvFiles.length > 0) {
+    securityChecks.push({
+      label: `Stale .env file${foundEnvFiles.length !== 1 ? "s" : ""} found: ${foundEnvFiles.join(", ")}`,
+      status: "warn",
+      message: "Likely leftover from before migration",
+      suggestion: `Delete ${foundEnvFiles.join(", ")} — your secrets are now in .vars`,
+    });
+  } else {
+    securityChecks.push({
+      label: "No stale .env files",
+      status: "pass",
+      message: "",
+    });
+  }
+
   // ── Secrets Health group ─────────────────────────────────────────────
   const secretsChecks: HealthCheckGroup["checks"] = [];
 
