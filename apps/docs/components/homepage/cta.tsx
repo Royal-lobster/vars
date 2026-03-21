@@ -3,9 +3,8 @@ import { CopyCommand } from './copy-command';
 
 export function CTA() {
   return (
-    <section className="relative overflow-hidden px-5 py-28 text-center md:px-10">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center_60%,rgba(34,197,94,0.06)_0%,transparent_60%)]" />
-      <div className="relative">
+    <section className="px-5 py-28 text-center md:px-10">
+      <div>
         <h2 className="text-[clamp(32px,5vw,48px)] font-bold tracking-[-2px]">
           Replace .env{' '}
           <em className="font-serif italic text-green-500 font-normal">today.</em>
