@@ -3,10 +3,11 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { VarsDynamicCodeBlock } from './vars-codeblock';
 import { CopyCommand } from './copy-command';
+import { HeroCodeToggle } from './hero-code-toggle';
 
-const HERO_CODE = `DATABASE_URL  z.string().url().startsWith("postgres://")
+const UNLOCKED_CODE = `DATABASE_URL  z.string().url().startsWith("postgres://")
   @dev   = postgres://localhost:5432/myapp
-  @prod  = enc:v1:aes256gcm:e8d1f0a3...
+  @prod  = postgres://admin@prod.db.internal:5432/myapp
 
 PORT  z.coerce.number().int().min(1024).max(65535)
   @default = 3000
@@ -14,8 +15,24 @@ PORT  z.coerce.number().int().min(1024).max(65535)
 API_KEY  z.string().min(32)
   @description "Primary API key"
   @expires     "2026-09-01"
-  @dev   = mykey_test_abc123def456ghi789jkl
-  @prod  = enc:v1:aes256gcm:9c2b4f7a...`;
+  @dev   = dev_key_a1b2c3d4e5f6g7h8i9j0k1l2m3
+  @prod  = prod_key_x9y8w7v6u5t4s3r2q1p0o9n8m7`;
+
+const VAULT_CODE = `DATABASE_URL  z.string().url().startsWith("postgres://")
+  @dev   = enc:v1:aes256gcm:7f3a9b2c:d4e5f6a1:g7h8i9b2
+  @prod  = enc:v1:aes256gcm:e8d1f0a3:k5l6m7c3:n8o9p0d4
+
+PORT  z.coerce.number().int().min(1024).max(65535)
+  @default = enc:v1:aes256gcm:2c4b8e91:q1r2s3e5:t4u5v6f6
+
+API_KEY  z.string().min(32)
+  @description "Primary API key"
+  @expires     "2026-09-01"
+  @dev   = enc:v1:aes256gcm:9c2b4f7a:w7x8y9g7:z0a1b2h8
+  @prod  = enc:v1:aes256gcm:f3e2d1c0:c3d4e5i9:f6g7h8j0`;
+
+const codeBlockClass =
+  '[&_figure]:!my-0 [&_figure]:!rounded-xl [&_figure]:!shadow-2xl [&_figure]:!shadow-black/50 [&_pre]:!text-[13px] [&_pre]:!leading-[1.9]';
 
 export function Hero() {
   return (
@@ -67,9 +84,13 @@ export function Hero() {
           <CopyCommand command="npx vars init" />
         </div>
 
-        <VarsDynamicCodeBlock
-          code={HERO_CODE}
-          className="mt-14 w-full max-w-[620px] text-left [&_figure]:!my-0 [&_figure]:!rounded-xl [&_figure]:!shadow-2xl [&_figure]:!shadow-black/50 [&_pre]:!text-[13px] [&_pre]:!leading-[1.9]"
+        <HeroCodeToggle
+          unlocked={
+            <VarsDynamicCodeBlock code={UNLOCKED_CODE} className={codeBlockClass} />
+          }
+          vault={
+            <VarsDynamicCodeBlock code={VAULT_CODE} className={codeBlockClass} />
+          }
         />
       </div>
 
