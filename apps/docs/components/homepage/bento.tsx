@@ -80,7 +80,7 @@ $ vars template --env prod > .env # generate .env`,
   },
 ];
 
-const REFINE_CODE = `// Cross-variable constraint
+const REFINE_CODE = `# Cross-variable constraint
 @refine env.LOG_LEVEL !== "debug" || env.DEBUG === true
   "DEBUG must be true when LOG_LEVEL is debug"`;
 

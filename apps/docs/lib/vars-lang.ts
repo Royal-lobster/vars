@@ -8,7 +8,7 @@ import type { LanguageRegistration } from 'shiki';
  * - support.function.vars   → Zod schema calls (z.string().url())
  * - keyword.control.vars    → Environment decorators (@dev, @prod, @default)
  * - entity.name.tag.vars    → Directives (@refine, @extends)
- * - comment.line.vars       → Comments (// ...)
+ * - comment.line.vars       → Comments (# ...)
  * - string.quoted.vars      → Strings ("...")
  * - constant.numeric.vars   → Numbers
  * - keyword.operator.vars   → Operators (=, =>, ||, &&, !==, ===)
@@ -21,8 +21,8 @@ export const varsLanguage: LanguageRegistration = {
   patterns: [
     // Comments
     {
-      match: '//.*$',
-      name: 'comment.line.double-slash.vars',
+      match: '#.*$',
+      name: 'comment.line.hash.vars',
     },
     // Directives: @refine, @extends
     {
