@@ -17,18 +17,6 @@ export function extractValue(value: unknown): string {
 }
 
 /**
- * Resolve the vars file path, preferring unlocked.vars over vault.vars.
- * Respects custom envFile paths. Returns { path, unlocked } so adapters
- * know whether to skip decryption.
- */
-export function resolveVarsFile(envFile: string): { path: string; unlocked: boolean } {
-	const vaultPath = resolve(process.cwd(), envFile);
-	const unlockedPath = resolve(dirname(vaultPath), "unlocked.vars");
-	if (existsSync(unlockedPath)) return { path: unlockedPath, unlocked: true };
-	return { path: vaultPath, unlocked: false };
-}
-
-/**
  * Regenerate vars.generated.ts if the .vars file is newer than the generated file.
  */
 export function regenerateIfStale(envFilePath: string, envFile: string): void {
