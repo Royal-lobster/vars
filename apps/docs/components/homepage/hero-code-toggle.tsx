@@ -39,7 +39,7 @@ export function HeroCodeToggle({ unlocked, vault }: HeroCodeToggleProps) {
   }, []);
 
   return (
-    <div className="mt-14 w-full max-w-[620px] text-left">
+    <div className="mt-14 w-full max-w-[620px] min-w-0 text-left">
       {/* Mobile: tab toggle */}
       <div className="flex items-center justify-center gap-1 mb-2 md:hidden">
         <button
@@ -69,7 +69,7 @@ export function HeroCodeToggle({ unlocked, vault }: HeroCodeToggleProps) {
       </div>
 
       {/* Mobile: simple switch */}
-      <div className="md:hidden overflow-x-auto rounded-xl border border-white/[0.06]">
+      <div className="md:hidden overflow-x-auto rounded-xl border border-white/[0.06] [&_pre]:!text-[11px]">
         <div className={mobileTab === 'vault' ? 'block' : 'hidden'}>{vault}</div>
         <div className={mobileTab === 'unlocked' ? 'block' : 'hidden'}>{unlocked}</div>
       </div>

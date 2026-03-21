@@ -51,7 +51,7 @@ export function Hero() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 flex max-w-[800px] flex-col items-center text-center">
+      <div className="relative z-10 flex w-full max-w-[800px] min-w-0 flex-col items-center text-center">
         <Badge
           variant="outline"
           className="mb-8 gap-2 border-green-500/15 bg-green-500/[0.08] px-4 py-1.5 font-mono text-xs text-green-500"
