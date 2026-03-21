@@ -29,6 +29,7 @@
 	},
 	"dependencies": {
 		"argon2": "^0.44.0",
+		"keytar": "^7.9.0",
 		"zod": "^3.24.0"
 	},
 	"devDependencies": {

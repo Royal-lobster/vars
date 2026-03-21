@@ -19,6 +19,7 @@ export { applyRefines, extractReferencedVars } from "./refine.js";
 export { resolveExtends } from "./extends.js";
 export { generateTypes } from "./codegen.js";
 export { createMasterKey, encryptMasterKey, decryptMasterKey } from "./keymanager.js";
+export { storeKey, retrieveKey, clearKey } from "./keychain.js";
 export type * from "./types.js";
 export * from "./errors.js";
 
