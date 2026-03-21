@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${instrumentSans.variable} ${jetbrainsMono.variable} ${newsreader.variable}`}
+      className={`dark ${instrumentSans.variable} ${jetbrainsMono.variable} ${newsreader.variable}`}
       suppressHydrationWarning
     >
       <body className="flex min-h-screen flex-col">

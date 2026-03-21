@@ -15,9 +15,9 @@ export function FeatureEncryption() {
           </em>
         </h2>
         <p className="mt-4 text-[15px] leading-relaxed text-white/50">
-          AES-256-GCM per-value encryption with a PIN-protected master key
-          stored in your OS keychain. AI coding agents can read your .vars file
-          but can never access the actual secrets. Safe to commit. Safe to share.
+          AES-256-GCM per-value encryption with a PIN prompted every time.
+          Keys are never cached — AI agents can never access decrypted secrets.
+          Use <code className="text-green-400 text-sm">vars show</code> to decrypt, <code className="text-green-400 text-sm">vars hide</code> to re-encrypt. Safe to commit. Safe to share.
         </p>
       </div>
 

@@ -3,6 +3,7 @@ import { Separator } from '@/components/ui/separator';
 const ITEMS = [
   { label: 'AES-256-GCM', bold: true },
   { label: 'Zod', bold: true },
+  { label: 'PIN-per-command' },
   { label: '6 framework plugins' },
   { label: 'LSP + VS Code' },
   { label: 'AI-safe by design' },

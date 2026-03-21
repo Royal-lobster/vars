@@ -51,7 +51,7 @@ export function Hero() {
 
         <p className="mt-6 max-w-[520px] text-[clamp(15px,2vw,17px)] leading-relaxed text-white/50">
           vars replaces .env with encrypted, schema-validated, multi-environment
-          variables — in a single file your whole team can share.
+          variables. PIN-per-command security. One vault your whole team can share.
         </p>
 
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3.5">
