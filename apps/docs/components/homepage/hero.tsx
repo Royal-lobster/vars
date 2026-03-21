@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
+import { VarsDynamicCodeBlock } from './vars-codeblock';
 
 const HERO_CODE = `DATABASE_URL  z.string().url().startsWith("postgres://")
   @dev   = enc:v1:aes256gcm:7f3a9b2c...
@@ -70,9 +70,10 @@ export function Hero() {
           </Button>
         </div>
 
-        <div className="mt-14 w-full max-w-[620px] [&_figure]:!my-0 [&_figure]:!rounded-xl [&_figure]:!shadow-2xl [&_figure]:!shadow-black/50 [&_pre]:!text-[13px] [&_pre]:!leading-[1.9]">
-          <DynamicCodeBlock lang="js" code={HERO_CODE} codeblock={{ keepBackground: false }} />
-        </div>
+        <VarsDynamicCodeBlock
+          code={HERO_CODE}
+          className="mt-14 w-full max-w-[620px] text-left [&_figure]:!my-0 [&_figure]:!rounded-xl [&_figure]:!shadow-2xl [&_figure]:!shadow-black/50 [&_pre]:!text-[13px] [&_pre]:!leading-[1.9]"
+        />
       </div>
 
       {/* Bottom fade */}

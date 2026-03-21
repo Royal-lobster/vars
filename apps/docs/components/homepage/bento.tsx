@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
+import { VarsDynamicCodeBlock } from './vars-codeblock';
 
 interface BentoItem {
   label: string;
@@ -138,13 +139,10 @@ export function Bento() {
                 Express relationships between variables. If LOG_LEVEL is &quot;debug&quot;,
                 enforce that DEBUG is true. Validated at build time.
               </p>
-              <div className={`mt-4 ${codeBlockStyle}`}>
-                <DynamicCodeBlock
-                  lang="js"
-                  code={REFINE_CODE}
-                  codeblock={{ keepBackground: false }}
-                />
-              </div>
+              <VarsDynamicCodeBlock
+                code={REFINE_CODE}
+                className={`mt-4 ${codeBlockStyle}`}
+              />
             </div>
           </div>
         </div>

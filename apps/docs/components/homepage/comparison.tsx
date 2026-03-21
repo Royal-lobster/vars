@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
+import { VarsDynamicCodeBlock } from './vars-codeblock';
 
 const ENV_CODE = `# No encryption, no types, no validation
 DATABASE_URL=postgres://admin:password123@prod.db.com/mydb
@@ -86,9 +87,10 @@ export function Comparison() {
             </span>
           </div>
 
-          <div className={`mx-4 mb-1 ${codeBlockStyle}`}>
-            <DynamicCodeBlock lang="js" code={VARS_CODE} codeblock={{ keepBackground: false }} />
-          </div>
+          <VarsDynamicCodeBlock
+            code={VARS_CODE}
+            className={`mx-4 mb-1 ${codeBlockStyle}`}
+          />
 
           <div className="grid grid-cols-2 gap-3 px-5 py-5">
             {[
