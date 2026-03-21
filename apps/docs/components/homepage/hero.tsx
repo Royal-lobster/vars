@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { VarsDynamicCodeBlock } from './vars-codeblock';
 import { CopyCommand } from './copy-command';
@@ -37,7 +37,7 @@ export function Hero() {
           variant="outline"
           className="mb-8 gap-2 border-green-500/15 bg-green-500/[0.08] px-4 py-1.5 font-mono text-xs text-green-500"
         >
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500 shadow-[0_0_8px] shadow-green-500" />
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500 shadow-[0_0_8px] shadow-green-500" aria-hidden="true" />
           Encrypted by default
         </Badge>
 
@@ -56,11 +56,12 @@ export function Hero() {
         </p>
 
         <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
-          <Button
-            className="h-11 bg-green-500 px-6 text-sm text-black font-semibold shadow-[0_0_30px] shadow-green-500/30 hover:bg-green-400 hover:shadow-green-500/50"
+          <Link
+            href="/docs"
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-green-500 px-6 text-sm font-semibold text-black shadow-[0_0_30px] shadow-green-500/30 transition-all hover:bg-green-400 hover:shadow-green-500/50"
           >
             Get Started →
-          </Button>
+          </Link>
           <CopyCommand command="npx vars init" />
         </div>
 

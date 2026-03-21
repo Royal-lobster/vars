@@ -91,6 +91,7 @@ export function Bento() {
                 src={item.image}
                 alt=""
                 fill
+                sizes="(max-width: 768px) 100vw, 66vw"
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </div>
@@ -125,6 +126,7 @@ export function Bento() {
                 src="/images/crystal.webp"
                 alt=""
                 fill
+                sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </div>

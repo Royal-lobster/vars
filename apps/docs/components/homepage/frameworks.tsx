@@ -111,7 +111,7 @@ export function Frameworks() {
           {FRAMEWORKS.map((fw) => (
             <div
               key={fw.name}
-              className={`group cursor-pointer overflow-hidden rounded-xl border border-white/[0.06] bg-gradient-to-b ${fw.color} transition-all duration-200 hover:-translate-y-1 hover:border-green-500/15 hover:shadow-lg hover:shadow-green-500/[0.03]`}
+              className={`group overflow-hidden rounded-xl border border-white/[0.06] bg-gradient-to-b ${fw.color} transition-all duration-200 hover:-translate-y-1 hover:border-green-500/15 hover:shadow-lg hover:shadow-green-500/[0.03]`}
             >
               <div className="flex items-center gap-3 px-5 pt-5 pb-3">
                 <fw.Icon
@@ -126,11 +126,7 @@ export function Frameworks() {
               <div className="mx-4 [&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11px] [&_pre]:!leading-[1.8]">
                 <DynamicCodeBlock lang={fw.lang} code={fw.code} codeblock={{ keepBackground: false }} />
               </div>
-              <div className="px-5 pb-4 pt-2">
-                <span className="font-mono text-[11px] text-white/30 transition-colors group-hover:text-green-500">
-                  Read more →
-                </span>
-              </div>
+              <div className="px-5 pb-4 pt-2" />
             </div>
           ))}
         </div>

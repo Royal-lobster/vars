@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { CopyCommand } from './copy-command';
 
 export function CTA() {
@@ -14,11 +14,12 @@ export function CTA() {
           One command. Five minutes. Never worry about plaintext secrets again.
         </p>
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <Button
-            className="h-11 bg-green-500 px-6 text-sm font-semibold text-black shadow-[0_0_30px] shadow-green-500/30 hover:bg-green-400 hover:shadow-green-500/50"
+          <Link
+            href="/docs"
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-green-500 px-6 text-sm font-semibold text-black shadow-[0_0_30px] shadow-green-500/30 transition-all hover:bg-green-400 hover:shadow-green-500/50"
           >
             Read the Docs →
-          </Button>
+          </Link>
           <CopyCommand command="npx vars init" />
         </div>
       </div>

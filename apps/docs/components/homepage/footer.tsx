@@ -3,15 +3,24 @@ import { Separator } from '@/components/ui/separator';
 const COLUMNS = [
   {
     title: 'Product',
-    links: ['Documentation', 'Getting Started', 'CLI Reference', 'Changelog'],
+    links: [
+      { label: 'Documentation', href: '/docs' },
+      { label: 'Getting Started', href: '/docs' },
+    ],
   },
   {
     title: 'Integrations',
-    links: ['Next.js', 'Vite', 'Astro', 'NestJS', 'VS Code'],
+    links: [
+      { label: 'Next.js', href: '/docs' },
+      { label: 'Vite', href: '/docs' },
+      { label: 'Astro', href: '/docs' },
+    ],
   },
   {
     title: 'Community',
-    links: ['GitHub', 'Discord', 'Twitter / X', 'Contributing'],
+    links: [
+      { label: 'GitHub', href: 'https://github.com/Royal-lobster/vars' },
+    ],
   },
 ];
 
@@ -44,12 +53,12 @@ export function Footer() {
               </h4>
               <ul className="mt-4 space-y-2.5">
                 {col.links.map((link) => (
-                  <li key={link}>
+                  <li key={link.label}>
                     <a
-                      href="#"
+                      href={link.href}
                       className="text-[13px] text-white/25 transition-colors hover:text-green-500"
                     >
-                      {link}
+                      {link.label}
                     </a>
                   </li>
                 ))}
@@ -65,11 +74,8 @@ export function Footer() {
             © 2026 vars. Open source under MIT.
           </span>
           <div className="flex gap-4">
-            <a href="#" className="text-xs text-white/25 hover:text-green-500">
-              Privacy
-            </a>
-            <a href="#" className="text-xs text-white/25 hover:text-green-500">
-              Terms
+            <a href="https://github.com/Royal-lobster/vars" className="text-xs text-white/25 hover:text-green-500">
+              GitHub
             </a>
           </div>
         </div>
