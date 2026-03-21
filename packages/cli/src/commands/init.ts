@@ -1,5 +1,5 @@
 import { defineCommand } from "citty";
-import { existsSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, appendFileSync, unlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
   createMasterKey,
@@ -8,6 +8,7 @@ import {
 } from "@vars/core";
 import pc from "picocolors";
 import * as output from "../utils/output.js";
+import { promptConfirm } from "../utils/prompt.js";
 import { promptPIN } from "../utils/prompt.js";
 
 export default defineCommand({
@@ -92,6 +93,19 @@ export default defineCommand({
 
     output.success("Created .vars (encrypted values)");
     output.success("Created varskey (PIN-protected encryption key)");
+
+    // Offer to delete .env after successful migration
+    if (envVars.length > 0 && existsSync(envFilePath)) {
+      const shouldDelete = await promptConfirm(
+        `Delete ${envFilePath}? (plaintext secrets are now encrypted in .vars)`,
+      );
+      if (shouldDelete) {
+        unlinkSync(envFilePath);
+        output.success(`Deleted ${envFilePath}`);
+      } else {
+        output.warn(`${envFilePath} still contains plaintext secrets — consider deleting it manually.`);
+      }
+    }
   },
 });
 
