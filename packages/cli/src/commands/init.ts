@@ -6,6 +6,7 @@ import {
   encryptMasterKey,
   encrypt,
 } from "@vars/core";
+import pc from "picocolors";
 import * as output from "../utils/output.js";
 import { promptPIN } from "../utils/prompt.js";
 
@@ -38,7 +39,15 @@ export default defineCommand({
     output.heading("vars init");
     output.info("Setting up encrypted environment variables...\n");
 
-    const pin = await promptPIN("Choose a PIN to protect your encryption key");
+    console.log(pc.yellow(pc.bold("  ⚠  Important: Your PIN is the only way to decrypt your secrets.")));
+    console.log(pc.dim("     There is no recovery mechanism. If you forget it, all encrypted"));
+    console.log(pc.dim("     values are lost and must be re-created from scratch.\n"));
+    console.log(pc.dim("     Store your PIN somewhere your coding agent can't access:"));
+    console.log(pc.dim("       • A password manager (1Password, Bitwarden, etc.)"));
+    console.log(pc.dim("       • A team Slack/Discord channel"));
+    console.log(pc.dim("       • Written down physically\n"));
+
+    const pin = await promptPIN("Choose a PIN");
     const pinConfirm = await promptPIN("Confirm PIN");
     if (pin !== pinConfirm) {
       output.error("PINs do not match. Aborting.");
@@ -78,11 +87,11 @@ export default defineCommand({
     }
 
     writeFileSync(varsPath, lines.join("\n"));
-    writeFileSync(resolve(cwd, ".vars.key"), encryptedKey + "\n");
+    writeFileSync(resolve(cwd, "varskey"), encryptedKey + "\n");
     updateGitignore(cwd);
 
     output.success("Created .vars (encrypted values)");
-    output.success("Created .vars.key (PIN-protected encryption key)");
+    output.success("Created varskey (PIN-protected encryption key)");
   },
 });
 
@@ -158,7 +167,7 @@ export async function initProject(options: {
 }): Promise<void> {
   const { cwd, pin, env } = options;
   const varsPath = resolve(cwd, ".vars");
-  const keyPath = resolve(cwd, ".vars.key");
+  const keyPath = resolve(cwd, "varskey");
 
   const masterKey = await createMasterKey();
   const encryptedKey = await encryptMasterKey(masterKey, pin);
@@ -189,10 +198,9 @@ function updateGitignore(cwd: string): void {
   const varsEntries = [
     "",
     "# vars",
-    ".vars.key",
-    ".vars.key.*",
-    ".vars.decrypted",
-    ".vars.encrypted.bak",
+    "varskey",
+    "varskey.*",
+    ".vars.unlocked",
     ".env",
     ".env.*",
     ".vars.swp",
@@ -203,7 +211,7 @@ function updateGitignore(cwd: string): void {
 
   if (existsSync(gitignorePath)) {
     const existing = readFileSync(gitignorePath, "utf8");
-    if (!existing.includes(".vars.key")) {
+    if (!existing.includes("varskey")) {
       appendFileSync(gitignorePath, "\n" + varsEntries + "\n");
     }
   } else {

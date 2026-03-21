@@ -9,7 +9,7 @@ import * as output from "../utils/output.js";
 export default defineCommand({
   meta: {
     name: "show",
-    description: "Decrypt all values and rename to .vars.decrypted for safe editing",
+    description: "Decrypt all values and rename to .vars.unlocked for safe editing",
   },
   args: {
     file: {
@@ -29,7 +29,7 @@ export default defineCommand({
 
 /**
  * Decrypt all encrypted values in .vars, write decrypted content,
- * then rename .vars → .vars.decrypted.
+ * then rename .vars → .vars.unlocked.
  * This is a simple rename so the editor follows the file.
  */
 export function showVarsFile(filePath: string, key: Buffer): string {
@@ -51,9 +51,9 @@ export function showVarsFile(filePath: string, key: Buffer): string {
     result.push(line);
   }
 
-  // Write decrypted content into .vars, then rename to .vars.decrypted
+  // Write decrypted content into .vars, then rename to .vars.unlocked
   atomicWriteFileSync(filePath, result.join("\n"));
-  const decryptedPath = filePath + ".decrypted";
+  const decryptedPath = filePath + ".unlocked";
   renameSync(filePath, decryptedPath);
   return decryptedPath;
 }

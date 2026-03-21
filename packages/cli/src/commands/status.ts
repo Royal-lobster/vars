@@ -56,7 +56,7 @@ export default defineCommand({
  */
 export function getStatus(filePath: string): VarsStatus {
   const varsFileExists = existsSync(filePath);
-  const keyFileExists = existsSync(filePath.replace(/\.vars$/, ".vars.key"));
+  const keyFileExists = existsSync(filePath.replace(/\.vars$/, "varskey"));
 
   if (!varsFileExists) {
     return {

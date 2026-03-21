@@ -75,18 +75,18 @@ export function runDoctorChecks(cwd: string): DoctorCheck[] {
   }
 
   const varsDir = dirname(varsPath);
-  const keyPath = join(varsDir, ".vars.key");
+  const keyPath = join(varsDir, "varskey");
   if (existsSync(keyPath)) {
     checks.push({
       name: "key-file",
-      label: ".vars.key file",
+      label: "varskey file",
       status: "pass",
       message: "Found",
     });
   } else {
     checks.push({
       name: "key-file",
-      label: ".vars.key file",
+      label: "varskey file",
       status: "fail",
       message: "Not found. Run 'vars init' to generate a key.",
     });
@@ -95,19 +95,19 @@ export function runDoctorChecks(cwd: string): DoctorCheck[] {
   const gitignorePath = join(varsDir, ".gitignore");
   if (existsSync(gitignorePath)) {
     const gitignore = readFileSync(gitignorePath, "utf8");
-    if (gitignore.includes(".vars.key")) {
+    if (gitignore.includes("varskey")) {
       checks.push({
         name: "gitignore",
         label: ".gitignore",
         status: "pass",
-        message: ".vars.key is gitignored",
+        message: "varskey is gitignored",
       });
     } else {
       checks.push({
         name: "gitignore",
         label: ".gitignore",
         status: "warn",
-        message: ".vars.key is NOT in .gitignore",
+        message: "varskey is NOT in .gitignore",
       });
     }
   } else {
@@ -115,7 +115,7 @@ export function runDoctorChecks(cwd: string): DoctorCheck[] {
       name: "gitignore",
       label: ".gitignore",
       status: "warn",
-      message: "No .gitignore found. Create one with .vars.key entry.",
+      message: "No .gitignore found. Create one with varskey entry.",
     });
   }
 

@@ -11,28 +11,11 @@ import * as output from "../utils/output.js";
 const HOOK_MARKER = "# vars: auto-encrypt before commit";
 const HOOK_SCRIPT = `
 ${HOOK_MARKER}
-# Block commit if .vars.decrypted exists (secrets are exposed)
-if [ -f .vars.decrypted ]; then
-  if command -v vars >/dev/null 2>&1; then
-    vars hide 2>/dev/null
-    if [ $? -ne 0 ]; then
-      echo "vars: failed to encrypt — commit blocked"
-      echo "Run 'vars unlock' first, then try again"
-      exit 1
-    fi
-    git add .vars
-  else
-    echo "vars: .vars.decrypted exists — secrets are decrypted!"
-    echo "Run 'vars hide' before committing."
-    exit 1
-  fi
-fi
-# Also re-encrypt any plaintext values left in .vars itself
-if [ -f .vars ]; then
-  if command -v vars >/dev/null 2>&1; then
-    vars hide 2>/dev/null
-    git add .vars
-  fi
+# Block commit if .vars.unlocked exists (secrets are decrypted)
+if [ -f .vars.unlocked ]; then
+  echo "vars: .vars.unlocked exists — secrets are decrypted!"
+  echo "Run 'vars hide' before committing."
+  exit 1
 fi
 `;
 

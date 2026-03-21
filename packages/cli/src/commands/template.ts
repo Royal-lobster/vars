@@ -1,7 +1,7 @@
 import { defineCommand } from "citty";
 import { readFileSync } from "node:fs";
-import { parse, decrypt, isEncrypted, retrieveKey, resolveValue } from "@vars/core";
-import { buildContext, getMasterKeyFromEnv } from "../utils/context.js";
+import { parse, decrypt, isEncrypted, resolveValue } from "@vars/core";
+import { buildContext, getKeyFromEnv } from "../utils/context.js";
 
 export default defineCommand({
   meta: {
@@ -23,15 +23,7 @@ export default defineCommand({
   async run({ args }) {
     const ctx = buildContext({ file: args.file, env: args.env });
 
-    let key: Buffer | null = null;
-    try {
-      key = getMasterKeyFromEnv();
-      if (!key) {
-        key = await retrieveKey();
-      }
-    } catch {
-      // No key available
-    }
+    const key = getKeyFromEnv();
 
     const result = generateTemplate(ctx.varsFilePath, ctx.env, key);
     process.stdout.write(result);

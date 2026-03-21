@@ -20,7 +20,7 @@ export default defineCommand({
   async run({ args }) {
     const ctx = buildContext({ file: args.file });
     const key = await requireKey();
-    const decryptedPath = ctx.varsFilePath + ".decrypted";
+    const decryptedPath = ctx.varsFilePath + ".unlocked";
 
     if (existsSync(decryptedPath)) {
       // Currently decrypted → hide it
@@ -29,7 +29,7 @@ export default defineCommand({
     } else {
       // Currently encrypted → show it
       showVarsFile(ctx.varsFilePath, key);
-      output.success("Values decrypted → .vars.decrypted");
+      output.success("Values decrypted → .vars.unlocked");
     }
   },
 });

@@ -8,24 +8,25 @@ const fixture = (name: string) =>
   readFileSync(resolve(__dirname, "fixtures", name), "utf8");
 
 describe("codegen", () => {
-  it("generates valid TypeScript", () => {
+  it("generates zero-dependency TypeScript", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
-    expect(output).toContain("import { loadEnvx");
-    expect(output).not.toContain("import { z }");
+    expect(output).not.toContain("import");
+    expect(output).toContain("process.env");
   });
 
-  it("generates loadEnvx call with type cast", () => {
+  it("generates typed accessors from process.env", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
-    expect(output).toContain("as unknown as Env");
-    expect(output).not.toContain("schema,");
+    expect(output).toContain('read("DATABASE_URL")');
+    expect(output).toContain('toNumber("PORT")');
+    expect(output).toContain('toBoolean("DEBUG")');
   });
 
-  it("generates Env type with Redacted<string> for strings", () => {
+  it("generates Env type with correct types", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
-    expect(output).toContain("DATABASE_URL: Redacted<string>");
+    expect(output).toContain("DATABASE_URL: string");
     expect(output).toContain("PORT: number");
     expect(output).toContain("DEBUG: boolean");
   });
@@ -33,7 +34,7 @@ describe("codegen", () => {
   it("marks optional fields with ?", () => {
     const parsed = parse(fixture("basic.vars"));
     const output = generateTypes(parsed);
-    expect(output).toContain("ANALYTICS_ID?: Redacted<string>");
+    expect(output).toContain("ANALYTICS_ID?: string");
   });
 
   it("includes auto-generated header comment", () => {

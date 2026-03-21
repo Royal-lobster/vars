@@ -11,7 +11,6 @@ import {
 let client: LanguageClient | undefined;
 
 export function activate(context: ExtensionContext): void {
-	// The server is bundled alongside the extension
 	const serverModule = context.asAbsolutePath(
 		path.join("dist", "server.js"),
 	);
@@ -33,7 +32,7 @@ export function activate(context: ExtensionContext): void {
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [{ scheme: "file", language: "vars" }],
 		synchronize: {
-			fileEvents: workspace.createFileSystemWatcher("**/.vars{,.decrypted}"),
+			fileEvents: workspace.createFileSystemWatcher("**/.vars{,.unlocked}"),
 		},
 	};
 
@@ -46,7 +45,7 @@ export function activate(context: ExtensionContext): void {
 
 	client.start();
 
-	// --- vars commands ---
+	// --- vars commands with PIN dialog ---
 	for (const cmd of ["toggle", "show", "hide"] as const) {
 		const disposable = commands.registerCommand(`vars.${cmd}`, async () => {
 			const workspaceFolder = workspace.workspaceFolders?.[0];
@@ -55,14 +54,22 @@ export function activate(context: ExtensionContext): void {
 				return;
 			}
 
+			const pin = await window.showInputBox({
+				prompt: "Enter your vars PIN",
+				password: true,
+				placeHolder: "PIN",
+			});
+
+			if (!pin) return; // user cancelled
+
 			try {
-				await runVarsCommand(cmd, workspaceFolder.uri.fsPath);
+				await runVarsWithPin(cmd, pin, workspaceFolder.uri.fsPath);
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
-				if (msg.includes("No key available")) {
-					window.showErrorMessage("vars: Run 'vars unlock' in your terminal first.");
+				if (msg.includes("Invalid PIN")) {
+					window.showErrorMessage("vars: Invalid PIN.");
 				} else {
-					window.showErrorMessage(`vars ${cmd} failed: ${msg}`);
+					window.showErrorMessage(`vars ${cmd}: ${msg}`);
 				}
 			}
 		});
@@ -70,16 +77,16 @@ export function activate(context: ExtensionContext): void {
 	}
 
 	// --- File watcher for show/hide tab swapping ---
-	const watcher = workspace.createFileSystemWatcher("**/.vars.decrypted");
+	const watcher = workspace.createFileSystemWatcher("**/.vars.unlocked");
 
 	watcher.onDidCreate(async (uri) => {
-		const varsUri = Uri.file(uri.fsPath.replace(/\.decrypted$/, ""));
+		const varsUri = Uri.file(uri.fsPath.replace(/\.unlocked$/, ""));
 		await closeEditorByUri(varsUri);
 		await openFileInEditor(uri);
 	});
 
 	watcher.onDidDelete(async (uri) => {
-		const varsUri = Uri.file(uri.fsPath.replace(/\.decrypted$/, ""));
+		const varsUri = Uri.file(uri.fsPath.replace(/\.unlocked$/, ""));
 		await closeEditorByUri(uri);
 		await openFileInEditor(varsUri);
 	});
@@ -87,15 +94,28 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(watcher);
 }
 
-function runVarsCommand(subcommand: string, cwd: string): Promise<void> {
+function runVarsWithPin(subcommand: string, pin: string, cwd: string): Promise<void> {
 	return new Promise((resolve, reject) => {
-		cp.exec(`vars ${subcommand}`, { cwd }, (err, _stdout, stderr) => {
-			if (err) {
-				reject(new Error(stderr.trim() || err.message));
-			} else {
+		const child = cp.spawn("vars", [subcommand], { cwd });
+
+		let stderr = "";
+		child.stderr.on("data", (data) => { stderr += data.toString(); });
+
+		child.on("close", (code) => {
+			if (code === 0) {
 				resolve();
+			} else {
+				reject(new Error(stderr.trim() || `vars ${subcommand} exited with code ${code}`));
 			}
 		});
+
+		child.on("error", (err) => {
+			reject(new Error(`Failed to run vars: ${err.message}`));
+		});
+
+		// Write PIN to stdin and close it
+		child.stdin.write(pin + "\n");
+		child.stdin.end();
 	});
 }
 

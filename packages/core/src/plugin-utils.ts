@@ -17,10 +17,10 @@ export function extractValue(value: unknown): string {
 }
 
 /**
- * Read the decryption key from a .vars.key file if it exists.
+ * Read the decryption key from a varskey file if it exists.
  */
 export function readKeyFile(envFile: string): string | undefined {
-	const keyPath = resolve(process.cwd(), `${envFile}.key`);
+	const keyPath = resolve(process.cwd(), "varskey");
 	if (existsSync(keyPath)) {
 		return readFileSync(keyPath, "utf8").trim();
 	}

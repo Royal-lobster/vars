@@ -34,7 +34,7 @@ export default defineCommand({
     try {
       await rotateKey(cwd, oldPin, newPin);
       output.success("Key rotated successfully. All values re-encrypted with new key.");
-      output.info("Share the new .vars.key + new PIN with teammates.");
+      output.info("Share the new varskey + new PIN with teammates.");
     } catch (err) {
       output.error(`Rotation failed: ${(err as Error).message}`);
       process.exit(1);
@@ -46,7 +46,7 @@ export default defineCommand({
  * Rotate the encryption key.
  *
  * Safety order:
- * 1. Write new .vars.key first (so we never lose the ability to decrypt)
+ * 1. Write new varskey first (so we never lose the ability to decrypt)
  * 2. Re-encrypt .vars with the new key
  */
 export async function rotateKey(
@@ -54,7 +54,7 @@ export async function rotateKey(
   oldPin: string,
   newPin: string,
 ): Promise<{ newKey: Buffer }> {
-  const keyPath = join(cwd, ".vars.key");
+  const keyPath = join(cwd, "varskey");
   const varsPath = join(cwd, ".vars");
 
   const oldKeyEncoded = readFileSync(keyPath, "utf8").trim();
@@ -85,7 +85,7 @@ export async function rotateKey(
   const newKeyEncoded = await encryptMasterKey(newKey, newPin);
 
   // Write key BEFORE re-encrypted vars -- if we crash between these two writes,
-  // we still have the old .vars (encrypted with old key) and old .vars.key
+  // we still have the old .vars (encrypted with old key) and old varskey
   // Use atomic writes for both
   atomicWriteFileSync(keyPath, newKeyEncoded + "\n");
   atomicWriteFileSync(varsPath, result.join("\n"));
