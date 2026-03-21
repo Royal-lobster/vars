@@ -1,6 +1,6 @@
 import { defineCommand } from "citty";
 import { readFileSync, renameSync } from "node:fs";
-import { decrypt, isEncrypted } from "@vars/core";
+import { decrypt, isEncrypted, regenerateIfStale } from "@vars/core";
 import { buildContext, requireKey } from "../utils/context.js";
 import { ENV_VALUE_LINE } from "../utils/patterns.js";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
@@ -53,6 +53,10 @@ export function showVarsFile(filePath: string, key: Buffer): string {
 
   // Write decrypted content into .vars, then rename to .vars.unlocked
   atomicWriteFileSync(filePath, result.join("\n"));
+
+  // Regenerate env.generated.ts before rename (while .vars still exists)
+  regenerateIfStale(filePath, ".vars");
+
   const decryptedPath = filePath + ".unlocked";
   renameSync(filePath, decryptedPath);
   return decryptedPath;

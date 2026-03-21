@@ -1,6 +1,6 @@
 import { defineCommand } from "citty";
 import { existsSync, readFileSync, renameSync } from "node:fs";
-import { encrypt, isEncrypted } from "@vars/core";
+import { encrypt, isEncrypted, regenerateIfStale } from "@vars/core";
 import { buildContext, requireKey } from "../utils/context.js";
 import { ENV_VALUE_LINE } from "../utils/patterns.js";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
@@ -64,4 +64,7 @@ export function hideVarsFile(filePath: string, key: Buffer): void {
   if (sourcePath !== filePath) {
     renameSync(sourcePath, filePath);
   }
+
+  // Regenerate env.generated.ts if schemas changed
+  regenerateIfStale(filePath, ".vars");
 }
