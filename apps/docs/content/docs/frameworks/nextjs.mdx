@@ -3,24 +3,22 @@ title: Next.js
 description: Encrypted, typed env vars in your Next.js app. Zero dotenv files.
 ---
 
-## Install
+## Setup
 
-```bash
-pnpm add @vars/next
+Wrap your dev and build scripts with `vars run`:
+
+```json title="package.json"
+{
+  "scripts": {
+    "dev": "vars run --env dev -- next dev",
+    "build": "vars run --env prod -- next build"
+  }
+}
 ```
 
-## Configure
+That's it. `vars run` decrypts `.vars/vault.vars`, validates against your Zod schemas, and sets `process.env` before Next.js starts. No adapter package needed.
 
-```ts
-// next.config.ts
-import { withVars } from "@vars/next";
-
-export default withVars({
-  reactStrictMode: true,
-});
-```
-
-`withVars` wraps your existing Next.js config. On every build and `next dev`, it decrypts `.vars/vault.vars`, validates against your Zod schemas, and injects into `process.env`.
+If you ran `vars init` in a Next.js project, the dev script was wrapped automatically.
 
 ## Access variables
 
@@ -47,38 +45,25 @@ NEXT_PUBLIC_API_URL  z.string().url()
   @prod = https://api.yourapp.com
 ```
 
-Anything starting with `NEXT_PUBLIC_` gets merged into Next.js's `env` config automatically. It lands in the client bundle without extra wiring.
+Because `vars run` sets `process.env` before Next.js starts, anything starting with `NEXT_PUBLIC_` gets picked up by Next.js automatically and lands in the client bundle without extra wiring.
 
 ```ts
 // any client component
 const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 ```
 
-## Options
+## CI / CD
 
-Pass a second argument to `withVars`:
+Set `VARS_KEY` as a secret in your CI environment:
 
-```ts
-export default withVars(
-  { reactStrictMode: true },
-  {
-    envFile: ".vars/vault.vars", // path to your vault
-    env: "production",           // override VARS_ENV
-    key: process.env.VARS_KEY,   // override key lookup
-  },
-);
+```bash
+VARS_KEY=<your-master-key> vars run --env prod -- next build
 ```
 
-| Option | Type | Default |
-|--------|------|---------|
-| `envFile` | `string` | `.vars/vault.vars` |
-| `env` | `string` | `VARS_ENV` env var, then `"development"` |
-| `key` | `string` | `VARS_KEY` env var, then reads `.vars/key` file |
+No PIN prompt in CI — `VARS_KEY` provides the decryption key directly.
 
 ## Tips
 
-In CI, set `VARS_KEY` as a secret. vars reads it from `process.env` — no code changes needed.
-
-Schema failures throw at build time. A bad URL or wrong type blows up before anything ships, not after.
-
-Only `NEXT_PUBLIC_*` vars reach the browser. Everything else is server-only, even if you forget to think about it.
+- Schema failures throw at build time. A bad URL or wrong type blows up before anything ships, not after.
+- Only `NEXT_PUBLIC_*` vars reach the browser. Everything else is server-only, even if you forget to think about it.
+- In local development, `vars run` prompts for your PIN to decrypt the key file.

@@ -3,25 +3,20 @@ title: Vite
 description: Encrypted, typed env vars in Vite. Also works with SvelteKit, Nuxt, and Remix.
 ---
 
-## Install
+## Setup
 
-```bash
-pnpm add @vars/vite
+Wrap your dev and build scripts with `vars run`:
+
+```json title="package.json"
+{
+  "scripts": {
+    "dev": "vars run --env dev -- vite",
+    "build": "vars run --env prod -- vite build"
+  }
+}
 ```
 
-## Configure
-
-```ts
-// vite.config.ts
-import { defineConfig } from "vite";
-import { varsPlugin } from "@vars/vite";
-
-export default defineConfig({
-  plugins: [varsPlugin()],
-});
-```
-
-On dev server start and every build, `varsPlugin` decrypts `.vars/vault.vars`, validates against your Zod schemas, and injects into `process.env`. `VITE_*` vars also land in `import.meta.env` for client-side use.
+`vars run` decrypts `.vars/vault.vars`, validates against your Zod schemas, and sets `process.env` before Vite starts. No adapter package needed.
 
 ## Access variables
 
@@ -47,7 +42,7 @@ Then access it through `import.meta.env`:
 const apiUrl = import.meta.env.VITE_API_URL;
 ```
 
-vars replaces `import.meta.env.VITE_*` at build time, same as Vite's native behavior. Just from an encrypted vault instead of a `.env` file.
+Because `vars run` sets `process.env` before Vite starts, `VITE_*` vars are picked up by Vite's native env handling and land in `import.meta.env` for client-side use.
 
 ## Typed accessors
 
@@ -59,58 +54,40 @@ import { env } from "./env.generated";
 const apiUrl = env.VITE_API_URL; // string, not string | undefined
 ```
 
-## Hot reload
-
-The dev server watches `.vars`. Change a value, run `npx vars hide` to re-encrypt, and the server restarts with the new values.
-
-## Options
-
-```ts
-varsPlugin({
-  envFile: ".vars/vault.vars", // path to your vault
-  env: "production",           // override VARS_ENV
-  key: process.env.VARS_KEY,   // override key lookup
-})
-```
-
-| Option | Type | Default |
-|--------|------|---------|
-| `envFile` | `string` | `.vars/vault.vars` |
-| `env` | `string` | `VARS_ENV` env var, then `"development"` |
-| `key` | `string` | `VARS_KEY` env var, then reads `.vars/key` file |
-
 ## SvelteKit, Nuxt, Remix
 
-`@vars/vite` works anywhere Vite plugins are supported:
+`vars run` works with any Vite-based framework. Just wrap the framework's CLI command:
 
-```ts
-// SvelteKit — vite.config.ts
-import { sveltekit } from "@sveltejs/kit/vite";
-import { varsPlugin } from "@vars/vite";
-import { defineConfig } from "vite";
-
-export default defineConfig({
-  plugins: [sveltekit(), varsPlugin()],
-});
+```json title="SvelteKit — package.json"
+{
+  "scripts": {
+    "dev": "vars run --env dev -- vite dev",
+    "build": "vars run --env prod -- vite build"
+  }
+}
 ```
 
-```ts
-// Nuxt — nuxt.config.ts
-import { varsPlugin } from "@vars/vite";
-
-export default defineNuxtConfig({
-  vite: {
-    plugins: [varsPlugin()],
-  },
-});
+```json title="Nuxt — package.json"
+{
+  "scripts": {
+    "dev": "vars run --env dev -- nuxt dev",
+    "build": "vars run --env prod -- nuxt build"
+  }
+}
 ```
 
-`VITE_*` for client-side, everything else server-only. Works the same across all three.
+`VITE_*` for client-side, everything else server-only. Works the same across all Vite-based frameworks.
+
+## CI / CD
+
+Set `VARS_KEY` as a secret in your CI environment:
+
+```bash
+VARS_KEY=<your-master-key> vars run --env prod -- vite build
+```
 
 ## Tips
 
-In CI, set `VARS_KEY` as a secret. The plugin reads it from `process.env` automatically.
-
-Only `VITE_*` vars land in `import.meta.env`. Everything else stays server-side — no accidental leaks if you forget the prefix.
-
-Schema errors throw before the build finishes. Bad values don't make it to production.
+- Only `VITE_*` vars land in `import.meta.env`. Everything else stays server-side — no accidental leaks if you forget the prefix.
+- Schema errors throw before the build finishes. Bad values don't make it to production.
+- In local development, `vars run` prompts for your PIN to decrypt the key file.

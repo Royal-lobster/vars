@@ -53,26 +53,23 @@ vars hide          # re-encrypts unlocked.vars → vault.vars
 
 # Run your app
 vars run --env dev -- npm start
-
-# Or use the framework plugin (Next.js)
-# just: npm run dev — plugin handles everything
 ```
 
 ## 🔌 Framework Support
 
-```typescript
-// next.config.ts
-import { withVars } from '@vars/next'
-export default withVars()
+`vars run` works with **any** framework — no per-framework adapter needed. Just wrap your dev/build commands:
 
-// vite.config.ts
-import { varsPlugin } from '@vars/vite'
-export default defineConfig({ plugins: [varsPlugin()] })
-
-// astro.config.mts
-import { varsIntegration } from '@vars/astro'
-export default defineConfig({ integrations: [varsIntegration()] })
+```json
+// package.json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- next dev",
+    "build": "vars run --env prod -- next build"
+  }
+}
 ```
+
+`vars init` detects your framework and wraps the dev script automatically. Framework-specific prefixes (`NEXT_PUBLIC_*`, `VITE_*`, `PUBLIC_*`) work out of the box because `vars run` sets `process.env` before the framework starts.
 
 ## 🔒 Type Safety
 
@@ -105,19 +102,14 @@ Set **one env var** on your platform:
 VARS_KEY=<your-master-key>
 ```
 
-`.vars` is in the repo. The framework plugin decrypts at build time. No dashboard env var management ever again.
+`.vars` is in the repo. `vars run` decrypts at build time. No dashboard env var management ever again.
 
 ## 📦 Packages
 
 | Package | Description |
 |---------|-------------|
 | `@vars/core` | Parser, crypto, validator, `Redacted<T>` |
-| `@vars/cli` | Command-line tool |
-| `@vars/next` | Next.js integration |
-| `@vars/vite` | Vite / SvelteKit / Nuxt / Remix |
-| `@vars/astro` | Astro integration |
-| `@vars/nestjs` | NestJS module |
-| `@vars/turbo` | Turborepo utilities |
+| `@vars/cli` | Command-line tool (`vars run`, `vars init`, etc.) |
 | `@vars/lsp` | Language Server Protocol |
 | `@vars/vscode` | VS Code / Cursor extension |
 

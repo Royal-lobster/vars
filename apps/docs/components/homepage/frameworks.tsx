@@ -19,78 +19,84 @@ const FRAMEWORKS: {
 }[] = [
   {
     name: 'Next.js',
-    lang: 'js',
-    code: `// next.config.ts
-import { withVars } from "@vars/next";
-
-export default withVars({
-  // your next config
-});`,
+    lang: 'json',
+    code: `// package.json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- next dev",
+    "build": "vars run --env prod -- next build"
+  }
+}`,
     color: 'from-white/5 to-white/[0.02]',
     Icon: SiNextdotjs,
     iconColor: '#ffffff',
   },
   {
     name: 'Vite',
-    lang: 'ts',
-    code: `// vite.config.ts
-import { varsPlugin } from "@vars/vite";
-
-export default defineConfig({
-  plugins: [varsPlugin()],
-});`,
+    lang: 'json',
+    code: `// package.json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- vite",
+    "build": "vars run --env prod -- vite build"
+  }
+}`,
     color: 'from-purple-500/5 to-purple-500/[0.02]',
     Icon: SiVite,
     iconColor: '#646CFF',
   },
   {
     name: 'Astro',
-    lang: 'js',
-    code: `// astro.config.mjs
-import { varsIntegration } from "@vars/astro";
-
-export default defineConfig({
-  integrations: [varsIntegration()],
-});`,
+    lang: 'json',
+    code: `// package.json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- astro dev",
+    "build": "vars run --env prod -- astro build"
+  }
+}`,
     color: 'from-orange-500/5 to-orange-500/[0.02]',
     Icon: SiAstro,
     iconColor: '#BC52EE',
   },
   {
     name: 'NestJS',
-    lang: 'ts',
-    code: `// app.module.ts
-import { VarsModule } from "@vars/nestjs";
-
-@Module({
-  imports: [VarsModule.forRoot()],
-})`,
+    lang: 'json',
+    code: `// package.json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- nest start --watch",
+    "build": "vars run --env prod -- nest build"
+  }
+}`,
     color: 'from-red-500/5 to-red-500/[0.02]',
     Icon: SiNestjs,
     iconColor: '#E0234E',
   },
   {
     name: 'SvelteKit',
-    lang: 'ts',
-    code: `// vite.config.ts
-import { varsPlugin } from "@vars/vite";
-
-export default defineConfig({
-  plugins: [sveltekit(), varsPlugin()],
-});`,
+    lang: 'json',
+    code: `// package.json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- vite dev",
+    "build": "vars run --env prod -- vite build"
+  }
+}`,
     color: 'from-orange-500/5 to-orange-500/[0.02]',
     Icon: SiSvelte,
     iconColor: '#FF3E00',
   },
   {
     name: 'Nuxt',
-    lang: 'ts',
-    code: `// nuxt.config.ts
-import { varsPlugin } from "@vars/vite";
-
-export default defineNuxtConfig({
-  vite: { plugins: [varsPlugin()] },
-});`,
+    lang: 'json',
+    code: `// package.json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- nuxt dev",
+    "build": "vars run --env prod -- nuxt build"
+  }
+}`,
     color: 'from-green-500/5 to-green-500/[0.02]',
     Icon: SiNuxt,
     iconColor: '#00DC82',
@@ -103,7 +109,7 @@ export function Frameworks() {
       <div className="mx-auto max-w-[1120px] px-5 md:px-10">
         <div className="mb-10 text-center">
           <h3 className="text-sm font-medium text-white/40">
-            One-line integration with your stack
+            Works with any framework
           </h3>
         </div>
 
