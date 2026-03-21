@@ -35,7 +35,7 @@ const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-xs
 
 export function Comparison() {
   return (
-    <section className="mx-auto max-w-[1120px] px-5 pb-24 md:px-10">
+    <section className="mx-auto max-w-[1120px] px-5 py-24 md:px-10">
       <div className="mb-12 text-center">
         <h2 className="text-[clamp(28px,4vw,38px)] font-bold tracking-[-1.5px]">
           The .env file is{' '}
