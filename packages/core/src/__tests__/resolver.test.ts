@@ -1,0 +1,118 @@
+import { describe, it, expect } from "vitest";
+import { resolveValue, resolveAll, resolveInterpolation } from "../resolver.js";
+import { parse } from "../parser.js";
+import type { VariableDecl } from "../types.js";
+
+describe("resolver", () => {
+  describe("resolveValue", () => {
+    it("resolves literal default value", () => {
+      const result = parse('env(dev, prod)\npublic PORT : z.number() = 3000');
+      const portDecl = result.ast.declarations[0] as VariableDecl;
+      expect(resolveValue(portDecl, "dev", {})).toBe("3000");
+      expect(resolveValue(portDecl, "prod", {})).toBe("3000");
+    });
+
+    it("resolves env-specific value", () => {
+      const result = parse('env(dev, prod)\nDB : z.string() {\n  dev = "localhost"\n  prod = "prod.db"\n}');
+      const dbDecl = result.ast.declarations[0] as VariableDecl;
+      expect(resolveValue(dbDecl, "dev", {})).toBe("localhost");
+      expect(resolveValue(dbDecl, "prod", {})).toBe("prod.db");
+    });
+
+    it("returns undefined for missing env", () => {
+      const result = parse('env(dev, staging, prod)\nDB : z.string() {\n  dev = "localhost"\n  prod = "prod.db"\n}');
+      const dbDecl = result.ast.declarations[0] as VariableDecl;
+      expect(resolveValue(dbDecl, "staging", {})).toBeUndefined();
+    });
+
+    it("resolves pure conditional (when/else)", () => {
+      const result = parse('env(dev, prod)\nparam region : enum(us, eu) = us\npublic GDPR : z.boolean() {\n  when region = eu => true\n  else => false\n}');
+      const gdprDecl = result.ast.declarations[0] as VariableDecl;
+      expect(resolveValue(gdprDecl, "prod", { region: "eu" })).toBe("true");
+      expect(resolveValue(gdprDecl, "prod", { region: "us" })).toBe("false");
+    });
+
+    it("resolves env block with when-qualified entries", () => {
+      const src = `env(dev, prod)
+param region : enum(us, eu) = us
+DB : z.string() {
+  dev = "localhost"
+  when region = us { prod = "us.db" }
+  when region = eu { prod = "eu.db" }
+}`;
+      const result = parse(src);
+      const dbDecl = result.ast.declarations[0] as VariableDecl;
+      expect(resolveValue(dbDecl, "dev", { region: "us" })).toBe("localhost");
+      expect(resolveValue(dbDecl, "prod", { region: "us" })).toBe("us.db");
+      expect(resolveValue(dbDecl, "prod", { region: "eu" })).toBe("eu.db");
+    });
+
+    it("resolves encrypted value as raw string", () => {
+      const result = parse('env(dev, prod)\nS : z.string() {\n  dev = "plain"\n  prod = enc:v2:aes256gcm-det:a:b:c\n}');
+      const decl = result.ast.declarations[0] as VariableDecl;
+      expect(resolveValue(decl, "prod", {})).toBe("enc:v2:aes256gcm-det:a:b:c");
+    });
+  });
+
+  describe("resolveInterpolation", () => {
+    it("replaces ${VAR} references", () => {
+      const resolved = new Map([["HOST", "localhost"], ["PORT", "5432"]]);
+      expect(resolveInterpolation("postgres://${HOST}:${PORT}/db", resolved)).toBe("postgres://localhost:5432/db");
+    });
+
+    it("throws on unresolved reference", () => {
+      const resolved = new Map<string, string>();
+      expect(() => resolveInterpolation("${MISSING}", resolved)).toThrow();
+    });
+
+    it("handles escaped \\${", () => {
+      const resolved = new Map([["X", "val"]]);
+      expect(resolveInterpolation("literal \\${NOT_A_REF} and ${X}", resolved)).toBe("literal ${NOT_A_REF} and val");
+    });
+  });
+
+  describe("resolveAll", () => {
+    it("resolves all variables and flattens groups", () => {
+      const src = `env(dev, prod)
+public APP = "my-app"
+group db {
+  HOST : z.string() {
+    dev = "localhost"
+    prod = "prod.db"
+  }
+  public PORT : z.number() = 5432
+}`;
+      const result = parse(src);
+      const resolved = resolveAll(result.ast.declarations, "dev", {}, result.ast.envs, result.ast.params);
+
+      const app = resolved.vars.find(v => v.name === "APP");
+      expect(app?.flatName).toBe("APP");
+      expect(app?.value).toBe("my-app");
+      expect(app?.public).toBe(true);
+
+      const host = resolved.vars.find(v => v.name === "HOST");
+      expect(host?.flatName).toBe("DB_HOST");
+      expect(host?.value).toBe("localhost");
+      expect(host?.group).toBe("db");
+
+      const port = resolved.vars.find(v => v.name === "PORT");
+      expect(port?.flatName).toBe("DB_PORT");
+      expect(port?.value).toBe("5432");
+      expect(port?.public).toBe(true);
+    });
+
+    it("resolves interpolated values after all vars are resolved", () => {
+      const src = `env(dev, prod)
+HOST : z.string() {
+  dev = "localhost"
+  prod = "prod.db"
+}
+PORT : z.number() = 5432
+URL : z.string() = "postgres://\${HOST}:\${PORT}/mydb"`;
+      const result = parse(src);
+      const resolved = resolveAll(result.ast.declarations, "dev", {}, result.ast.envs, result.ast.params);
+      const url = resolved.vars.find(v => v.name === "URL");
+      expect(url?.value).toBe("postgres://localhost:5432/mydb");
+    });
+  });
+});
