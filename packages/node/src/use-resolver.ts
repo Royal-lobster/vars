@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { parse, resolveAll } from "@vars/core";
+import { isUnlockedPath } from "./unlocked-path.js";
 import type {
   Declaration,
   Import,
@@ -85,7 +86,14 @@ function resolveFile(absPath: string, visited: Set<string>): MergedFile {
   const importedSourceFiles: string[] = [];
 
   for (const imp of ast.imports) {
-    const importPath = resolve(dirname(absPath), imp.path);
+    let importPath = resolve(dirname(absPath), imp.path);
+    // Try unlocked variant if locked path doesn't exist
+    if (!existsSync(importPath) && !isUnlockedPath(importPath)) {
+      const unlockedPath = importPath.replace(/\.vars$/, ".unlocked.vars");
+      if (existsSync(unlockedPath)) {
+        importPath = unlockedPath;
+      }
+    }
     // Pass a copy of visited so siblings don't block each other
     const imported = resolveFile(importPath, new Set(visited));
 
