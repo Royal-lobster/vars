@@ -4,28 +4,60 @@
 
 ## Features
 
-- **Syntax highlighting** for `.vars` files — variable names, Zod schemas, environment tags, metadata, and encrypted values
-- **Real-time diagnostics** — invalid Zod schemas, undefined `@refine` references, expired secrets, and deprecation warnings
-- **Autocomplete** — `@` directives (`@dev`, `@prod`, `@default`, `@description`, `@expires`, etc.) and Zod schema methods
-- **Hover information** — see variable schemas, metadata, and descriptions on hover
-- **Go to Definition** — jump from `@refine` variable references to their declarations
+- **Syntax highlighting** for `.vars` files — variable names, Zod schemas, environment blocks, encrypted values, check blocks, groups, and metadata
+- **Real-time diagnostics** — parse errors, expired secrets, deprecation warnings, and undeclared environment usage
+- **Autocomplete** — top-level keywords (`env`, `param`, `use`, `group`, `public`, `check`), Zod schema methods, metadata keys, environment names, and check block functions
+- **Hover information** — variable schema, visibility (public/secret), and metadata (description, owner, expires, tags)
+- **Go to Definition** — jump to variable declarations and imported files
 - **Code Actions** — quick fixes for common issues
 
 ## The `.vars` Format
 
 ```
-DATABASE_URL  z.string().url().startsWith("postgres://")
-  @dev     = enc:v1:aes256gcm:a1b2c3...:d4e5f6...:g7h8i9...
-  @prod    = enc:v1:aes256gcm:j8fn2p...:t9u0v1...:w2x3y4...
-  @description "Production database connection"
-  @expires 2026-09-01
+# @vars-state unlocked
+env(dev, staging, prod)
+param region : enum(us, eu) = us
 
-PORT  z.coerce.number().int().min(1024).max(65535)
-  @default = 3000
+public APP_NAME = "my-app"
+public PORT : z.number().int().min(1).max(65535) = 3000
 
-@refine (env) => env.LOG_LEVEL !== "debug" || env.DEBUG === true
-  "DEBUG must be true when LOG_LEVEL is debug"
+DATABASE_URL : z.string().url() {
+  dev     = "postgres://localhost:5432/myapp"
+  staging = "postgres://staging.db:5432/myapp"
+  prod    = enc:v2:aes256gcm-det:abc123:def456:ghi789
+} (
+  description = "Main database connection"
+  owner = "backend-team"
+  expires = 2026-12-31
+)
+
+LOG_LEVEL : z.enum(["debug", "info", "warn", "error"]) = "info" {
+  dev = "debug"
+  prod = "warn"
+}
+
+group cache {
+  REDIS_HOST : z.string() {
+    dev  = "localhost"
+    prod = "redis.internal"
+  }
+  REDIS_PORT : z.number() = 6379
+}
+
+check "No debug in prod" {
+  env == "prod" => LOG_LEVEL != "debug"
+}
+
+use "./shared.vars" { pick: [API_KEY] }
 ```
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `vars: Decrypt Values (Show)` | Decrypt and show values in the editor |
+| `vars: Encrypt Values (Hide)` | Encrypt values before committing |
+| `vars: Toggle Encryption` | Toggle between encrypted and decrypted views |
 
 ## Settings
 
