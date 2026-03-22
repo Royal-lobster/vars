@@ -8,7 +8,8 @@ import pc from "picocolors";
 export default defineCommand({
   meta: { name: "check", description: "Validate schemas and run check blocks" },
   args: {
-    file: { type: "positional", required: false },
+    file: { type: "string", alias: "f", description: ".vars file to check" },
+    env: { type: "string", description: "Specific environment to check" },
   },
   async run({ args }) {
     const file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
@@ -26,7 +27,10 @@ export default defineCommand({
     // Get env list from a preliminary parse
     const preliminary = resolveUseChain(file, { env: "dev" });
 
-    for (const env of preliminary.envs) {
+    // If a specific env is requested, only check that env
+    const envsToCheck = args.env ? [args.env] : preliminary.envs;
+
+    for (const env of envsToCheck) {
       const resolved = resolveUseChain(file, { env });
 
       for (const v of resolved.vars) {
@@ -45,6 +49,16 @@ export default defineCommand({
         if (!result.success) {
           console.error(pc.red(`  ✗ ${v.flatName} [${env}]: ${result.issues?.[0]?.message}`));
           errors++;
+        }
+      }
+
+      // Check for missing required values
+      for (const v of resolved.vars) {
+        if (v.value === undefined) {
+          if (!v.schema.includes(".optional()")) {
+            console.error(pc.red(`  ✗ ${v.flatName} [${env}]: missing required value`));
+            errors++;
+          }
         }
       }
 

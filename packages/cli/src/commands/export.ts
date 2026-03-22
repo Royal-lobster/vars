@@ -55,9 +55,21 @@ export default defineCommand({
           console.log(`${k}="${escaped}"`);
         }
         break;
-      case "json":
-        console.log(JSON.stringify(Object.fromEntries(pairs), null, 2));
+      case "json": {
+        const obj: Record<string, string | number | boolean> = {};
+        for (const [k, v] of pairs) {
+          const varDef = resolved.vars.find(rv => rv.flatName === k);
+          if (varDef && (varDef.schema.includes("z.number") || varDef.schema.includes("z.coerce.number"))) {
+            obj[k] = Number(v);
+          } else if (varDef && (varDef.schema.includes("z.boolean") || varDef.schema.includes("z.coerce.boolean"))) {
+            obj[k] = v === "true";
+          } else {
+            obj[k] = v;
+          }
+        }
+        console.log(JSON.stringify(obj, null, 2));
         break;
+      }
       case "k8s-secret": {
         const data: Record<string, string> = {};
         for (const [k, v] of pairs) data[k] = Buffer.from(v).toString("base64");
