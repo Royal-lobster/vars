@@ -5,7 +5,7 @@
   <p>One file. Zero SaaS. AI-safe by default.</p>
 </div>
 
-## The Problem
+## 😩 The Problem
 
 `.env` files are broken:
 
@@ -15,24 +15,25 @@
 - **No team story** -- "hey can someone DM me the .env?"
 - **Environment drift** -- prod has 47 vars, dev has 38, nobody knows which are needed where
 
-## The Solution
+## ✨ The Solution
 
 ```
-# config.vars -- committed to git, secrets encrypted inline
+# config.vars — committed to git, secrets encrypted
 
+# @vars-state locked
 env(dev, staging, prod)
 
 public APP_NAME = "my-app"
 public PORT : z.number().int().min(1024).max(65535) = 3000
 
 DATABASE_URL : z.string().url() {
-  dev     = "postgres://localhost:5432/myapp"
-  staging = "postgres://staging.db:5432/myapp"
+  dev     = enc:v2:aes256gcm-det:x1y2z3...:a4b5c6...:d7e8f9...
+  staging = enc:v2:aes256gcm-det:g1h2i3...:j4k5l6...:m7n8o9...
   prod    = enc:v2:aes256gcm-det:a1b2c3...:d4e5f6...:g7h8i9...
 }
 
 API_KEY : z.string().min(32) {
-  dev  = "example-dev-key-placeholder-long-enough"
+  dev  = enc:v2:aes256gcm-det:p1q2r3...:s4t5u6...:v7w8x9...
   prod = enc:v2:aes256gcm-det:j8fn2p...:t9u0v1...:w2x3y4...
 } (
   description = "Primary API key"
@@ -48,7 +49,7 @@ API_KEY : z.string().min(32) {
 - **Zod-native validation** -- type errors at build time, not runtime
 - **Generated TypeScript types** -- full autocomplete and type safety
 
-## Quick Start
+## 🚀 Quick Start
 
 ```bash
 # Initialize (creates config.vars, encryption key, .gitignore entries)
@@ -66,7 +67,7 @@ vars run --env dev -- npm start
 vars gen config.vars
 ```
 
-## Type Safety
+## 🔒 Type Safety
 
 ```typescript
 // Import from generated file
@@ -81,7 +82,7 @@ vars.TYPO_VAR              // TS error -- doesn't exist
 
 Public variables generate plain types. Secret variables generate `Redacted<string>` -- safe to pass around, explicit `.unwrap()` to access.
 
-## Composition
+## 🔗 Composition
 
 Share config across services with `use`:
 
@@ -108,7 +109,7 @@ DB_URL : z.string() = "postgres://${DB_HOST}:${DB_PORT}/mydb"
 
 Interpolation (`${DB_HOST}`) resolves per-environment. Change a shared value once, every service picks it up.
 
-## Groups
+## 📦 Groups
 
 Organize related variables:
 
@@ -133,7 +134,7 @@ vars.stripe.PUBLISHABLE_KEY    // string (public)
 
 Groups create nested TypeScript types and flat env var names (`STRIPE_SECRET_KEY`).
 
-## Conditionals
+## 🌍 Conditionals
 
 Parameterize config for multi-region deployments:
 
@@ -159,7 +160,7 @@ vars run --env prod --param region=eu -- node server.js
 
 One file instead of 24. No more per-region config duplication.
 
-## Check Blocks
+## ✅ Check Blocks
 
 Cross-variable constraints with a safe, restricted expression language (no JavaScript eval):
 
@@ -179,7 +180,7 @@ check "Test keys only in dev" {
 
 Checks run during `vars check` and `vars run` -- invalid configs fail before your app starts.
 
-## AI Safety
+## 🤖 AI Safety
 
 ```
 cat config.vars   -> variable names visible, secret values encrypted
@@ -190,7 +191,7 @@ vars hide         -> prompts for human PIN
 
 The only way to access secrets: a human enters the PIN. AI coding agents can't complete that step.
 
-## Framework Support
+## 🔌 Framework Support
 
 `vars run` works with **any** framework -- no per-framework adapter needed:
 
@@ -205,7 +206,7 @@ The only way to access secrets: a human enters the PIN. AI coding agents can't c
 
 Framework-specific prefixes (`NEXT_PUBLIC_*`, `VITE_*`) work because `vars run` sets `process.env` before the framework starts.
 
-## Platform Targets
+## 🎯 Platform Targets
 
 Generate TypeScript for any platform:
 
@@ -216,7 +217,7 @@ vars gen config.vars --platform deno          # Deno
 vars gen config.vars --platform static --env prod  # Inlined values
 ```
 
-## Deploy
+## ☁️ Deploy
 
 Set **one env var** on your platform:
 
@@ -226,7 +227,7 @@ VARS_KEY=<base64-master-key>
 
 Get the key with `vars key export`. The `.vars` file is in the repo. `vars run` decrypts at build time.
 
-## CLI Commands
+## 🛠️ CLI Commands
 
 | Command | Description |
 |---------|-------------|
@@ -244,7 +245,7 @@ Get the key with `vars key export`. The `.vars` file is in the repo. `vars run` 
 | `vars key rotate` | Rotate encryption key |
 | `vars doctor` | Diagnose setup issues |
 
-## Packages
+## 📦 Packages
 
 | Package | Description |
 |---------|-------------|
@@ -254,6 +255,6 @@ Get the key with `vars key export`. The `.vars` file is in the repo. `vars run` 
 | `@vars/lsp` | Language Server Protocol for IDE support |
 | `@vars/vscode` | VS Code / Cursor extension |
 
-## License
+## 📄 License
 
 MIT
