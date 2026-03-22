@@ -10,6 +10,7 @@ export interface VarListEntry {
   schema: string;
   envs: string[];
   required: boolean;
+  public?: boolean;
   description?: string;
   deprecated?: string;
   expires?: string;
@@ -46,6 +47,7 @@ export default defineCommand({
       Envs: entry.envs.join(", "),
       Required: entry.required ? pc.green("yes") : pc.dim("no"),
       Notes: [
+        entry.public ? "public" : null,
         entry.description,
         entry.deprecated ? `deprecated: ${entry.deprecated}` : null,
         entry.expires ? `expires: ${entry.expires}` : null,
@@ -72,6 +74,7 @@ export function listVariables(filePath: string): VarListEntry[] {
     schema: v.schema,
     envs: v.values.map((val) => val.env),
     required: !v.schema.includes(".optional()"),
+    public: v.metadata.public || undefined,
     description: v.metadata.description,
     deprecated: v.metadata.deprecated,
     expires: v.metadata.expires,
