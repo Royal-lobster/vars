@@ -10,19 +10,6 @@ import {
 
 let client: LanguageClient | undefined;
 
-/** Read the @vars-state header from a .vars document and set the context key */
-function updateVarsState(doc: { languageId: string; getText(): string }): void {
-	if (doc.languageId !== "vars") return;
-	const firstLine = doc.getText().split("\n", 1)[0] ?? "";
-	if (firstLine.includes("@vars-state unlocked")) {
-		commands.executeCommand("setContext", "vars.state", "unlocked");
-	} else if (firstLine.includes("@vars-state locked")) {
-		commands.executeCommand("setContext", "vars.state", "locked");
-	} else {
-		commands.executeCommand("setContext", "vars.state", undefined);
-	}
-}
-
 export function activate(context: ExtensionContext): void {
 	const serverModule = context.asAbsolutePath(
 		path.join("dist", "server.js"),
@@ -58,21 +45,6 @@ export function activate(context: ExtensionContext): void {
 
 	client.start();
 
-	// --- Track @vars-state for editor title buttons ---
-	if (window.activeTextEditor) {
-		updateVarsState(window.activeTextEditor.document);
-	}
-	context.subscriptions.push(
-		window.onDidChangeActiveTextEditor((editor) => {
-			if (editor) updateVarsState(editor.document);
-		}),
-		workspace.onDidChangeTextDocument((e) => {
-			if (window.activeTextEditor?.document === e.document) {
-				updateVarsState(e.document);
-			}
-		}),
-	);
-
 	// --- vars commands with PIN dialog ---
 	for (const cmd of ["toggle", "show", "hide"] as const) {
 		const disposable = commands.registerCommand(`vars.${cmd}`, async () => {
@@ -88,16 +60,10 @@ export function activate(context: ExtensionContext): void {
 				placeHolder: "PIN",
 			});
 
-			if (!pin) return; // user cancelled
+			if (!pin) return;
 
 			try {
 				await runVarsWithPin(cmd, pin, workspaceFolder.uri.fsPath);
-				// Refresh the active editor to pick up file changes and update state
-				if (window.activeTextEditor) {
-					const doc = window.activeTextEditor.document;
-					await commands.executeCommand("workbench.action.files.revert");
-					updateVarsState(doc);
-				}
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
 				if (msg.includes("Invalid PIN")) {
@@ -114,18 +80,12 @@ export function activate(context: ExtensionContext): void {
 	const watcher = workspace.createFileSystemWatcher("**/*.vars");
 
 	let regenTimer: ReturnType<typeof setTimeout> | undefined;
-	watcher.onDidChange(async (uri) => {
-		// Update state if the changed file is currently open
-		if (window.activeTextEditor?.document.uri.fsPath === uri.fsPath) {
-			updateVarsState(window.activeTextEditor.document);
-		}
-		// Debounce — wait 500ms after last save before regenerating
+	watcher.onDidChange(async () => {
 		if (regenTimer) clearTimeout(regenTimer);
 		regenTimer = setTimeout(() => {
-			const cwd = path.dirname(uri.fsPath);
-			cp.execFile("vars", ["gen"], { cwd, timeout: 5000 }, () => {
-				// Silently ignore errors — gen may fail if schemas are mid-edit
-			});
+			const cwd = workspace.workspaceFolders?.[0]?.uri.fsPath;
+			if (!cwd) return;
+			cp.execFile("vars", ["gen"], { cwd, timeout: 5000 }, () => {});
 		}, 500);
 	});
 
@@ -151,7 +111,6 @@ function runVarsWithPin(subcommand: string, pin: string, cwd: string): Promise<v
 			reject(new Error(`Failed to run vars: ${err.message}`));
 		});
 
-		// Write PIN to stdin and close it
 		child.stdin.write(pin + "\n");
 		child.stdin.end();
 	});
