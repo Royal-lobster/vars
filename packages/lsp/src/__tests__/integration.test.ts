@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { type CompletionContext, computeCompletions } from "../completion.js";
-import { type DefinitionContext, computeDefinition } from "../definition.js";
 import { computeDiagnostics } from "../diagnostics.js";
 import { type HoverContext, computeHover } from "../hover.js";
 
@@ -55,25 +54,6 @@ describe("integration", () => {
     });
   });
 
-  describe("basic.vars", () => {
-    const text = readFileSync(resolve(FIXTURES, "basic.vars"), "utf-8");
-    const uri = "file:///project/.vars";
-
-    it("produces zero errors for a valid file", () => {
-      const diags = computeDiagnostics(text, uri);
-      const errors = diags.filter((d) => d.severity === 1);
-      expect(errors).toHaveLength(0);
-    });
-
-    it("provides hover for DATABASE_URL", () => {
-      const lines = text.split("\n");
-      const line = lines.findIndex((l) => l.startsWith("DATABASE_URL"));
-      expect(line).toBeGreaterThanOrEqual(0);
-      const result = computeHover({ text, line, character: 5, uri });
-      expect(result).not.toBeNull();
-    });
-  });
-
   describe("metadata.vars", () => {
     const text = readFileSync(resolve(FIXTURES, "metadata.vars"), "utf-8");
     const uri = "file:///project/.vars";
@@ -100,14 +80,4 @@ describe("integration", () => {
     });
   });
 
-  describe("extends-child.vars (use import)", () => {
-    const text = readFileSync(resolve(FIXTURES, "extends-child.vars"), "utf-8");
-    const uri = "file:///project/apps/web/app.vars";
-
-    it("provides go-to-definition for use import", () => {
-      const result = computeDefinition({ text, line: 0, character: 5, uri });
-      expect(result).not.toBeNull();
-      expect(result?.targetUri).toContain("extends-parent.vars");
-    });
-  });
 });

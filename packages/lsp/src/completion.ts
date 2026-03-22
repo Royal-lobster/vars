@@ -164,7 +164,6 @@ function getZodMethodCompletions(schemaPrefix: string): CompletionItem[] {
 // Simple heuristics for context detection
 
 function isInsideMetadata(text: string, line: number): boolean {
-  // Walk backwards from current line looking for unmatched (
   const lines = text.split("\n");
   let parenDepth = 0;
   for (let i = line; i >= 0; i--) {
@@ -173,7 +172,12 @@ function isInsideMetadata(text: string, line: number): boolean {
       if (l[j] === ")") parenDepth++;
       if (l[j] === "(") {
         parenDepth--;
-        if (parenDepth < 0) return true;
+        if (parenDepth < 0) {
+          // Check if this paren belongs to env() or enum() — not metadata
+          const before = l.slice(0, j).trimEnd();
+          if (before.endsWith("env") || before.endsWith("enum")) return false;
+          return true;
+        }
       }
     }
   }
@@ -182,9 +186,17 @@ function isInsideMetadata(text: string, line: number): boolean {
 
 function isInsideCheck(text: string, line: number): boolean {
   const lines = text.split("\n");
+  let braceDepth = 0;
   for (let i = line; i >= 0; i--) {
-    if ((lines[i] ?? "").match(/^check\s+"/)) return true;
-    if (i < line && (lines[i] ?? "").match(/^\w/) && !(lines[i] ?? "").match(/^\s/)) break;
+    const l = lines[i] ?? "";
+    for (let j = l.length - 1; j >= 0; j--) {
+      if (l[j] === "}") braceDepth++;
+      if (l[j] === "{") braceDepth--;
+    }
+    // If we've exited all braces and find check keyword, we're inside
+    if (braceDepth < 0 && l.match(/^check\s+"/)) return true;
+    // If we've exited all braces and find a top-level construct, we're not inside
+    if (braceDepth >= 0 && i < line && l.match(/^[a-zA-Z]/)) return false;
   }
   return false;
 }

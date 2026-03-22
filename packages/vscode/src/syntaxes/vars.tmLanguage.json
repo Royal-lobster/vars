@@ -133,6 +133,8 @@
 			},
 			"patterns": [
 				{ "include": "#comment" },
+				{ "include": "#builtin-functions" },
+				{ "include": "#logical-operators" },
 				{ "include": "#conditional" },
 				{ "include": "#comparison-operators" },
 				{ "include": "#arrow-operator" },
@@ -277,7 +279,7 @@
 		"conditional": {
 			"patterns": [
 				{
-					"match": "^\\s*(when)\\s+([a-z][a-zA-Z0-9_]*)\\s*(==|!=|>=|<=|>|<)\\s*(\\S+)\\s*(=>)\\s*(.*)$",
+					"match": "^\\s*(when)\\s+([a-z][a-zA-Z0-9_]*)\\s*(==|!=|>=|<=|>|<|=)\\s*(\\S+)\\s*(=>)\\s*(.*)$",
 					"captures": {
 						"1": { "name": "keyword.control.vars" },
 						"2": { "name": "variable.other.env.vars" },
@@ -381,9 +383,15 @@
 			"name": "string.encrypted.vars"
 		},
 		"triple-string": {
+			"name": "string.quoted.triple.vars",
 			"begin": "\"\"\"",
 			"end": "\"\"\"",
-			"name": "string.quoted.triple.vars"
+			"patterns": [
+				{
+					"name": "constant.character.escape.vars",
+					"match": "\\\\."
+				}
+			]
 		},
 		"string-value": {
 			"match": "\"[^\"]*\"",
