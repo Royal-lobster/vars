@@ -126,4 +126,24 @@ describe("loadVars", () => {
     const config = loadVars(join(tmpDir, ".vars"), { key });
     expect(config.PORT).toBe(3000);
   });
+
+  it("loadVars handles mixed public and encrypted values", () => {
+    writeVarsFile([
+      "PORT  z.coerce.number()",
+      "  @public",
+      "  @dev     = 8080",
+      "",
+      "SECRET  z.string()",
+      `  @dev     = ${encrypt("my-secret", key)}`,
+    ].join("\n"));
+
+    const config = loadVars(join(tmpDir, ".vars"), {
+      env: "dev",
+      key,
+    });
+
+    expect(config.PORT).toBe(8080);
+    expect(config.SECRET).toBeInstanceOf(Redacted);
+    expect(config.SECRET.unwrap()).toBe("my-secret");
+  });
 });
