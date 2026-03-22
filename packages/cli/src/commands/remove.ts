@@ -15,6 +15,10 @@ export default defineCommand({
     if (!file) { console.error(pc.red("No .vars file found")); process.exit(1); }
 
     const name = args.name as string;
+    if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
+      console.error(pc.red("Variable name must be UPPER_SNAKE_CASE"));
+      process.exit(1);
+    }
     const content = readFileSync(file, "utf8");
     const lines = content.split("\n");
     const result: string[] = [];

@@ -42,7 +42,10 @@ export default defineCommand({
 
     switch (args.format) {
       case "dotenv":
-        for (const [k, v] of pairs) console.log(`${k}=${v}`);
+        for (const [k, v] of pairs) {
+          const escaped = v.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+          console.log(`${k}="${escaped}"`);
+        }
         break;
       case "json":
         console.log(JSON.stringify(Object.fromEntries(pairs), null, 2));
