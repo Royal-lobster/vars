@@ -26,13 +26,21 @@ export default defineCommand({
     const file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
     if (!file) { console.error(pc.red("No .vars file found")); process.exit(1); }
 
+    // Resolve use chain (no key needed — just parsing)
+    const resolved = resolveUseChain(file, { env, params });
+
+    // Validate env name against declared envs
+    if (resolved.envs.length > 0 && !resolved.envs.includes(env)) {
+      console.error(pc.red(`  Unknown environment "${env}". Declared environments: ${resolved.envs.join(", ")}`));
+      process.exit(1);
+    }
+
     let key: Buffer | null = getKeyFromEnv();
     if (!key) {
       const keyFile = findKeyFile(file);
       key = await requireKey(keyFile);
     }
 
-    const resolved = resolveUseChain(file, { env, params });
     const pairs: [string, string][] = [];
     for (const v of resolved.vars) {
       if (v.value === undefined) continue;

@@ -13,6 +13,10 @@ export default defineCommand({
     init: defineCommand({
       meta: { name: "init", description: "Create a new encryption key" },
       async run() {
+        if (!process.stdin.isTTY) {
+          console.error("This command requires an interactive terminal.");
+          process.exit(1);
+        }
         const root = getProjectRoot();
         const varsDir = join(root, ".vars");
         const keyPath = join(varsDir, "key");
@@ -45,6 +49,10 @@ export default defineCommand({
     export: defineCommand({
       meta: { name: "export", description: "Print base64 master key for CI" },
       async run() {
+        if (!process.stdin.isTTY) {
+          console.error("This command requires an interactive terminal.");
+          process.exit(1);
+        }
         const keyFile = findKeyFile(process.cwd());
         if (!keyFile) { console.error(pc.red("No key found")); process.exit(1); }
         const encoded = readFileSync(keyFile, "utf8").trim();

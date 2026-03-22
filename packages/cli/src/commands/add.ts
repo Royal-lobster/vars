@@ -13,6 +13,12 @@ export default defineCommand({
     file: { type: "string", alias: "f" },
   },
   async run({ args }) {
+    if (!process.stdin.isTTY) {
+      console.error(pc.red("vars add requires an interactive terminal."));
+      console.error(pc.dim("To add variables non-interactively, edit the .vars file directly."));
+      process.exit(1);
+    }
+
     const file = args.file ? resolve(args.file as string) : findVarsFile(process.cwd());
     if (!file) { console.error(pc.red("No .vars file found")); process.exit(1); }
 
