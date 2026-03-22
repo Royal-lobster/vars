@@ -59,18 +59,6 @@ npx vars gen --all
 npx vars gen config.vars --output src/lib/env.ts
 ```
 
-### Platform targets
-
-Use `--platform` to emit platform-specific accessor patterns:
-
-```bash
-npx vars gen config.vars --platform cloudflare   # Cloudflare Workers (env bindings)
-npx vars gen config.vars --platform deno         # Deno (Deno.env.get)
-npx vars gen config.vars --platform static       # Static sites (import.meta.env)
-```
-
-Default (no `--platform`) targets Node.js `process.env`.
-
 **Flags**
 
 | Flag | Short | Description |
@@ -80,6 +68,71 @@ Default (no `--platform`) targets Node.js `process.env`.
 | `--platform <target>` | | Platform target: `node` (default), `cloudflare`, `deno`, `static` |
 
 `hide` reruns `gen` automatically if your schemas changed since the last run, so you won't call this often.
+
+---
+
+## Platform Targets
+
+By default, `vars gen` creates code that reads from `process.env` (Node.js). For other platforms, use the `--platform` flag:
+
+### Node.js (default)
+
+```bash
+vars gen config.vars
+```
+
+Generated code: `export const vars = parseVars(process.env)`
+
+Works with: Next.js, Express, Hono (Node), Fastify, any Node.js server.
+
+### Cloudflare Workers
+
+```bash
+vars gen config.vars --platform cloudflare
+```
+
+Generated code: `export function getVars(env) { return parseVars(env) }`
+
+Workers don't have `process.env`. Pass the env bindings from your handler:
+
+```typescript
+import { getVars } from '#vars'
+import { Hono } from 'hono'
+
+const app = new Hono()
+app.get('/', (c) => {
+  const vars = getVars(c.env)
+  return c.json({ app: vars.APP_NAME })
+})
+```
+
+### Deno
+
+```bash
+vars gen config.vars --platform deno
+```
+
+Generated code: `export const vars = parseVars(Deno.env.toObject())`
+
+### Static (inlined values)
+
+```bash
+VARS_KEY=$KEY vars gen config.vars --platform static --env prod
+```
+
+Generated code bakes decrypted values directly into the file — no `process.env`, no runtime resolution:
+
+```typescript
+export const vars = {
+  APP_NAME: "my-app",
+  PORT: 3000,
+  DATABASE_URL: new Redacted("postgres://prod.db/myapp"),
+}
+```
+
+**Use this for:** Edge functions, Vite client bundles, any context where `process.env` is not available. Requires the encryption key at gen time. Regenerate per environment at build time.
+
+**Important:** The static file contains decrypted secrets. Only use it for server-side builds, never commit it to git. Add it to `.gitignore`.
 
 ---
 
