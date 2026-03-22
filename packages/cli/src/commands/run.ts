@@ -30,20 +30,20 @@ export default defineCommand({
       process.exit(1);
     }
 
-    // Get key
-    let key: Buffer | null = getKeyFromEnv();
-    if (!key) {
-      const keyFile = findKeyFile(file);
-      key = await requireKey(keyFile);
-    }
-
-    // Resolve all variables
+    // Resolve all variables (no key needed — just parsing)
     const resolved = resolveUseChain(file, { env, params });
 
     // Validate env name against declared envs
     if (resolved.envs.length > 0 && !resolved.envs.includes(env)) {
       console.error(pc.red(`  Unknown environment "${env}". Declared environments: ${resolved.envs.join(", ")}`));
       process.exit(1);
+    }
+
+    // Get key
+    let key: Buffer | null = getKeyFromEnv();
+    if (!key) {
+      const keyFile = findKeyFile(file);
+      key = await requireKey(keyFile);
     }
 
     // Build env vars (decrypt encrypted values)

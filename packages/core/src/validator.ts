@@ -98,7 +98,7 @@ export function validateValue(schemaText: string, value: unknown): ValidateResul
   if (typeof value === "string") {
     if (schemaText.includes("z.number") || schemaText.includes("z.coerce.number")) {
       const num = Number(value);
-      if (!isNaN(num)) coerced = num;
+      if (value !== "" && !isNaN(num)) coerced = num;
     }
     if (schemaText.includes("z.boolean") && !schemaText.includes("z.coerce.boolean")) {
       if (value === "true") coerced = true;

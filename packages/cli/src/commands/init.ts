@@ -77,7 +77,7 @@ public PORT : z.number() = 3000
           // Detect package manager
           const pm = existsSync(join(root, "pnpm-lock.yaml")) ? "pnpm"
             : existsSync(join(root, "yarn.lock")) ? "yarn"
-            : existsSync(join(root, "bun.lockb")) ? "bun"
+            : (existsSync(join(root, "bun.lockb")) || existsSync(join(root, "bun.lock"))) ? "bun"
             : "npm";
           console.log(pc.dim(`  Installing zod...`));
           const { execSync } = await import("node:child_process");
