@@ -32,20 +32,22 @@ DATABASE_URL=postgres://admin:s3cret@staging.db.com/myapp
 API_KEY=stg_lmn456opq789rst012
 PORT=8080`;
 
-const VARS_CODE = `# vault.vars — just one file to manage
-DATABASE_URL  z.string().url()
-  @dev  = enc:v1:aes256gcm:a3b4c5:d6e7f8:g9h0i1
-  @stg  = enc:v1:aes256gcm:j2k3l4:m5n6o7:p8q9r0
-  @prod = enc:v1:aes256gcm:e8d1f0:s1t2u3:v4w5x6
+const VARS_CODE = `# config.vars — just one file to manage
+env(dev, staging, prod)
 
-API_KEY  z.string().min(20)
-  @dev  = enc:v1:aes256gcm:y7z8a9:b0c1d2:e3f4g5
-  @stg  = enc:v1:aes256gcm:f6g7h8:i9j0k1:l2m3n4
-  @prod = enc:v1:aes256gcm:9c2b4f:o5p6q7:r8s9t0
+public PORT : z.number().min(1024) = 3000
 
-PORT  z.coerce.number().min(1024)
-  @default = enc:v1:aes256gcm:u1v2w3:x4y5z6:a7b8c9
-  @prod    = enc:v1:aes256gcm:d0e1f2:g3h4i5:j6k7l8`;
+DATABASE_URL : z.string().url() {
+  dev  = enc:v2:aes256gcm-det:a3b4c5:d6e7f8:g9h0i1
+  stg  = enc:v2:aes256gcm-det:j2k3l4:m5n6o7:p8q9r0
+  prod = enc:v2:aes256gcm-det:e8d1f0:s1t2u3:v4w5x6
+}
+
+API_KEY : z.string().min(20) {
+  dev  = enc:v2:aes256gcm-det:y7z8a9:b0c1d2:e3f4g5
+  stg  = enc:v2:aes256gcm-det:f6g7h8:i9j0k1:l2m3n4
+  prod = enc:v2:aes256gcm-det:9c2b4f:o5p6q7:r8s9t0
+}`;
 
 const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-xs [&_pre]:!leading-[1.9]';
 

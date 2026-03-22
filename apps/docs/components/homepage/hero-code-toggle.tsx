@@ -52,7 +52,7 @@ export function HeroCodeToggle({ unlocked, vault }: HeroCodeToggleProps) {
           }`}
         >
           <Unlock size={12} />
-          unlocked.vars
+          config.vars (unlocked)
         </button>
         <button
           type="button"
@@ -64,7 +64,7 @@ export function HeroCodeToggle({ unlocked, vault }: HeroCodeToggleProps) {
           }`}
         >
           <Lock size={12} />
-          vault.vars
+          config.vars (locked)
         </button>
       </div>
 
@@ -91,10 +91,10 @@ export function HeroCodeToggle({ unlocked, vault }: HeroCodeToggleProps) {
         <div className="flex items-center justify-between mb-2 px-1">
           <span className="flex items-center gap-1.5 font-mono text-xs text-green-400/60">
             <Unlock size={12} />
-            unlocked.vars
+            config.vars (unlocked)
           </span>
           <span className="flex items-center gap-1.5 font-mono text-xs text-white/30">
-            vault.vars
+            config.vars (locked)
             <Lock size={12} />
           </span>
         </div>

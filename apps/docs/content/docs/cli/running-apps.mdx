@@ -3,17 +3,17 @@ title: Running Apps
 description: Inject secrets, generate typed accessors, and validate your env.
 ---
 
-`run`, `gen`, `check`, `typecheck`. Four commands, most of what you'll actually use day to day.
+`run`, `gen`, `check`. Three commands, most of what you'll actually use day to day.
 
 ---
 
 ## run
 
 ```bash
-npx vars run --env <env> -- <command> [args...]
+npx vars run --env <env> [--param key=val] -- <command> [args...]
 ```
 
-Decrypts the vault for the given env and injects the values into a child process. Nothing touches disk. Secrets exist only in that process and are gone when it exits.
+Decrypts `config.vars` for the given env and injects the values into a child process. Nothing touches disk. Secrets exist only in that process and are gone when it exits.
 
 ```bash
 # Start your dev server with dev secrets
@@ -21,6 +21,9 @@ npx vars run --env dev -- npm run dev
 
 # Run a script with prod secrets
 npx vars run --env prod -- node scripts/migrate.js
+
+# Override a single value at runtime
+npx vars run --env prod --param DATABASE_URL=postgres://localhost/mydb -- node scripts/migrate.js
 ```
 
 vars also sets `VARS_ENV` in the child's environment so your app knows which env it's running under.
@@ -30,7 +33,8 @@ vars also sets `VARS_ENV` in the child's environment so your app knows which env
 | Flag | Short | Description |
 |------|-------|-------------|
 | `--env <name>` | | Which environment to decrypt (required) |
-| `--file <path>` | `-f` | Use a different vault file |
+| `--param key=val` | `-p` | Override a specific variable at runtime |
+| `--file <path>` | `-f` | Use a different vars file |
 
 The `--` separator is required. Everything after it is the command vars runs.
 
@@ -39,26 +43,41 @@ The `--` separator is required. Everything after it is the command vars runs.
 ## gen
 
 ```bash
-npx vars gen
+npx vars gen <file>
 ```
 
-Generates a typed TypeScript file with accessor functions for every variable in your vault. Default output is `.vars/vars.generated.ts`. Import it instead of reading `process.env` directly and you get autocomplete and type safety.
+Generates a typed TypeScript file with accessor functions for every variable in a `config.vars` file. No key needed — `gen` works on locked files by reading schemas without decrypting values. Import the generated file instead of reading `process.env` directly and you get autocomplete and type safety.
 
 ```bash
-# Generate with defaults
-npx vars gen
+# Generate types for the default config.vars
+npx vars gen config.vars
 
-# Write to a custom path
-npx vars gen --output src/lib/env.ts
+# Generate for all entry points at once
+npx vars gen --all
+
+# Write to a custom output path
+npx vars gen config.vars --output src/lib/env.ts
 ```
+
+### Platform targets
+
+Use `--platform` to emit platform-specific accessor patterns:
+
+```bash
+npx vars gen config.vars --platform cloudflare   # Cloudflare Workers (env bindings)
+npx vars gen config.vars --platform deno         # Deno (Deno.env.get)
+npx vars gen config.vars --platform static       # Static sites (import.meta.env)
+```
+
+Default (no `--platform`) targets Node.js `process.env`.
 
 **Flags**
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--output <path>` | `-o` | Output file path (default: `.vars/vars.generated.ts`) |
-| `--lang <lang>` | | Language target (`ts` only for now) |
-| `--file <path>` | `-f` | Use a different vault file |
+| `--all` | | Generate for all `*.vars` entry points |
+| `--output <path>` | `-o` | Output file path |
+| `--platform <target>` | | Platform target: `node` (default), `cloudflare`, `deno`, `static` |
 
 `hide` reruns `gen` automatically if your schemas changed since the last run, so you won't call this often.
 
@@ -67,17 +86,20 @@ npx vars gen --output src/lib/env.ts
 ## check
 
 ```bash
-npx vars check
+npx vars check [file]
 ```
 
-Validates every env against your Zod schemas. No `--env` flag means all envs get checked.
+Validates every env against your Zod schemas, runs any `check` blocks defined in the file, and reports expired or deprecated variables. No `--env` flag means all envs get checked.
 
 ```bash
-# Validate all envs
-npx vars check
+# Validate all envs in config.vars
+npx vars check config.vars
 
 # Validate staging only
-npx vars check --env staging
+npx vars check config.vars --env staging
+
+# Validate all vars files in the project
+npx vars check --all
 ```
 
 It checks:
@@ -86,6 +108,7 @@ It checks:
 - Schema conformance (shows expected vs. got on failure)
 - Expired secrets (errors on past expiry, warns if expiring within 30 days)
 - Deprecated variables still in use
+- `check` blocks defined inline in the vars file
 - `@refine` cross-variable validations
 
 Exits 1 on errors. Encrypted values that can't be decrypted in the current context are skipped.
@@ -95,33 +118,5 @@ Exits 1 on errors. Encrypted values that can't be decrypted in the current conte
 | Flag | Short | Description |
 |------|-------|-------------|
 | `--env <name>` | | Validate a specific environment only |
-| `--file <path>` | `-f` | Use a different vault file |
-
----
-
-## typecheck
-
-```bash
-npx vars typecheck
-```
-
-Scans your codebase for `process.env.*` and `import.meta.env.*` references and flags any that aren't defined in your `.vars` file.
-
-```bash
-# Scan the default src/ directory
-npx vars typecheck
-
-# Scan a different directory
-npx vars typecheck --dir app
-```
-
-Scans `.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.cts` files. Skips `node_modules`, `dist`, and `.git`. Reports file path, line number, and variable name for each undefined reference.
-
-Exits 1 if any are found.
-
-**Flags**
-
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--dir <path>` | | Directory to scan (default: `src`) |
-| `--file <path>` | `-f` | Use a different vault file |
+| `--all` | | Check all vars files in the project |
+| `--file <path>` | `-f` | Use a different vars file |

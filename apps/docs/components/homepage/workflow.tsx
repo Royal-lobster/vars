@@ -18,7 +18,7 @@ const STEPS = [
   },
   {
     title: 'Commit',
-    description: 'Push the vault. Teammates clone and enter the PIN.',
+    description: 'Push the config. Teammates clone and enter the PIN.',
     command: 'git commit -m "update secrets"',
   },
   {

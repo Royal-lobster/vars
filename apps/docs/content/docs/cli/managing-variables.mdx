@@ -10,26 +10,26 @@ description: Day-to-day workflow for adding, editing, and removing variables.
 ## show
 
 ```bash
-npx vars show
+npx vars show [file]
 ```
 
-Decrypts `.vars/vault.vars` → `.vars/unlocked.vars`. Open that file, make your changes, then run `hide`.
+Decrypts a `config.vars` file in-place. The file header flips to `@vars-state unlocked` and the encrypted values are replaced with their plaintext. Edit the file directly, then run `hide`.
+
+No rename dance, no separate `unlocked.vars` — the same file goes between locked and unlocked states.
 
 Before it decrypts, vars auto-fixes safety issues:
 
-- Adds `unlocked.vars` to `.gitignore` if missing
+- Warns if `.vars/key` is missing
 - Warns if the pre-commit hook isn't installed
-
-If your vault has no encrypted values (e.g., a fresh project with plaintext), `show` skips the PIN prompt entirely.
 
 **Flags**
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--file <path>` | `-f` | Use a different vault file |
+| `--file <path>` | `-f` | Target a specific `.vars` file |
 
 ```bash
-npx vars show -f .vars/staging.vars
+npx vars show -f staging.vars
 ```
 
 ---
@@ -40,42 +40,58 @@ npx vars show -f .vars/staging.vars
 npx vars hide
 ```
 
-Re-encrypts `.vars/unlocked.vars` back into `.vars/vault.vars` and removes the unlocked file.
+Encrypts ALL unlocked `config.vars` files. Scans greedily for any file with `@vars-state unlocked` in the current project and encrypts each one. You don't need to specify a file.
 
-Encryption is all-or-nothing — if any value fails, the vault stays untouched. No partial writes, no corrupted state.
+Encryption is all-or-nothing per file — if any value fails, that file stays untouched. No partial writes, no corrupted state.
 
-If schemas changed since the last `gen` run, `hide` regenerates `.vars/vars.generated.ts` automatically.
+If schemas changed since the last `gen` run, `hide` regenerates the TypeScript types automatically.
 
 **Flags**
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--file <path>` | `-f` | Use a different vault file |
+| `--file <path>` | `-f` | Target a specific file only |
 
 ```bash
-npx vars hide -f .vars/staging.vars
+npx vars hide -f staging.vars
 ```
+
+---
+
+## toggle
+
+```bash
+npx vars toggle [file]
+```
+
+Checks the current lock state of the file and runs the right command. File is unlocked? Hides it. File is locked? Shows it. Same command either way.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--file <path>` | `-f` | Target a specific `.vars` file |
 
 ---
 
 ## add
 
 ```bash
-npx vars add DATABASE_URL
+npx vars add NAME
 ```
 
-Adds a variable without touching the file. vars prompts you for a Zod schema, then asks for a value per environment (`default`, `dev`, `staging`, `prod`). Skip any env you don't need yet.
+Adds a variable without opening the file. vars prompts you for a Zod schema, then asks for a value per environment (`default`, `dev`, `staging`, `prod`). Skip any env you don't need yet.
 
-The variable gets encrypted and written straight to the vault.
+The variable is encrypted and written straight into `config.vars`.
 
-Names must be `UPPER_SNAKE_CASE`.
+Names must be `UPPER_SNAKE_CASE`. Mark a variable as non-secret with the `public` keyword prefix — public variables are stored in plaintext and do not require a key to read.
 
 **Flags**
 
 | Flag | Short | Description |
 |------|-------|-------------|
 | `--schema <zod>` | `-s` | Skip the schema prompt |
-| `--file <path>` | `-f` | Use a different vault file |
+| `--file <path>` | `-f` | Use a different vars file |
 
 ```bash
 npx vars add STRIPE_KEY --schema "z.string().startsWith('sk_')"
@@ -86,7 +102,7 @@ npx vars add STRIPE_KEY --schema "z.string().startsWith('sk_')"
 ## remove
 
 ```bash
-npx vars remove DATABASE_URL
+npx vars remove NAME
 ```
 
 Deletes the variable, every env value, and all metadata. Prompts for confirmation first.
@@ -96,7 +112,7 @@ Deletes the variable, every env value, and all metadata. Prompts for confirmatio
 | Flag | Short | Description |
 |------|-------|-------------|
 | `--yes` | `-y` | Skip the confirmation prompt |
-| `--file <path>` | `-f` | Use a different vault file |
+| `--file <path>` | `-f` | Use a different vars file |
 
 ```bash
 npx vars remove OLD_API_URL --yes
@@ -110,13 +126,19 @@ npx vars remove OLD_API_URL --yes
 npx vars ls
 ```
 
-Prints a table of every variable: schema, which envs have values, required vs optional, and any metadata (description, owner, expiry, deprecation). Deprecated vars show with strikethrough.
+Without a file argument: prints an overview of all `*.vars` files in the project with their lock state and variable count.
 
-**Flags**
+```text
+FILE              STATE     VARS
+config.vars       locked    12
+staging.vars      unlocked   5
+```
 
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--file <path>` | `-f` | Use a different vault file |
+With a file argument: prints a table of every variable in that file — schema, which envs have values, required vs optional, and any metadata (description, owner, expiry, deprecation). Deprecated vars show with strikethrough.
+
+```bash
+npx vars ls config.vars
+```
 
 ```text
 NAME             SCHEMA                  ENVS                  STATUS
@@ -125,21 +147,11 @@ PORT             z.coerce.number()       default               optional
 ~~OLD_API_URL~~  z.string().url()        default               deprecated
 ```
 
----
-
-## toggle
-
-```bash
-npx vars toggle
-```
-
-Checks what's currently on disk and runs the right command. `unlocked.vars` exists? Hides it. Only `vault.vars`? Shows it. Same command either way.
-
 **Flags**
 
 | Flag | Short | Description |
 |------|-------|-------------|
-| `--file <path>` | `-f` | Use a different vault file |
+| `--file <path>` | `-f` | Use a different vars file |
 
 ---
 
@@ -149,7 +161,7 @@ Checks what's currently on disk and runs the right command. `unlocked.vars` exis
 # Unlock
 npx vars show
 
-# Edit .vars/unlocked.vars
+# Edit config.vars directly
 
 # Lock
 npx vars hide
