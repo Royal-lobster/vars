@@ -114,5 +114,16 @@ URL : z.string() = "postgres://\${HOST}:\${PORT}/mydb"`;
       const url = resolved.vars.find(v => v.name === "URL");
       expect(url?.value).toBe("postgres://localhost:5432/mydb");
     });
+
+    it("resolves transitive interpolation (A → B → C)", () => {
+      const src = `env(dev)
+HOST = "localhost"
+CONN = "host=\${HOST}"
+URL = "jdbc:\${CONN}/db"`;
+      const result = parse(src);
+      const resolved = resolveAll(result.ast.declarations, "dev", {}, result.ast.envs, result.ast.params);
+      const url = resolved.vars.find(v => v.name === "URL");
+      expect(url?.value).toBe("jdbc:host=localhost/db");
+    });
   });
 });

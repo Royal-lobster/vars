@@ -70,6 +70,10 @@ describe("check-evaluator", () => {
     expect(check('matches(PORT, "^[a-z]+$")')).toBe(false);
   });
 
+  it("throws on invalid regex in matches()", () => {
+    expect(() => check('matches(PORT, "[invalid")')).toThrow(/invalid regex/i);
+  });
+
   it("evaluates one_of()", () => {
     expect(check('one_of(LOG_LEVEL, ["debug", "info"])')).toBe(true);
     expect(check('one_of(LOG_LEVEL, ["warn", "error"])')).toBe(false);

@@ -126,7 +126,11 @@ function evalFunctionCall(
     case "matches": {
       const val = String(evalExpr(args[0]!, vars, env, params) ?? "");
       const pattern = String(evalExpr(args[1]!, vars, env, params) ?? "");
-      return new RegExp(pattern).test(val);
+      try {
+        return new RegExp(pattern).test(val);
+      } catch {
+        throw new Error(`Invalid regex pattern in matches(): "${pattern}"`);
+      }
     }
     case "one_of": {
       const val = String(evalExpr(args[0]!, vars, env, params) ?? "");

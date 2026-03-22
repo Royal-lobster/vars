@@ -64,6 +64,20 @@ describe("validator", () => {
     it("rejects schemas not starting with z.", () => {
       expect(() => evaluateSchema("String('hello')")).toThrow();
     });
+
+    it("rejects bracket notation (bypass attempt)", () => {
+      expect(() => evaluateSchema('z.string()["constructor"]')).toThrow(/bracket/i);
+    });
+
+    it("rejects unknown methods", () => {
+      expect(() => evaluateSchema("z.strng()")).toThrow(/unknown.*method/i);
+    });
+
+    it("allows known Zod methods", () => {
+      expect(() => evaluateSchema("z.string().min(1).max(100).url()")).not.toThrow();
+      expect(() => evaluateSchema("z.coerce.number().int().positive()")).not.toThrow();
+      expect(() => evaluateSchema('z.enum(["a", "b"])')).not.toThrow();
+    });
   });
 
   describe("validateValue", () => {

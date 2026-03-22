@@ -6,11 +6,58 @@ const FORBIDDEN_KEYWORDS = [
   "constructor", "prototype", "__proto__",
 ];
 
+const ALLOWED_ZOD_METHODS = new Set([
+  // Primitives
+  "string", "number", "boolean", "bigint", "date", "symbol", "undefined", "null", "void", "any", "unknown", "never",
+  // Containers
+  "array", "object", "tuple", "record", "map", "set", "union", "intersection", "discriminatedUnion",
+  // Modifiers
+  "optional", "nullable", "nullish", "default", "catch", "transform", "refine", "pipe", "brand",
+  // Validators
+  "min", "max", "length", "email", "url", "uuid", "regex", "startsWith", "endsWith", "includes", "trim", "toLowerCase", "toUpperCase",
+  // Numeric
+  "int", "positive", "negative", "nonnegative", "nonpositive", "finite", "safe", "multipleOf", "step",
+  // Coercion
+  "coerce",
+  // Enum
+  "enum", "nativeEnum",
+  // Effects
+  "preprocess", "superRefine",
+  // Literal
+  "literal",
+]);
+
+function validateSchemaAllowlist(schemaText: string): void {
+  // Extract all method calls: match .identifier( patterns
+  const methodPattern = /\.(\w+)\s*\(/g;
+  let match;
+  while ((match = methodPattern.exec(schemaText)) !== null) {
+    const method = match[1];
+    if (!ALLOWED_ZOD_METHODS.has(method)) {
+      throw new Error(`Unknown schema method "${method}" in: ${schemaText}`);
+    }
+  }
+
+  // Reject bracket property access notation (bypass vector): )[" or )['
+  // This catches z.string()["constructor"] while allowing z.enum(["a", "b"])
+  if (/\)\s*\[/.test(schemaText)) {
+    throw new Error(`Bracket notation is not allowed in schemas: ${schemaText}`);
+  }
+
+  // Reject backtick template literals
+  if (schemaText.includes("`")) {
+    throw new Error(`Template literals are not allowed in schemas: ${schemaText}`);
+  }
+}
+
 export function evaluateSchema(schemaText: string): z.ZodType {
   // Primary security: must start with z.
   if (!schemaText.startsWith("z.")) {
     throw new Error(`Schema must start with "z." — got: ${schemaText}`);
   }
+
+  // Primary security: allowlist of known Zod methods
+  validateSchemaAllowlist(schemaText);
 
   // Defense in depth: reject forbidden keywords
   for (const keyword of FORBIDDEN_KEYWORDS) {

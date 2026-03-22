@@ -160,19 +160,30 @@ export function resolveAll(
     }
   }
 
-  // Second pass: build value map and resolve interpolation
-  const valueMap = new Map<string, string>();
-  for (const v of resolvedVars) {
-    if (v.value !== undefined) {
-      valueMap.set(v.name, v.value);
-      valueMap.set(v.flatName, v.value);
+  // Second pass: resolve interpolation iteratively until stable
+  const MAX_ITERATIONS = 10;
+  for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+    // Build fresh value map each iteration
+    const valueMap = new Map<string, string>();
+    for (const v of resolvedVars) {
+      if (v.value !== undefined) {
+        valueMap.set(v.name, v.value);
+        valueMap.set(v.flatName, v.value);
+      }
     }
-  }
 
-  for (const v of resolvedVars) {
-    if (v.value && v.value.includes("${")) {
-      v.value = resolveInterpolation(v.value, valueMap);
+    let changed = false;
+    for (const v of resolvedVars) {
+      if (v.value && v.value.includes("${")) {
+        const resolved = resolveInterpolation(v.value, valueMap);
+        if (resolved !== v.value) {
+          v.value = resolved;
+          changed = true;
+        }
+      }
     }
+
+    if (!changed) break; // stable — all interpolation resolved
   }
 
   return {
