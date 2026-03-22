@@ -84,6 +84,41 @@ describe("vars hide", () => {
     expect(content).toContain("enc:v1:aes256gcm:");
   });
 
+  it("encrypts values when @public is removed", () => {
+    writeFileSync(
+      join(tmpDir, ".vars"),
+      [
+        "PORT  z.coerce.number()",
+        "  @dev     = 8080",
+      ].join("\n"),
+    );
+
+    hideVarsFile(join(tmpDir, ".vars"), key);
+
+    const content = readFileSync(join(tmpDir, "vault.vars"), "utf8");
+    expect(content).not.toContain("8080");
+    expect(content).toContain("enc:v1:aes256gcm:");
+  });
+
+  it("keeps encrypted value as-is when @public is added to already-encrypted var", () => {
+    const encValue = encrypt("8080", key);
+    writeFileSync(
+      join(tmpDir, ".vars"),
+      [
+        "PORT  z.coerce.number()",
+        "  @public",
+        `  @dev     = ${encValue}`,
+      ].join("\n"),
+    );
+
+    hideVarsFile(join(tmpDir, ".vars"), key);
+
+    const content = readFileSync(join(tmpDir, "vault.vars"), "utf8");
+    // Value stays encrypted as-is (not double-encrypted, not decrypted)
+    expect(content).toContain(encValue);
+    expect(content).toContain("@public");
+  });
+
   it("preserves @public metadata in output", () => {
     writeFileSync(
       join(tmpDir, ".vars"),
