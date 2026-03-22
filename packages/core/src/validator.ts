@@ -1,0 +1,56 @@
+import { z } from "zod";
+
+const FORBIDDEN_KEYWORDS = [
+  "process", "require", "import", "eval", "Function",
+  "globalThis", "window", "document", "fetch",
+  "constructor", "prototype", "__proto__",
+];
+
+export function evaluateSchema(schemaText: string): z.ZodType {
+  // Primary security: must start with z.
+  if (!schemaText.startsWith("z.")) {
+    throw new Error(`Schema must start with "z." — got: ${schemaText}`);
+  }
+
+  // Defense in depth: reject forbidden keywords
+  for (const keyword of FORBIDDEN_KEYWORDS) {
+    if (schemaText.includes(keyword)) {
+      throw new Error(`Schema contains forbidden keyword "${keyword}": ${schemaText}`);
+    }
+  }
+
+  // Handle z.coerce.boolean() specially — Zod coerces any truthy string to true,
+  // but env vars conventionally treat "false"/"0"/"" as false.
+  const needsBooleanFix = schemaText.includes("z.coerce.boolean()");
+  const processedSchema = needsBooleanFix
+    ? schemaText.replace(
+        "z.coerce.boolean()",
+        "z.preprocess((val) => { if (typeof val === 'string') { const lower = val.toLowerCase(); if (lower === 'false' || lower === '0' || lower === '') return false; return true; } return val; }, z.boolean())"
+      )
+    : schemaText;
+
+  try {
+    const fn = new Function("z", `"use strict"; return ${processedSchema}`);
+    return fn(z);
+  } catch (err) {
+    throw new Error(`Invalid schema expression: ${schemaText} — ${err}`);
+  }
+}
+
+export interface ValidateResult {
+  success: boolean;
+  value?: unknown;
+  issues?: Array<{ message: string }>;
+}
+
+export function validateValue(schemaText: string, value: unknown): ValidateResult {
+  const schema = evaluateSchema(schemaText);
+  const result = schema.safeParse(value);
+  if (result.success) {
+    return { success: true, value: result.data };
+  }
+  return {
+    success: false,
+    issues: result.error.issues.map((i) => ({ message: i.message })),
+  };
+}
