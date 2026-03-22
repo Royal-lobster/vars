@@ -1,0 +1,61 @@
+---
+title: SvelteKit
+description: Using vars with SvelteKit — server routes, client components, and $env.
+---
+
+## Setup
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- vite dev",
+    "build": "vars run --env prod -- vite build"
+  }
+}
+```
+
+## Server Routes
+
+`+server.ts` and `+page.server.ts` run on the server — `process.env` and `#vars` work directly:
+
+```typescript
+import { json } from '@sveltejs/kit'
+import { vars } from '#vars'
+
+export function GET() {
+  return json({ db: typeof vars.DATABASE_URL })
+}
+```
+
+## Client Components
+
+SvelteKit uses `$env/static/public` for client-side env vars, which reads from Vite's env loading. vars injects into `process.env`, not Vite's env system.
+
+**Option 1: Static generation**
+
+```json
+{
+  "scripts": {
+    "dev": "VARS_KEY=$KEY vars gen config.vars --platform static --env dev && vite dev",
+    "build": "VARS_KEY=$KEY vars gen config.vars --platform static --env prod && vite build"
+  }
+}
+```
+
+**Option 2: Pass through layout data**
+
+In `+layout.server.ts`, expose public values as page data:
+
+```typescript
+import { vars } from '#vars'
+
+export function load() {
+  return {
+    publicApiUrl: vars.PUBLIC_API_URL,
+  }
+}
+```
+
+## vars vs $env
+
+You can use both. Use vars for secrets and validated config. Use `$env/static/public` for simple client-side values if you prefer SvelteKit's native approach.

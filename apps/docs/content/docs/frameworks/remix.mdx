@@ -1,0 +1,47 @@
+---
+title: Remix
+description: Using vars with Remix — loaders, actions, and server-side only.
+---
+
+## Setup
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- remix vite:dev",
+    "build": "vars run --env prod -- remix vite:build"
+  }
+}
+```
+
+## Usage
+
+Remix loaders and actions run on the server — `#vars` works directly:
+
+```typescript
+import { vars } from '#vars'
+import { json } from '@remix-run/node'
+
+export function loader() {
+  const db = vars.DATABASE_URL.unwrap()
+  return json({ connected: true })
+}
+```
+
+Remix's server/client boundary ensures `vars` is never bundled into the browser. No client-side concerns.
+
+## Example config.vars
+
+```hcl
+env(dev, prod)
+
+DATABASE_URL : z.string().url() {
+  dev  = "postgres://localhost/remix_dev"
+  prod = "postgres://prod.db/remix_prod"
+}
+
+SESSION_SECRET : z.string().min(32) {
+  dev  = "remix-dev-session-secret-long-enough!"
+  prod = "remix-prod-session-secret-very-secure"
+}
+```

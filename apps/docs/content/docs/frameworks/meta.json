@@ -1,3 +1,4 @@
 {
-  "pages": ["index"]
+  "title": "Frameworks",
+  "pages": ["index", "nextjs", "vite", "sveltekit", "astro", "remix", "express", "cloudflare"]
 }

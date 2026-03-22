@@ -1,0 +1,70 @@
+---
+title: Vite / React
+description: Using vars with Vite — server-side SSR and client-side bundles.
+---
+
+## Setup
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- vite dev",
+    "build": "vars run --env prod -- vite build"
+  }
+}
+```
+
+## Server-Side (SSR)
+
+`process.env` works directly in SSR code. Import from `#vars` for type safety.
+
+## Client-Side
+
+Vite uses `import.meta.env` in the browser, not `process.env`. You need one of these approaches:
+
+### Option 1: Static generation (recommended)
+
+Bake values into the generated file at build time:
+
+```json
+{
+  "scripts": {
+    "dev": "VARS_KEY=$KEY vars gen config.vars --platform static --env dev && vite dev",
+    "build": "VARS_KEY=$KEY vars gen config.vars --platform static --env prod && vite build"
+  }
+}
+```
+
+Add `config.generated.ts` to `.gitignore` when using static mode.
+
+### Option 2: Vite config bridge
+
+Add a `define` block to `vite.config.ts`:
+
+```typescript
+export default defineConfig({
+  define: {
+    'process.env.VITE_APP_TITLE': JSON.stringify(process.env.VITE_APP_TITLE),
+    'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL),
+  },
+})
+```
+
+Then `vars run --env dev -- vite dev` works for both server and client.
+
+## Example config.vars
+
+```hcl
+env(dev, staging, prod)
+
+public VITE_APP_TITLE = "My App"
+public VITE_API_URL : z.string().url() {
+  dev  = "http://localhost:3000/api"
+  prod = "https://api.example.com"
+}
+
+DATABASE_URL : z.string().url() {
+  dev  = "postgres://localhost/myapp"
+  prod = "postgres://prod.db/myapp"
+}
+```
