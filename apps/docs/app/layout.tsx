@@ -30,9 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="flex min-h-screen flex-col">
         <RootProvider
           theme={{
-            defaultTheme: 'dark',
-            forcedTheme: 'dark',
-            enableSystem: false,
+            enabled: false,
           }}
         >
           {children}
