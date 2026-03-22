@@ -51,7 +51,7 @@ The encryption key is locked behind a PIN. AI agents can see variable names and 
 
 ---
 
-### Quick Start
+### 🚀 Quick Start
 
 ```bash
 npm i -g vars              # install globally (or use npx)
@@ -63,7 +63,22 @@ vars hide                  # encrypt secrets
 vars run --env dev -- npm start
 ```
 
-### Type Safety
+### 🔌 Works With Your Stack
+
+vars wraps your dev and build commands — it works with any framework out of the box:
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- next dev",
+    "build": "vars run --env prod -- next build"
+  }
+}
+```
+
+**Next.js** · **Vite** · **Astro** · **Remix** · **SvelteKit** · **Nuxt** · **Express** · **Hono** · **Fastify** — if it reads `process.env`, vars works. No adapters, no plugins.
+
+### 🔒 Type Safety
 
 Schemas are [Zod](https://zod.dev) expressions — think of them as type annotations that also validate at runtime:
 
@@ -76,7 +91,7 @@ vars.DATABASE_URL          // Redacted<string> (secret — safe to log)
 vars.DATABASE_URL.unwrap() // actual value (explicit opt-in)
 ```
 
-### What else?
+### ✨ What Else?
 
 vars has [file composition](https://vars-docs.vercel.app/docs/file-format#imports) across services, [groups](https://vars-docs.vercel.app/docs/file-format#groups) for organization, [conditionals](https://vars-docs.vercel.app/docs/file-format#conditionals) for multi-region, [check blocks](https://vars-docs.vercel.app/docs/file-format#check-blocks) for cross-variable validation, and [platform targets](https://vars-docs.vercel.app/docs/cli/running-apps) for Cloudflare/Deno/static builds.
 
@@ -85,7 +100,7 @@ vars has [file composition](https://vars-docs.vercel.app/docs/file-format#import
 ---
 
 <details>
-<summary>CLI commands</summary>
+<summary>🛠️ CLI Commands</summary>
 
 ```bash
 vars init              # initialize project
@@ -104,7 +119,7 @@ vars doctor            # diagnose setup
 </details>
 
 <details>
-<summary>Packages</summary>
+<summary>📦 Packages</summary>
 
 | Package | Description |
 |---------|-------------|
@@ -116,6 +131,6 @@ vars doctor            # diagnose setup
 
 </details>
 
-### License
+### 📄 License
 
 MIT
