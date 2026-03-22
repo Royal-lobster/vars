@@ -93,9 +93,9 @@ importers:
       '@clack/prompts':
         specifier: ^0.10.0
         version: 0.10.1
-      '@vars/core':
+      '@vars/node':
         specifier: workspace:*
-        version: link:../core
+        version: link:../node
       citty:
         specifier: ^0.2.1
         version: 0.2.1
