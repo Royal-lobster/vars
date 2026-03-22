@@ -34,28 +34,28 @@ Wrap your dev and build scripts with `vars run`:
 
 ## Choose your framework
 
-import { Globe, Zap, Flame, Star, RefreshCw, Server, Cloud } from 'lucide-react';
+import { SiNextdotjs, SiVite, SiSvelte, SiAstro, SiRemix, SiExpress, SiCloudflare } from '@icons-pack/react-simple-icons';
 
 <Cards>
-  <Card icon={<Globe />} href="/docs/frameworks/nextjs" title="Next.js">
+  <Card icon={<SiNextdotjs size={20} />} href="/docs/frameworks/nextjs" title="Next.js">
     Client vars work out of the box via NEXT_PUBLIC_*
   </Card>
-  <Card icon={<Zap />} href="/docs/frameworks/vite" title="Vite / React">
+  <Card icon={<SiVite size={20} />} href="/docs/frameworks/vite" title="Vite / React">
     Needs static gen or vite.config.ts define bridge for client
   </Card>
-  <Card icon={<Flame />} href="/docs/frameworks/sveltekit" title="SvelteKit">
+  <Card icon={<SiSvelte size={20} />} href="/docs/frameworks/sveltekit" title="SvelteKit">
     Server routes work, client needs bridge
   </Card>
-  <Card icon={<Star />} href="/docs/frameworks/astro" title="Astro">
+  <Card icon={<SiAstro size={20} />} href="/docs/frameworks/astro" title="Astro">
     Server islands work, client islands need static gen
   </Card>
-  <Card icon={<RefreshCw />} href="/docs/frameworks/remix" title="Remix">
+  <Card icon={<SiRemix size={20} />} href="/docs/frameworks/remix" title="Remix">
     Server-only — no client concerns
   </Card>
-  <Card icon={<Server />} href="/docs/frameworks/express" title="Express / Hono / Fastify">
+  <Card icon={<SiExpress size={20} />} href="/docs/frameworks/express" title="Express / Hono / Fastify">
     Pure server, just works
   </Card>
-  <Card icon={<Cloud />} href="/docs/frameworks/cloudflare" title="Cloudflare Workers">
+  <Card icon={<SiCloudflare size={20} />} href="/docs/frameworks/cloudflare" title="Cloudflare Workers">
     Use --platform cloudflare for env bindings
   </Card>
 </Cards>
