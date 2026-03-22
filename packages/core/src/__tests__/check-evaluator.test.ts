@@ -15,7 +15,7 @@ describe("check-evaluator", () => {
     PORT: "3000",
     LOG_LEVEL: "debug",
     DEBUG: "true",
-    STRIPE_KEY: "sk_test_abc",
+    STRIPE_KEY: "sk_example_abc",
     TLS_CERT: undefined,
     CORS: '["http://localhost"]',
   };
@@ -61,7 +61,7 @@ describe("check-evaluator", () => {
   });
 
   it("evaluates starts_with()", () => {
-    expect(check('starts_with(STRIPE_KEY, "sk_test_")')).toBe(true);
+    expect(check('starts_with(STRIPE_KEY, "sk_example_")')).toBe(true);
     expect(check('starts_with(STRIPE_KEY, "sk_live_")')).toBe(false);
   });
 
@@ -102,8 +102,8 @@ describe("check-evaluator", () => {
   });
 
   it("evaluates complex: env implication with function", () => {
-    expect(check('env == "dev" => starts_with(STRIPE_KEY, "sk_test_")', "dev")).toBe(true);
+    expect(check('env == "dev" => starts_with(STRIPE_KEY, "sk_example_")', "dev")).toBe(true);
     // In prod, implication antecedent is false → vacuously true
-    expect(check('env == "dev" => starts_with(STRIPE_KEY, "sk_test_")', "prod")).toBe(true);
+    expect(check('env == "dev" => starts_with(STRIPE_KEY, "sk_example_")', "prod")).toBe(true);
   });
 });

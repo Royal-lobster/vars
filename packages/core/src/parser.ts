@@ -859,5 +859,5 @@ function parseCheckExpr(cursor: TokenCursor): CheckExpr {
 
 // ── Semicolon handling ──────────────────────────────────────────────────────
 // The DSL doesn't use semicolons, but some env block entries may use them
-// (the grammar example shows `dev = "sk_test"; prod = enc:v2:...` inline)
+// (the grammar example shows `dev = "sk_example"; prod = enc:v2:...` inline)
 // For now, treat newlines as statement separators.
