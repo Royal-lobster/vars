@@ -26,7 +26,7 @@ Only one file exists at a time — never both. The `# @vars-state` header is kep
 
 ### `vars show [file]`
 
-1. Resolve the target file. If an explicit path is given (e.g., `vars show config.vars`), check for the `.unlocked.vars` variant too — if only the unlocked variant exists, the file is already shown; print a message and exit.
+1. Resolve the target file. If an explicit path is given, normalize it to the canonical `.vars` name first (e.g., `vars show config.unlocked.vars` is treated as `vars show config.vars`). Then check for the `.unlocked.vars` variant — if only the unlocked variant exists, the file is already shown; print a message and exit.
 2. If the `.unlocked.vars` file already exists (crash recovery or double-show), skip the rename and re-decrypt in-place from the existing `.unlocked.vars` file.
 3. Prompt for PIN, decrypt master key.
 4. `fs.renameSync("config.vars", "config.unlocked.vars")` (skipped if already at `.unlocked.vars`).
