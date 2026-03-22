@@ -99,6 +99,11 @@ export function computeHover(ctx: HoverContext): HoverResult | null {
 			parts.push("");
 			parts.push(`**Owner:** ${metadata.owner}`);
 		}
+
+		if (metadata.public) {
+			parts.push("");
+			parts.push("**Public:** yes (not encrypted)");
+		}
 	}
 
 	const range = onSchema
@@ -116,6 +121,7 @@ interface MetadataInfo {
 	deprecated?: string;
 	expires?: string;
 	owner?: string;
+	public?: boolean;
 }
 
 /**
@@ -142,6 +148,8 @@ function collectMetadata(lines: string[], varLine: number): MetadataInfo {
 
 		const ownerMatch = trimmed.match(/^@owner\s+(\S+)$/);
 		if (ownerMatch) meta.owner = ownerMatch[1];
+
+		if (trimmed === "@public") meta.public = true;
 	}
 
 	return meta;
