@@ -80,11 +80,10 @@ export function activate(context: ExtensionContext): void {
 	const watcher = workspace.createFileSystemWatcher("**/*.vars");
 
 	let regenTimer: ReturnType<typeof setTimeout> | undefined;
-	watcher.onDidChange(async () => {
+	watcher.onDidChange(async (uri) => {
 		if (regenTimer) clearTimeout(regenTimer);
 		regenTimer = setTimeout(() => {
-			const cwd = workspace.workspaceFolders?.[0]?.uri.fsPath;
-			if (!cwd) return;
+			const cwd = path.dirname(uri.fsPath);
 			cp.execFile("vars", ["gen"], { cwd, timeout: 5000 }, () => {});
 		}, 500);
 	});

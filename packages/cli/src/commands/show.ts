@@ -11,7 +11,7 @@ export default defineCommand({
     file: { type: "positional", required: false, description: ".vars file to decrypt" },
   },
   async run({ args }) {
-    let file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
+    const file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
     if (!file) {
       console.error(pc.red("No .vars file found"));
       process.exit(1);

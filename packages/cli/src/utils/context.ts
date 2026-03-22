@@ -2,7 +2,7 @@ import { resolve, dirname, join } from "node:path";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { getKeyFromEnv, decryptMasterKey } from "@vars/node";
-import { isUnlockedPath, toCanonicalPath } from "@vars/node";
+import { isUnlockedPath, toCanonicalPath, toUnlockedPath, toLockedPath } from "@vars/node";
 import * as prompts from "@clack/prompts";
 
 export interface CliContext {
@@ -22,7 +22,7 @@ export function findVarsFile(startDir: string, fileName?: string): string | null
       const locked = toCanonicalPath(abs);
       if (existsSync(locked)) return locked;
     } else {
-      const unlocked = abs.replace(/\.vars$/, ".unlocked.vars");
+      const unlocked = toUnlockedPath(abs);
       if (existsSync(unlocked)) return unlocked;
     }
     return null;
@@ -35,11 +35,11 @@ export function findVarsFile(startDir: string, fileName?: string): string | null
       const seen = new Set<string>();
       const result: string[] = [];
       for (const f of files) {
-        const canonical = isUnlockedPath(f) ? f.replace(/\.unlocked\.vars$/, ".vars") : f;
+        const canonical = isUnlockedPath(f) ? toLockedPath(f) : f;
         if (!seen.has(canonical)) {
           seen.add(canonical);
           // Prefer unlocked variant if it exists
-          const unlockedName = canonical.replace(/\.vars$/, ".unlocked.vars");
+          const unlockedName = toUnlockedPath(canonical);
           if (files.includes(unlockedName)) {
             result.push(resolve(dir, unlockedName));
           } else {
