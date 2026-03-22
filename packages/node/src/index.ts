@@ -6,3 +6,4 @@ export { encryptDeterministic, decrypt } from "./crypto.js";
 export { createMasterKey, encryptMasterKey, decryptMasterKey, getKeyFromEnv } from "./key-manager.js";
 export { showFile, hideFile } from "./show-hide.js";
 export { storeKey, retrieveKey, clearKey } from "./keychain.js";
+export { toUnlockedPath, toLockedPath, isUnlockedPath, toCanonicalPath } from "./unlocked-path.js";
