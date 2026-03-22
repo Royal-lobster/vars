@@ -85,6 +85,141 @@ vars gen config.vars --platform vercel-edge
 
 The generated module adjusts its runtime bindings to match the target platform while keeping the same `import { vars } from "#vars"` interface in your code.
 
+## Client-Side Variables
+
+`vars run` injects variables into `process.env` — this works for server-side code. For variables needed in **browser bundles**, you have two options:
+
+### Option 1: Static generation (recommended)
+
+Generate a file with values baked in:
+
+```bash
+VARS_KEY=$KEY vars gen config.vars --platform static --env dev
+```
+
+The generated file contains plain values — no `process.env` dependency. Works in any bundler.
+
+**Tip:** Add `config.generated.ts` to `.gitignore` when using static mode, and regenerate at build time:
+
+```json
+{
+  "scripts": {
+    "dev": "VARS_KEY=$KEY vars gen config.vars --platform static --env dev && vite dev",
+    "build": "VARS_KEY=$KEY vars gen config.vars --platform static --env prod && vite build"
+  }
+}
+```
+
+### Option 2: Framework config bridge
+
+Add a one-liner to your bundler config to pass `process.env` values through:
+
+**Vite / SvelteKit** (`vite.config.ts`):
+```typescript
+export default defineConfig({
+  define: {
+    // Bridge process.env vars into the client bundle
+    'process.env.VITE_APP_TITLE': JSON.stringify(process.env.VITE_APP_TITLE),
+    'process.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL),
+  },
+})
+```
+
+Then `vars run --env dev -- vite dev` works for both server and client code.
+
+## Next.js
+
+Next.js automatically inlines `NEXT_PUBLIC_*` variables from `process.env` into client bundles at build time. No extra config needed:
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- next dev",
+    "build": "vars run --env prod -- next build"
+  }
+}
+```
+
+Mark client-safe variables with `public` and prefix with `NEXT_PUBLIC_`:
+
+```hcl
+public NEXT_PUBLIC_API_URL : z.string().url() {
+  dev  = "http://localhost:3000/api"
+  prod = "https://api.example.com"
+}
+```
+
+## Vite / React
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- vite dev",
+    "build": "vars run --env prod -- vite build"
+  }
+}
+```
+
+For server-side code (SSR, API), `process.env` works directly. For client-side code, use either the static generation or the `vite.config.ts` define bridge shown above.
+
+## SvelteKit
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- vite dev",
+    "build": "vars run --env prod -- vite build"
+  }
+}
+```
+
+Server routes (`+server.ts`, `+page.server.ts`) can use `import { vars } from '#vars'` directly — they run in Node where `process.env` is available.
+
+For client components, use the static generation approach or pass values through `+layout.server.ts` as page data.
+
+## Astro
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- astro dev",
+    "build": "vars run --env prod -- astro build"
+  }
+}
+```
+
+Astro server islands and API routes use `process.env` directly. For client-side islands, use static generation.
+
+## Express / Hono / Fastify
+
+Pure server frameworks — `process.env` works everywhere. No special config:
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- tsx src/index.ts",
+    "start": "vars run --env prod -- node dist/index.js"
+  }
+}
+```
+
+## Cloudflare Workers
+
+```bash
+vars gen config.vars --platform cloudflare
+```
+
+```typescript
+import { getVars } from '#vars'
+
+export default {
+  fetch(request, env) {
+    const vars = getVars(env)
+    // ...
+  }
+}
+```
+
 ## Framework examples
 
 ### Next.js
