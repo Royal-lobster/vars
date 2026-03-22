@@ -26,6 +26,11 @@ export default defineCommand({
       description: "Path to .vars file",
       alias: "f",
     },
+    public: {
+      type: "boolean",
+      description: "Store value without encryption (for non-secret config)",
+      default: false,
+    },
   },
   async run({ args }) {
     output.intro("add");
@@ -47,7 +52,7 @@ export default defineCommand({
       }
     }
 
-    addVariable(ctx.varsFilePath, key, { name, schema, values });
+    addVariable(ctx.varsFilePath, key, { name, schema, values, isPublic: args.public as boolean });
     output.outro(`Added ${name}`);
   },
 });
@@ -62,6 +67,7 @@ export function addVariable(
     name: string;
     schema: string;
     values: Array<{ env: string; value: string }>;
+    isPublic?: boolean;
   },
 ): void {
   const content = readFileSync(filePath, "utf8");
@@ -76,9 +82,12 @@ export function addVariable(
   const lines: string[] = [];
   lines.push("");
   lines.push(`${variable.name}  ${variable.schema}`);
+  if (variable.isPublic) {
+    lines.push("  @public");
+  }
   for (const { env, value } of variable.values) {
-    const encValue = encrypt(value, key);
-    lines.push(`  @${env.padEnd(8)} = ${encValue}`);
+    const finalValue = variable.isPublic ? value : encrypt(value, key);
+    lines.push(`  @${env.padEnd(8)} = ${finalValue}`);
   }
 
   const newContent = content.trimEnd() + "\n" + lines.join("\n") + "\n";

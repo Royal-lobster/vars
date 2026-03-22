@@ -62,6 +62,23 @@ describe("vars add", () => {
     expect(content).toContain("@prod");
   });
 
+  it("adds a public variable without encrypting values", () => {
+    writeFileSync(join(tmpDir, ".vars"), "");
+
+    addVariable(join(tmpDir, ".vars"), key, {
+      name: "PORT",
+      schema: "z.coerce.number()",
+      values: [{ env: "default", value: "3000" }],
+      isPublic: true,
+    });
+
+    const content = readFileSync(join(tmpDir, ".vars"), "utf8");
+    expect(content).toContain("PORT  z.coerce.number()");
+    expect(content).toContain("@public");
+    expect(content).toContain("3000");
+    expect(content).not.toContain("enc:v1:aes256gcm:");
+  });
+
   it("throws if variable already exists", () => {
     writeFileSync(
       join(tmpDir, ".vars"),
