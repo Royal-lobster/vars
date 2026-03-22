@@ -44,10 +44,13 @@ function resolveEnvBlock(
   env: string,
   params: Record<string, string>,
 ): string | undefined {
-  // First: try wildcard "*" entry (default for all envs)
+  // First: try when-qualified entries matching current params and env (highest priority)
   for (const entry of block.entries) {
-    if (entry.env === "*" && !entry.when) {
-      return resolveValueNode(entry.value, env, params);
+    if (entry.env === env && entry.when) {
+      const paramValue = params[entry.when.param];
+      if (paramValue === entry.when.value) {
+        return resolveValueNode(entry.value, env, params);
+      }
     }
   }
 
@@ -58,13 +61,10 @@ function resolveEnvBlock(
     }
   }
 
-  // Third: try when-qualified entries matching current params and env
+  // Third: try wildcard "*" entry (default fallback for all envs)
   for (const entry of block.entries) {
-    if (entry.env === env && entry.when) {
-      const paramValue = params[entry.when.param];
-      if (paramValue === entry.when.value) {
-        return resolveValueNode(entry.value, env, params);
-      }
+    if (entry.env === "*" && !entry.when) {
+      return resolveValueNode(entry.value, env, params);
     }
   }
 
