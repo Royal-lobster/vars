@@ -92,20 +92,16 @@ export interface ValidateResult {
 
 export function validateValue(schemaText: string, value: unknown): ValidateResult {
   const schema = evaluateSchema(schemaText);
-
-  // Coerce string values for number/boolean schemas (env vars are always strings)
+  // Coerce string values for numeric and boolean schemas (env vars are always strings)
   let coerced = value;
   if (typeof value === "string") {
-    if (schemaText.includes("z.number") || schemaText.includes("z.coerce.number")) {
-      const num = Number(value);
-      if (value !== "" && !isNaN(num)) coerced = num;
-    }
-    if (schemaText.includes("z.boolean") && !schemaText.includes("z.coerce.boolean")) {
-      if (value === "true") coerced = true;
-      else if (value === "false") coerced = false;
+    if (schemaText.includes("z.number()") || schemaText.includes("z.coerce.number()")) {
+      const n = Number(value);
+      if (!isNaN(n)) coerced = n;
+    } else if (schemaText.includes("z.boolean()") || schemaText.includes("z.coerce.boolean()")) {
+      coerced = value === "true" || value === "1";
     }
   }
-
   const result = schema.safeParse(coerced);
   if (result.success) {
     return { success: true, value: result.data };
