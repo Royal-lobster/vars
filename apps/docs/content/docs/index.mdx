@@ -16,11 +16,11 @@ If you're using `.env` files, you've probably hit these:
 
 ## How vars fixes this
 
-vars replaces `.env` files. Every value is AES-256-GCM encrypted, so your `.vars` file is safe to commit. New teammate clones the repo, enters the PIN, and they have every secret for every environment. No Slack DMs. No 1Password vaults. No Doppler.
+vars replaces `.env` files. Every secret value is AES-256-GCM encrypted, so your `config.vars` file is safe to commit. New teammate clones the repo, enters the PIN, and they have every secret for every environment. No Slack DMs. No 1Password vaults. No Doppler.
 
 Schemas live right next to the values. You write `z.string().url()` and that typo in your database URL gets caught before your app boots, not after it crashes in prod.
 
-All environments live in one file under `@env` blocks. Dev, staging, prod, one place to look, one file to audit.
+All environments live in one file under environment blocks. Dev, staging, prod — one place to look, one file to audit.
 
 The encryption key is locked behind a PIN. AI agents, CI scripts, and anything else with file access can't decrypt values without it.
 
@@ -43,15 +43,16 @@ No types. No validation. Two files. Plaintext secrets sitting on disk.
 **The `.vars` way:**
 
 ```vars
-DATABASE_URL  z.string().url().startsWith("postgres://")
-  @dev     = enc:v1:aes256gcm:a1b2c3...:d4e5f6...:g7h8i9...
-  @prod    = enc:v1:aes256gcm:j8fn2p...:t9u0v1...:w2x3y4...
+DATABASE_URL : z.string().url().startsWith("postgres://") {
+  dev  = enc:v2:aes256gcm-det:a1b2c3...:d4e5f6...:g7h8i9...
+  prod = enc:v2:aes256gcm-det:j8fn2p...:t9u0v1...:w2x3y4...
+}
 ```
 
 Typed, validated, encrypted. One file.
 
-Need to edit a value? `vars show` decrypts with your PIN. Make your change, then `vars hide` encrypts it back. The decrypted file is gitignored by default, and an optional pre-commit hook runs `hide` automatically — so plaintext never touches a commit.
+Need to edit a value? `vars show config.vars` decrypts with your PIN. Make your change, then `vars hide` encrypts it back. The decrypted file is gitignored by default, and an optional pre-commit hook runs `hide` automatically — so plaintext never touches a commit.
 
 ## Ready?
 
-[Get started in under 5 minutes →](/docs)
+[Get started in under 5 minutes →](/docs/getting-started)
