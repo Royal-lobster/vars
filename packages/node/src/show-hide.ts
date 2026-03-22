@@ -38,9 +38,12 @@ export function showFile(filePath: string, key: Buffer): string {
   return unlockedPath;
 }
 
-export function hideFile(filePath: string, key: Buffer): void {
-  const content = readFileSync(filePath, "utf8");
-  const parsed = parse(content, filePath);
+export function hideFile(filePath: string, key: Buffer): string {
+  const lockedPath = isUnlockedPath(filePath) ? toLockedPath(filePath) : filePath;
+  const readPath = filePath;
+
+  const content = readFileSync(readPath, "utf8");
+  const parsed = parse(content, readPath);
   const publicVars = new Set<string>();
 
   // Collect public variable names
@@ -126,5 +129,10 @@ export function hideFile(filePath: string, key: Buffer): void {
     result.push(line);
   }
 
-  writeFileSync(filePath, result.join("\n"));
+  // Write encrypted content, then rename to locked path
+  writeFileSync(readPath, result.join("\n"));
+  if (isUnlockedPath(readPath) && readPath !== lockedPath) {
+    renameSync(readPath, lockedPath);
+  }
+  return lockedPath;
 }

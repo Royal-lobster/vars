@@ -64,8 +64,7 @@ SECRET : z.string() {
     const first = readFileSync(f, "utf8");
     const unlocked = showFile(f, key);
     hideFile(unlocked, key);
-    // hideFile currently writes in-place; after Task 3 it will rename back to .vars
-    const second = readFileSync(unlocked, "utf8");
+    const second = readFileSync(f, "utf8");
     expect(first).toBe(second);
   });
 
@@ -128,6 +127,46 @@ SECRET : z.string() {
     const result = readFileSync(unlocked, "utf8");
     expect(result).toContain("# @vars-state unlocked");
     expect(result).toContain("my-secret");
+  });
+
+  it("hide renames .unlocked.vars back to .vars after encrypting", () => {
+    const content = `# @vars-state unlocked
+env(dev)
+
+SECRET : z.string() {
+  dev = "my-secret"
+}`;
+    const unlocked = join(dir, "config.unlocked.vars");
+    const locked = join(dir, "config.vars");
+    writeFileSync(unlocked, content);
+    hideFile(unlocked, key);
+
+    expect(existsSync(unlocked)).toBe(false);
+    expect(existsSync(locked)).toBe(true);
+    const result = readFileSync(locked, "utf8");
+    expect(result).toContain("# @vars-state locked");
+    expect(result).toContain("enc:v2:aes256gcm-det:");
+    expect(result).not.toContain("my-secret");
+  });
+
+  it("hide is idempotent — already-encrypted values are not double-encrypted", () => {
+    const content = `# @vars-state unlocked
+env(dev)
+
+SECRET : z.string() {
+  dev = "my-secret"
+}`;
+    const unlocked = join(dir, "config.unlocked.vars");
+    writeFileSync(unlocked, content);
+    hideFile(unlocked, key);
+    const locked = join(dir, "config.vars");
+    const first = readFileSync(locked, "utf8");
+
+    // Unlock again, then hide again
+    showFile(locked, key);
+    hideFile(join(dir, "config.unlocked.vars"), key);
+    const second = readFileSync(locked, "utf8");
+    expect(first).toBe(second);
   });
 
   it("handles flat (non-env-block) encrypted values in show", async () => {

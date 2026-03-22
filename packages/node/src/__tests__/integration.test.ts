@@ -95,8 +95,7 @@ SECRET : z.string() {
     // Show + hide again (no changes) — showFile renames to .unlocked.vars
     const unlocked = showFile(filePath, key);
     hideFile(unlocked, key);
-    // hideFile writes in-place; after rename update it will write back to .vars
-    const second = readFileSync(unlocked, "utf8");
+    const second = readFileSync(filePath, "utf8");
 
     // Deterministic: identical output
     expect(first).toBe(second);
