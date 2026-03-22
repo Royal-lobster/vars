@@ -3,55 +3,81 @@ title: Why vars?
 description: Your .env files are a liability. Here's why vars exists.
 ---
 
-## The problem with `.env`
+## Stop managing secrets like it's 2015
 
-If you're using `.env` files, you've probably hit these:
+Your team shares secrets over Slack. Your `.env.production` lives on three laptops — two are outdated. Someone commits `.env` by accident and you're rotating every key at midnight. Your CI pulls secrets from a dashboard you haven't audited in months. Meanwhile, every AI coding assistant and IDE extension on your machine can read your plaintext secrets.
 
-- **No encryption.** Secrets sit in plaintext. One bad `git push` and they're public.
-- **No types.** That `PORT` is a string. That `ENABLE_FEATURE` is a string. Everything is a string.
-- **No validation.** Typo in your database URL? You'll find out at runtime. In prod.
-- **File sprawl.** `.env.local`, `.env.staging`, `.env.production` scattered across your repo. Drift guaranteed.
-- **Hard to share.** You can't commit `.env` files, so sharing secrets with your team means Slack DMs, 1Password vaults, or paid services like Doppler. Someone always has a stale copy.
-- **AI agents can read them.** Any tool with file access can grab your secrets.
+This isn't a workflow problem. It's a compounding risk.
 
-## How vars fixes this
+## What if your config file was safe to commit?
 
-vars replaces `.env` files. Every secret value is AES-256-GCM encrypted, so your `config.vars` file is safe to commit. New teammate clones the repo, enters the PIN, and they have every secret for every environment. No Slack DMs. No 1Password vaults. No Doppler.
-
-Schemas live right next to the values. You write `z.string().url()` and that typo in your database URL gets caught before your app boots, not after it crashes in prod.
-
-All environments live in one file under environment blocks. Dev, staging, prod — one place to look, one file to audit.
-
-The encryption key is locked behind a PIN. AI agents, CI scripts, and anything else with file access can't decrypt values without it.
-
-## `.env` vs `.vars`
-
-Here's what managing a database URL actually looks like:
-
-**The `.env` way:**
-
-```bash
-# .env.development
-DATABASE_URL=postgres://localhost/myapp
-
-# .env.production (hope nobody commits this)
-DATABASE_URL=postgres://prod-host/myapp
-```
-
-No types. No validation. Two files. Plaintext secrets sitting on disk.
-
-**The `.vars` way:**
+vars replaces scattered `.env` files with a single config file that's encrypted, typed, and version-controlled. Here's what you actually work with:
 
 ```vars
-DATABASE_URL : z.string().url().startsWith("postgres://") {
-  dev  = enc:v2:aes256gcm-det:a1b2c3...:d4e5f6...:g7h8i9...
-  prod = enc:v2:aes256gcm-det:j8fn2p...:t9u0v1...:w2x3y4...
+# config.vars — what you edit
+
+env(dev, staging, prod)
+
+public APP_NAME = "my-app"
+public PORT : z.number().min(1024).max(65535) = 3000
+
+DATABASE_URL : z.string().url() {
+  dev  = "postgres://localhost:5432/myapp"
+  prod = "postgres://admin@prod.db.internal:5432/myapp"
+}
+
+API_KEY : z.string().min(32) {
+  dev  = "dev_key_a1b2c3d4e5f6g7h8i9j0k1l2m3"
+  prod = "prod_key_x9y8w7v6u5t4s3r2q1p0o9n8m7"
+} (description = "Primary API key", expires = 2026-09-01)
+```
+
+When you commit, secret values are encrypted automatically. Public values (like `APP_NAME` and `PORT`) stay readable — only secrets get locked:
+
+```vars
+# config.vars — what git sees
+
+public APP_NAME = "my-app"
+public PORT : z.number().min(1024).max(65535) = 3000
+
+DATABASE_URL : z.string().url() {
+  dev  = enc:v2:aes256gcm-det:7f3a9b...:d4e5f6...:g7h8i9...
+  prod = enc:v2:aes256gcm-det:e8d1f0...:k5l6m7...:n8o9p0...
 }
 ```
 
-Typed, validated, encrypted. One file.
+The encryption key is locked behind a PIN that only your team knows. AI agents, IDE extensions, and anything else with file access can see the variable names and schemas — but not the secret values.
 
-Need to edit a value? `vars show config.vars` decrypts with your PIN. Make your change, then `vars hide` encrypts it back. The decrypted file is gitignored by default, and an optional pre-commit hook runs `hide` automatically — so plaintext never touches a commit.
+## What you get
+
+**Type safety.** Each variable has a schema — `z.string().url()`, `z.number().min(1024)`, `z.enum(["debug", "info", "warn"])`. These are [Zod](https://zod.dev) expressions, a popular TypeScript validation library. If someone puts a typo in the database URL, vars catches it at build time, not after it crashes in prod.
+
+**All environments in one file.** Dev, staging, prod — defined once, in one place. No more `.env.local` + `.env.staging` + `.env.production` drifting apart.
+
+**Team-friendly.** New teammate clones the repo, runs `vars show`, enters the PIN. They have every secret for every environment. No Slack DMs. No 1Password vaults. No Doppler subscription.
+
+**AI-safe.** The only way to decrypt is entering the PIN — a step AI coding agents can't complete. Your secrets stay locked even when Copilot, Cursor, or Claude has access to your files.
+
+**Generated types.** vars generates a TypeScript file with full autocomplete:
+
+```typescript
+import { vars } from '#vars'
+
+vars.APP_NAME              // string — public, plain value
+vars.PORT                  // number — public, auto-coerced
+vars.DATABASE_URL          // Redacted<string> — secret, safe to log
+vars.DATABASE_URL.unwrap() // actual value — explicit opt-in
+```
+
+Public variables are plain types. Secret variables are wrapped in `Redacted` — you can pass them around safely, and `.unwrap()` when you actually need the value. No accidental logging.
+
+## vars is for you if...
+
+- You're a **small to mid-size team** (2–15 people) sharing secrets across environments
+- You want **type-safe config** without a SaaS dependency
+- You're tired of **.env file sprawl** and Slack-based secret sharing
+- You want **AI agents locked out** of your production secrets
+- You use **TypeScript** and want config that integrates with your type system
 
 ## Ready?
 

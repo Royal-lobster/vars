@@ -1,94 +1,136 @@
 ---
 title: Getting Started
-description: From zero to encrypted, typed env vars in a few minutes.
+description: From zero to encrypted, typed env vars in under 5 minutes.
 ---
 
-## Install
+## 1. Initialize
 
 ```bash
 npx vars init
 ```
 
-You'll be asked for a PIN. After that, you get:
-- `config.vars` — your variables file, encrypted at rest and safe to commit
-- `.vars/key` — your encryption key, locked behind that PIN (gitignored)
-- `vars.generated.ts` — typed accessors, auto-regenerated
-- A `.gitignore` update so the key doesn't get committed
-- A pre-commit hook that blocks commits if secrets are still decrypted
+You'll set a PIN to protect your encryption key. After that, you get:
 
-Already have a `.env`? vars will offer to import it during init.
+| File | What it is | Committed to git? |
+|------|-----------|-------------------|
+| `config.vars` | Your variables — encrypted at rest | Yes |
+| `.vars/key` | Encryption key (locked behind your PIN) | No (gitignored) |
+| `config.generated.ts` | TypeScript types (auto-generated) | Yes |
 
-## Add a variable
+vars also updates your `.gitignore` and installs a pre-commit hook that prevents committing decrypted secrets.
+
+**Already have a `.env` file?** vars will detect it and offer to migrate your variables automatically.
+
+## 2. Decrypt and edit
 
 ```bash
 npx vars show config.vars
 ```
 
-This decrypts `config.vars` in place so you can edit it. Open the file and add a variable:
+Enter your PIN. The file decrypts in-place — open it in your editor and add variables:
 
 ```vars
+env(dev, staging, prod)
+
+public APP_NAME = "my-app"
+public PORT : z.number().min(1024).max(65535) = 3000
+
 DATABASE_URL : z.string().url() {
-  dev  = postgres://localhost/myapp
-  prod = postgres://prod-host/myapp
+  dev     = "postgres://localhost:5432/myapp"
+  staging = "postgres://staging.db:5432/myapp"
+  prod    = "postgres://admin@prod.db.internal:5432/myapp"
 }
 ```
 
-The schema (`z.string().url()`) sits right next to the name. vars validates against it, so a typo in the connection string gets caught before it reaches your app.
+**What's the syntax?**
 
-Need to annotate a variable with extra metadata? Use parenthesized metadata after the schema:
+- `public` means the value is not a secret — it stays plaintext and generates a plain TypeScript type
+- The part after `:` is a [Zod](https://zod.dev) schema — think of it as a type annotation that also validates. `z.string().url()` means "this must be a valid URL string." Common ones: `z.string()`, `z.number()`, `z.boolean()`, `z.enum(["a", "b", "c"])`
+- The `{ dev = ..., prod = ... }` block defines per-environment values
+- No schema? `APP_NAME = "my-app"` infers `z.string()` automatically
 
-```vars
-DATABASE_URL : z.string().url() (description = "Primary database connection string") {
-  dev  = postgres://localhost/myapp
-  prod = postgres://prod-host/myapp
-}
-```
-
-Non-secret values that don't need encryption can be marked with the `public` keyword:
-
-```vars
-public APP_NAME : z.string() {
-  dev  = myapp-dev
-  prod = myapp
-}
-```
-
-## Encrypt
+## 3. Encrypt and commit
 
 ```bash
 npx vars hide
 ```
 
-Encrypts all secret values with AES-256-GCM. Safe to commit.
+Enter your PIN. All secret values get encrypted. Public values stay readable:
 
-## Run your app
+```vars
+public APP_NAME = "my-app"
+public PORT : z.number().min(1024).max(65535) = 3000
+
+DATABASE_URL : z.string().url() {
+  dev     = enc:v2:aes256gcm-det:7f3a9b...:d4e5f6...:a1b2c3...
+  staging = enc:v2:aes256gcm-det:e8d1f0...:k5l6m7...:n8o9p0...
+  prod    = enc:v2:aes256gcm-det:x1y2z3...:a4b5c6...:d7e8f9...
+}
+```
+
+Now commit:
+
+```bash
+git add config.vars config.generated.ts
+git commit -m "add database config"
+```
+
+The pre-commit hook will block the commit if any secrets are still decrypted — so you can't accidentally push plaintext.
+
+## 4. Run your app
 
 ```bash
 npx vars run --env dev -- node server.js
 ```
 
-vars decrypts in memory and injects the values as environment variables before handing off to your process. Nothing gets written to disk.
+vars decrypts secrets in memory (nothing written to disk) and injects them as environment variables before handing off to your process. Works with any command:
 
-## Generate typed accessors
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- next dev",
+    "build": "vars run --env prod -- next build",
+    "start": "vars run --env prod -- node dist/server.js"
+  }
+}
+```
+
+## 5. Use the generated types
 
 ```bash
 npx vars gen config.vars
 ```
 
-Outputs `vars.generated.ts` with a typed export for each variable. No more guessing whether `process.env.DATABASE_URL` exists. Public variables get plain types; secrets get a `Redacted` wrapper so you don't accidentally log them:
+This generates `config.generated.ts` with typed exports. Import them anywhere:
 
-```ts
-// vars.generated.ts (auto-generated, do not edit)
-export const env = {
-  APP_NAME: string,          // public — plain value
-  DATABASE_URL: Redacted<string>, // secret — unwrap explicitly to access
-};
+```typescript
+import { vars } from '#vars'
+
+// Public vars — plain types, no unwrap needed
+console.log(`Starting ${vars.APP_NAME} on port ${vars.PORT}`)
+
+// Secret vars — Redacted<string>, explicit unwrap
+const pool = createPool(vars.DATABASE_URL.unwrap())
+
+// Type errors caught at compile time
+vars.TYPO_VAR  // TS error: Property 'TYPO_VAR' does not exist
 ```
 
-This file is also auto-regenerated by `vars show` and `vars hide`.
+The `#vars` import alias is set up by `vars init` in your `package.json`. The generated file has no runtime dependencies on vars — just Zod for validation.
 
-## Framework integration
+## Onboarding a teammate
 
-vars works with any framework — [see how to set it up](/docs/frameworks).
+When someone new joins:
 
-Or read about the [file format](/docs/file-format) and [CLI reference](/docs/cli/setup-auth).
+1. They clone the repo (which has the encrypted `config.vars`)
+2. You share the PIN with them (verbally, or via a secure channel)
+3. They run `vars show config.vars`, enter the PIN — done
+
+No `.env` file to find. No 1Password vault to configure. No Doppler invite to send.
+
+## What's next?
+
+- [File format reference](/docs/file-format) — full syntax guide (groups, conditionals, check blocks, interpolation)
+- [CLI reference](/docs/cli/setup-auth) — all commands
+- [Framework integration](/docs/frameworks) — Next.js, Vite, Astro, and more
+- [Encryption & security](/docs/encryption-security) — how the crypto works, threat model
