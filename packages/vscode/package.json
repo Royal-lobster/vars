@@ -21,7 +21,7 @@
 	],
 	"activationEvents": [
 		"onLanguage:vars",
-		"workspaceContains:**/.vars/vault.vars"
+		"workspaceContains:**/*.vars"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
@@ -73,12 +73,12 @@
 			"editor/title": [
 				{
 					"command": "vars.show",
-					"when": "resourceLangId == vars && resourcePath =~ /\\.vars\\/vault\\.vars$/",
+					"when": "resourceLangId == vars && vars.state == locked",
 					"group": "navigation"
 				},
 				{
 					"command": "vars.hide",
-					"when": "resourceLangId == vars && resourcePath =~ /\\.vars\\/unlocked\\.vars$/",
+					"when": "resourceLangId == vars && vars.state == unlocked",
 					"group": "navigation"
 				}
 			]

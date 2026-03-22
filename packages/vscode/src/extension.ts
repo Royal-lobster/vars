@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as cp from "node:child_process";
-import { type ExtensionContext, commands, window, workspace, Uri, ViewColumn } from "vscode";
+import { type ExtensionContext, commands, window, workspace } from "vscode";
 import {
 	LanguageClient,
 	type LanguageClientOptions,
@@ -9,6 +9,19 @@ import {
 } from "vscode-languageclient/node.js";
 
 let client: LanguageClient | undefined;
+
+/** Read the @vars-state header from a .vars document and set the context key */
+function updateVarsState(doc: { languageId: string; getText(): string }): void {
+	if (doc.languageId !== "vars") return;
+	const firstLine = doc.getText().split("\n", 1)[0] ?? "";
+	if (firstLine.includes("@vars-state unlocked")) {
+		commands.executeCommand("setContext", "vars.state", "unlocked");
+	} else if (firstLine.includes("@vars-state locked")) {
+		commands.executeCommand("setContext", "vars.state", "locked");
+	} else {
+		commands.executeCommand("setContext", "vars.state", undefined);
+	}
+}
 
 export function activate(context: ExtensionContext): void {
 	const serverModule = context.asAbsolutePath(
@@ -32,7 +45,7 @@ export function activate(context: ExtensionContext): void {
 	const clientOptions: LanguageClientOptions = {
 		documentSelector: [{ scheme: "file", language: "vars" }],
 		synchronize: {
-			fileEvents: workspace.createFileSystemWatcher("**/.vars/{vault,unlocked}.vars"),
+			fileEvents: workspace.createFileSystemWatcher("**/*.vars"),
 		},
 	};
 
@@ -44,6 +57,21 @@ export function activate(context: ExtensionContext): void {
 	);
 
 	client.start();
+
+	// --- Track @vars-state for editor title buttons ---
+	if (window.activeTextEditor) {
+		updateVarsState(window.activeTextEditor.document);
+	}
+	context.subscriptions.push(
+		window.onDidChangeActiveTextEditor((editor) => {
+			if (editor) updateVarsState(editor.document);
+		}),
+		workspace.onDidChangeTextDocument((e) => {
+			if (window.activeTextEditor?.document === e.document) {
+				updateVarsState(e.document);
+			}
+		}),
+	);
 
 	// --- vars commands with PIN dialog ---
 	for (const cmd of ["toggle", "show", "hide"] as const) {
@@ -64,6 +92,12 @@ export function activate(context: ExtensionContext): void {
 
 			try {
 				await runVarsWithPin(cmd, pin, workspaceFolder.uri.fsPath);
+				// Refresh the active editor to pick up file changes and update state
+				if (window.activeTextEditor) {
+					const doc = window.activeTextEditor.document;
+					await commands.executeCommand("workbench.action.files.revert");
+					updateVarsState(doc);
+				}
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
 				if (msg.includes("Invalid PIN")) {
@@ -76,32 +110,23 @@ export function activate(context: ExtensionContext): void {
 		context.subscriptions.push(disposable);
 	}
 
-	// --- File watcher for show/hide tab swapping ---
-	const watcher = workspace.createFileSystemWatcher("**/.vars/unlocked.vars");
-
-	watcher.onDidCreate(async (uri) => {
-		const varsUri = Uri.file(uri.fsPath.replace(/\/unlocked\.vars$/, "/vault.vars"));
-		await closeEditorByUri(varsUri);
-		await openFileInEditor(uri);
-	});
+	// --- File watcher for auto-regen on save ---
+	const watcher = workspace.createFileSystemWatcher("**/*.vars");
 
 	let regenTimer: ReturnType<typeof setTimeout> | undefined;
 	watcher.onDidChange(async (uri) => {
+		// Update state if the changed file is currently open
+		if (window.activeTextEditor?.document.uri.fsPath === uri.fsPath) {
+			updateVarsState(window.activeTextEditor.document);
+		}
 		// Debounce — wait 500ms after last save before regenerating
 		if (regenTimer) clearTimeout(regenTimer);
 		regenTimer = setTimeout(() => {
-			const varsDir = path.dirname(uri.fsPath);
-			const cwd = path.dirname(varsDir);
+			const cwd = path.dirname(uri.fsPath);
 			cp.execFile("vars", ["gen"], { cwd, timeout: 5000 }, () => {
 				// Silently ignore errors — gen may fail if schemas are mid-edit
 			});
 		}, 500);
-	});
-
-	watcher.onDidDelete(async (uri) => {
-		const varsUri = Uri.file(uri.fsPath.replace(/\/unlocked\.vars$/, "/vault.vars"));
-		await closeEditorByUri(uri);
-		await openFileInEditor(varsUri);
 	});
 
 	context.subscriptions.push(watcher);
@@ -130,27 +155,6 @@ function runVarsWithPin(subcommand: string, pin: string, cwd: string): Promise<v
 		child.stdin.write(pin + "\n");
 		child.stdin.end();
 	});
-}
-
-async function closeEditorByUri(uri: Uri): Promise<void> {
-	for (const tabGroup of window.tabGroups.all) {
-		for (const tab of tabGroup.tabs) {
-			const tabUri = (tab.input as { uri?: Uri })?.uri;
-			if (tabUri && tabUri.fsPath === uri.fsPath) {
-				await window.tabGroups.close(tab);
-				return;
-			}
-		}
-	}
-}
-
-async function openFileInEditor(uri: Uri): Promise<void> {
-	try {
-		const doc = await workspace.openTextDocument(uri);
-		await window.showTextDocument(doc, ViewColumn.Active);
-	} catch {
-		// File might not exist yet (race condition with rename)
-	}
 }
 
 export function deactivate(): Thenable<void> | undefined {
