@@ -62,11 +62,23 @@ export function findKeyFile(startDir: string): string | null {
 
 /** Get encryption key — from env var or by prompting for PIN */
 export async function requireKey(keyFilePath: string | null): Promise<Buffer> {
+  // First: try VARS_KEY env var (works in CI/non-TTY)
   const envKey = getKeyFromEnv();
   if (envKey) return envKey;
+
   if (!keyFilePath || !existsSync(keyFilePath)) {
     throw new Error("No encryption key found. Run `vars key init` first.");
   }
+
+  // Check if stdin is a TTY — if not, can't prompt
+  if (!process.stdin.isTTY) {
+    throw new Error(
+      "Cannot prompt for PIN in non-interactive mode.\n" +
+      "Set VARS_KEY environment variable with your base64-encoded master key.\n" +
+      "Get it with: vars key export"
+    );
+  }
+
   const encoded = readFileSync(keyFilePath, "utf8").trim();
   const pin = await prompts.password({ message: "Enter PIN:" });
   if (prompts.isCancel(pin)) process.exit(0);

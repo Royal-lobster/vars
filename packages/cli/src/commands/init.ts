@@ -1,5 +1,5 @@
 import { defineCommand } from "citty";
-import { existsSync, readFileSync, writeFileSync, mkdirSync, appendFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, appendFileSync, chmodSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createMasterKey, encryptMasterKey } from "@vars/node";
 import { generateTypeScript } from "@vars/core";
@@ -22,6 +22,12 @@ export default defineCommand({
     }
 
     prompts.intro(pc.bold("vars init"));
+
+    if (!process.stdin.isTTY) {
+      console.error(pc.red("vars init requires an interactive terminal to set a PIN."));
+      console.error(pc.dim("Run this command directly in your terminal, not in a script."));
+      process.exit(1);
+    }
 
     // 1. Set PIN
     const pin = await prompts.password({ message: "Set a PIN to protect your encryption key:" });
@@ -61,7 +67,26 @@ public PORT : z.number() = 3000
       writeFileSync(configPath, content);
     }
 
-    // 4. Update .gitignore
+    // 4. Install zod if not already present
+    const pkgJsonPath = join(root, "package.json");
+    if (existsSync(pkgJsonPath)) {
+      try {
+        const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
+        const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+        if (!allDeps["zod"]) {
+          // Detect package manager
+          const pm = existsSync(join(root, "pnpm-lock.yaml")) ? "pnpm"
+            : existsSync(join(root, "yarn.lock")) ? "yarn"
+            : existsSync(join(root, "bun.lockb")) ? "bun"
+            : "npm";
+          console.log(pc.dim(`  Installing zod...`));
+          const { execSync } = await import("node:child_process");
+          execSync(`${pm} add zod`, { cwd: root, stdio: "pipe" });
+        }
+      } catch { /* non-fatal */ }
+    }
+
+    // 5. Update .gitignore
     const gitignorePath = join(root, ".gitignore");
     const varsIgnoreEntries = "\n# vars\n.vars/key\n.vars/key.*\n";
     if (existsSync(gitignorePath)) {
@@ -73,7 +98,30 @@ public PORT : z.number() = 3000
       writeFileSync(gitignorePath, varsIgnoreEntries.trim() + "\n");
     }
 
-    // 5. Add #vars import to package.json
+    // 6. Install pre-commit hook
+    try {
+      const huskyDir = join(root, ".husky");
+      const gitHookDir = join(root, ".git", "hooks");
+      const hookPath = existsSync(huskyDir) ? join(huskyDir, "pre-commit") : join(gitHookDir, "pre-commit");
+
+      const HOOK_MARKER = "# vars: check for unlocked files";
+      const HOOK_SCRIPT = `\n${HOOK_MARKER}\nfor f in $(git diff --cached --name-only 2>/dev/null | grep '\\.vars$'); do\n  if head -1 "$f" 2>/dev/null | grep -q '@vars-state unlocked'; then\n    echo ""\n    echo "vars: $f contains decrypted secrets."\n    echo "  Run 'vars hide' to encrypt before committing."\n    echo ""\n    exit 1\n  fi\ndone\n`;
+
+      if (existsSync(hookPath)) {
+        const existing = readFileSync(hookPath, "utf8");
+        if (!existing.includes(HOOK_MARKER)) {
+          writeFileSync(hookPath, existing.trimEnd() + "\n" + HOOK_SCRIPT);
+        }
+      } else {
+        const dir = join(hookPath, "..");
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+        writeFileSync(hookPath, "#!/bin/sh\n" + HOOK_SCRIPT);
+      }
+      chmodSync(hookPath, 0o755);
+      console.log(pc.dim("  Installed pre-commit hook"));
+    } catch { /* non-fatal — .git may not exist */ }
+
+    // 7. Add #vars import to package.json
     const pkgPath = join(root, "package.json");
     if (existsSync(pkgPath)) {
       try {
@@ -87,7 +135,7 @@ public PORT : z.number() = 3000
       } catch { /* skip if parse fails */ }
     }
 
-    // 6. Generate types
+    // 8. Generate types
     try {
       const resolved = resolveUseChain(configPath, { env: "dev" });
       const code = generateTypeScript(resolved);
