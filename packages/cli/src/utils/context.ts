@@ -2,6 +2,7 @@ import { resolve, dirname, join } from "node:path";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { getKeyFromEnv, decryptMasterKey } from "@vars/node";
+import { isUnlockedPath, toCanonicalPath, toUnlockedPath, toLockedPath } from "@vars/node";
 import * as prompts from "@clack/prompts";
 
 export interface CliContext {
@@ -15,13 +16,38 @@ export interface CliContext {
 export function findVarsFile(startDir: string, fileName?: string): string | null {
   if (fileName) {
     const abs = resolve(startDir, fileName);
-    return existsSync(abs) ? abs : null;
+    if (existsSync(abs)) return abs;
+    // Try the other variant
+    if (isUnlockedPath(abs)) {
+      const locked = toCanonicalPath(abs);
+      if (existsSync(locked)) return locked;
+    } else {
+      const unlocked = toUnlockedPath(abs);
+      if (existsSync(unlocked)) return unlocked;
+    }
+    return null;
   }
   let dir = resolve(startDir);
   while (true) {
     try {
       const files = readdirSync(dir).filter(f => f.endsWith(".vars") && !f.startsWith("."));
-      if (files.length > 0) return resolve(dir, files[0]);
+      // Prefer .unlocked.vars over .vars (most recent state), but deduplicate
+      const seen = new Set<string>();
+      const result: string[] = [];
+      for (const f of files) {
+        const canonical = isUnlockedPath(f) ? toLockedPath(f) : f;
+        if (!seen.has(canonical)) {
+          seen.add(canonical);
+          // Prefer unlocked variant if it exists
+          const unlockedName = toUnlockedPath(canonical);
+          if (files.includes(unlockedName)) {
+            result.push(resolve(dir, unlockedName));
+          } else {
+            result.push(resolve(dir, f));
+          }
+        }
+      }
+      if (result.length > 0) return result[0];
     } catch { /* permission error, skip */ }
     const parent = dirname(dir);
     if (parent === dir) return null;
@@ -46,6 +72,11 @@ export function findAllVarsFiles(rootDir: string): string[] {
   }
   walk(rootDir);
   return results;
+}
+
+/** Find all .unlocked.vars files in a directory */
+export function findUnlockedVarsFiles(rootDir: string): string[] {
+  return findAllVarsFiles(rootDir).filter(f => isUnlockedPath(f));
 }
 
 /** Find .vars/key file, walking up from startDir */

@@ -64,9 +64,9 @@ SECRET : z.string() {
     expect(encrypted).not.toContain("prod-secret-value");
     expect(encrypted).toContain('APP_NAME = "test-app"'); // public unchanged
 
-    // Show (decrypt)
-    showFile(filePath, key);
-    const decrypted = readFileSync(filePath, "utf8");
+    // Show (decrypt) — now renames to .unlocked.vars
+    const unlockedPath = showFile(filePath, key);
+    const decrypted = readFileSync(unlockedPath, "utf8");
     expect(decrypted).toContain("# @vars-state unlocked");
     expect(decrypted).toContain("dev-secret-value");
     expect(decrypted).toContain("prod-secret-value");
@@ -92,9 +92,9 @@ SECRET : z.string() {
     hideFile(filePath, key);
     const first = readFileSync(filePath, "utf8");
 
-    // Show + hide again (no changes)
-    showFile(filePath, key);
-    hideFile(filePath, key);
+    // Show + hide again (no changes) — showFile renames to .unlocked.vars
+    const unlocked = showFile(filePath, key);
+    hideFile(unlocked, key);
     const second = readFileSync(filePath, "utf8");
 
     // Deterministic: identical output

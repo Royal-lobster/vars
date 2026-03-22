@@ -1,12 +1,20 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync, existsSync } from "node:fs";
 import { parse, isEncrypted } from "@vars/core";
 import { encryptDeterministic, decrypt } from "./crypto.js";
+import { toUnlockedPath, toLockedPath, isUnlockedPath } from "./unlocked-path.js";
 
 const STATE_LOCKED = "# @vars-state locked";
 const STATE_UNLOCKED = "# @vars-state unlocked";
 
-export function showFile(filePath: string, key: Buffer): void {
-  const content = readFileSync(filePath, "utf8");
+export function showFile(filePath: string, key: Buffer): string {
+  const unlockedPath = isUnlockedPath(filePath) ? filePath : toUnlockedPath(filePath);
+
+  // Rename to .unlocked.vars if not already there
+  if (!isUnlockedPath(filePath) && existsSync(filePath)) {
+    renameSync(filePath, unlockedPath);
+  }
+
+  const content = readFileSync(unlockedPath, "utf8");
   const lines = content.split("\n");
   const result: string[] = [];
 
@@ -15,7 +23,6 @@ export function showFile(filePath: string, key: Buffer): void {
       result.push(STATE_UNLOCKED);
       continue;
     }
-    // Match lines like: `  dev = enc:v2:aes256gcm-det:...` or `SECRET = enc:v2:...`
     const match = line.match(/^(\s*\w[\w-]*\s*=\s*)(enc:v2:\S+)(.*)$/);
     if (match) {
       const [, prefix, encrypted, suffix] = match;
@@ -27,12 +34,16 @@ export function showFile(filePath: string, key: Buffer): void {
     result.push(line);
   }
 
-  writeFileSync(filePath, result.join("\n"));
+  writeFileSync(unlockedPath, result.join("\n"));
+  return unlockedPath;
 }
 
-export function hideFile(filePath: string, key: Buffer): void {
-  const content = readFileSync(filePath, "utf8");
-  const parsed = parse(content, filePath);
+export function hideFile(filePath: string, key: Buffer): string {
+  const lockedPath = isUnlockedPath(filePath) ? toLockedPath(filePath) : filePath;
+  const readPath = filePath;
+
+  const content = readFileSync(readPath, "utf8");
+  const parsed = parse(content, readPath);
   const publicVars = new Set<string>();
 
   // Collect public variable names
@@ -118,5 +129,10 @@ export function hideFile(filePath: string, key: Buffer): void {
     result.push(line);
   }
 
-  writeFileSync(filePath, result.join("\n"));
+  // Write encrypted content, then rename to locked path
+  writeFileSync(readPath, result.join("\n"));
+  if (isUnlockedPath(readPath) && readPath !== lockedPath) {
+    renameSync(readPath, lockedPath);
+  }
+  return lockedPath;
 }

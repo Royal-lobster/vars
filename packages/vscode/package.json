@@ -73,12 +73,12 @@
 			"editor/title": [
 				{
 					"command": "vars.show",
-					"when": "resourceLangId == vars && vars.state == locked",
+					"when": "resourceLangId == vars && !(resourceFilename =~ /\\.unlocked\\.vars$/)",
 					"group": "navigation"
 				},
 				{
 					"command": "vars.hide",
-					"when": "resourceLangId == vars && vars.state == unlocked",
+					"when": "resourceLangId == vars && resourceFilename =~ /\\.unlocked\\.vars$/",
 					"group": "navigation"
 				}
 			]

@@ -1,7 +1,7 @@
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
-import { readFileSync } from "node:fs";
-import { showFile, hideFile } from "@vars/node";
+import { existsSync } from "node:fs";
+import { showFile, hideFile, isUnlockedPath, toUnlockedPath, toCanonicalPath } from "@vars/node";
 import { findVarsFile, findKeyFile, requireKey } from "../utils/context.js";
 import pc from "picocolors";
 
@@ -16,17 +16,21 @@ export default defineCommand({
       console.error(pc.red("No .vars file found"));
       process.exit(1);
     }
-    const content = readFileSync(file, "utf8");
-    const isUnlocked = content.includes("# @vars-state unlocked");
+
+    const canonical = toCanonicalPath(file);
+    const unlockedPath = toUnlockedPath(canonical);
+    const isUnlocked = isUnlockedPath(file) || existsSync(unlockedPath);
+
     const keyFile = findKeyFile(file);
     const key = await requireKey(keyFile);
 
     if (isUnlocked) {
-      hideFile(file, key);
-      console.log(pc.green(`  ✓ Locked ${file}`));
+      const target = existsSync(unlockedPath) ? unlockedPath : file;
+      const lockedPath = hideFile(target, key);
+      console.log(pc.green(`  ✓ Locked → ${lockedPath}`));
     } else {
-      showFile(file, key);
-      console.log(pc.green(`  ✓ Unlocked ${file}`));
+      const resultPath = showFile(file, key);
+      console.log(pc.green(`  ✓ Unlocked → ${resultPath}`));
     }
   },
 });

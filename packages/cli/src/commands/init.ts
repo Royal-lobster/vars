@@ -88,10 +88,10 @@ public PORT : z.number() = 3000
 
     // 5. Update .gitignore
     const gitignorePath = join(root, ".gitignore");
-    const varsIgnoreEntries = "\n# vars\n.vars/key\n.vars/key.*\n";
+    const varsIgnoreEntries = "\n# vars\n.vars/key\n.vars/key.*\n*.unlocked.vars\n";
     if (existsSync(gitignorePath)) {
       const existing = readFileSync(gitignorePath, "utf8");
-      if (!existing.includes(".vars/key")) {
+      if (!existing.includes("*.unlocked.vars")) {
         appendFileSync(gitignorePath, varsIgnoreEntries);
       }
     } else {
@@ -105,7 +105,7 @@ public PORT : z.number() = 3000
       const hookPath = existsSync(huskyDir) ? join(huskyDir, "pre-commit") : join(gitHookDir, "pre-commit");
 
       const HOOK_MARKER = "# vars: check for unlocked files";
-      const HOOK_SCRIPT = `\n${HOOK_MARKER}\nfor f in $(git diff --cached --name-only 2>/dev/null | grep '\\.vars$'); do\n  if head -1 "$f" 2>/dev/null | grep -q '@vars-state unlocked'; then\n    echo ""\n    echo "vars: $f contains decrypted secrets."\n    echo "  Run 'vars hide' to encrypt before committing."\n    echo ""\n    exit 1\n  fi\ndone\n`;
+      const HOOK_SCRIPT = `\n${HOOK_MARKER}\nif git diff --cached --name-only 2>/dev/null | grep -q '\\.unlocked\\.vars$'; then\n  echo ""\n  echo "vars: Unlocked .vars files cannot be committed."\n  echo "  Run 'vars hide' to encrypt before committing."\n  echo ""\n  exit 1\nfi\n`;
 
       if (existsSync(hookPath)) {
         const existing = readFileSync(hookPath, "utf8");

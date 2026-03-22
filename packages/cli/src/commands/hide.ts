@@ -1,7 +1,6 @@
 import { defineCommand } from "citty";
-import { readFileSync } from "node:fs";
 import { hideFile } from "@vars/node";
-import { findAllVarsFiles, findKeyFile, requireKey, getProjectRoot } from "../utils/context.js";
+import { findUnlockedVarsFiles, findKeyFile, requireKey, getProjectRoot } from "../utils/context.js";
 import pc from "picocolors";
 
 export default defineCommand({
@@ -9,12 +8,7 @@ export default defineCommand({
   args: {},
   async run() {
     const root = getProjectRoot();
-    const allFiles = findAllVarsFiles(root);
-    const unlocked = allFiles.filter(f => {
-      try {
-        return readFileSync(f, "utf8").includes("# @vars-state unlocked");
-      } catch { return false; }
-    });
+    const unlocked = findUnlockedVarsFiles(root);
 
     if (unlocked.length === 0) {
       console.log(pc.dim("  No unlocked files found"));
@@ -25,8 +19,8 @@ export default defineCommand({
     const key = await requireKey(keyFile);
 
     for (const f of unlocked) {
-      hideFile(f, key);
-      console.log(pc.green(`  ✓ Encrypted ${f}`));
+      const lockedPath = hideFile(f, key);
+      console.log(pc.green(`  ✓ Encrypted → ${lockedPath}`));
     }
   },
 });
