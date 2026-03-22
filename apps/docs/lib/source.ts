@@ -13,7 +13,7 @@ export const source = loader({
     // Check simple-icons first (Si* prefix)
     if (icon.startsWith('Si') && icon in simpleIcons) {
       return createElement(
-        (simpleIcons as Record<string, React.ComponentType<{ size?: number }>>)[icon],
+        (simpleIcons as unknown as Record<string, React.ComponentType<{ size?: number }>>)[icon],
         { size: 16 },
       );
     }
