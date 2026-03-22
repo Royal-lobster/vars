@@ -4,10 +4,8 @@
     "index",
     "getting-started",
     "file-format",
-    "---CLI---",
-    "...cli",
-    "---Frameworks---",
-    "...frameworks",
+    "cli",
+    "frameworks",
     "---",
     "encryption-security"
   ]
