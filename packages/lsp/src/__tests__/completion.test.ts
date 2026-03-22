@@ -139,6 +139,33 @@ describe("completion", () => {
 			expect(labels).toContain("@expires");
 			expect(labels).toContain("@owner");
 		});
+
+		it("suggests @public directive", () => {
+			const fullText = ["PORT  z.coerce.number()", "  @p"].join("\n");
+			const ctx: CompletionContext = {
+				text: fullText,
+				line: 1,
+				character: 4,
+				uri: "/test/.vars",
+			};
+			const items = computeCompletions(ctx);
+			const labels = items.map((i) => i.label);
+			expect(labels).toContain("@public");
+		});
+
+		it("@public insert text has no trailing value", () => {
+			const fullText = ["PORT  z.coerce.number()", "  @"].join("\n");
+			const ctx: CompletionContext = {
+				text: fullText,
+				line: 1,
+				character: 3,
+				uri: "/test/.vars",
+			};
+			const items = computeCompletions(ctx);
+			const publicItem = items.find((i) => i.label === "@public");
+			expect(publicItem).toBeDefined();
+			expect(publicItem?.insertText).toBe("@public");
+		});
 	});
 
 	describe("@refine variable completions", () => {

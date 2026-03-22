@@ -94,6 +94,22 @@ describe("parser", () => {
       const legacy = result.variables.find((v) => v.name === "LEGACY_TOKEN")!;
       expect(legacy.metadata.deprecated).toBe("Use API_KEY instead");
     });
+
+    it("parses @public as boolean metadata", () => {
+      const result = parse(
+        "PORT  z.coerce.number()\n  @public\n  @default = 3000\n"
+      );
+      const port = result.variables.find((v) => v.name === "PORT")!;
+      expect(port.metadata.public).toBe(true);
+    });
+
+    it("defaults public to undefined when not present", () => {
+      const result = parse(
+        "SECRET  z.string()\n  @dev = hidden\n"
+      );
+      const secret = result.variables.find((v) => v.name === "SECRET")!;
+      expect(secret.metadata.public).toBeUndefined();
+    });
   });
 
   describe("string quoting", () => {

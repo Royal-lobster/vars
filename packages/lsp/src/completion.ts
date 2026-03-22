@@ -13,7 +13,7 @@ export interface CompletionContext {
 const STANDARD_ENVS = ["@dev", "@staging", "@prod", "@default", "@test"];
 
 /** Metadata directives */
-const DIRECTIVES = ["@description", "@deprecated", "@expires", "@owner"];
+const DIRECTIVES = ["@description", "@deprecated", "@expires", "@owner", "@public"];
 
 /** Top-level z.* factory methods */
 const ZOD_FACTORIES = [
@@ -188,12 +188,22 @@ function getEnvNameCompletions(lines: string[]): CompletionItem[] {
  * Get directive completions.
  */
 function getDirectiveCompletions(): CompletionItem[] {
-	return DIRECTIVES.map((name) => ({
-		label: name,
-		kind: CompletionItemKind.Keyword,
-		detail: "Metadata directive",
-		insertText: name === "@description" || name === "@deprecated" ? `${name} "` : `${name} `,
-	}));
+	return DIRECTIVES.map((name) => {
+		let insertText: string;
+		if (name === "@public") {
+			insertText = name;
+		} else if (name === "@description" || name === "@deprecated") {
+			insertText = `${name} "`;
+		} else {
+			insertText = `${name} `;
+		}
+		return {
+			label: name,
+			kind: CompletionItemKind.Keyword,
+			detail: name === "@public" ? "Skip encryption for this variable" : "Metadata directive",
+			insertText,
+		};
+	});
 }
 
 /**

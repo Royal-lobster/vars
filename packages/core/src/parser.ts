@@ -4,6 +4,7 @@ import { ParseError } from "./errors.js";
 const VAR_PATTERN = /^([A-Z][A-Z0-9_]*)[ \t]{2,}(z\..+)$/;
 const ENV_VALUE_PATTERN = /^[ \t]+@(\w[\w-]*)[ \t]+=[ \t]+(.*)$/;
 const METADATA_PATTERN = /^[ \t]+@(description|expires|deprecated|owner)[ \t]+(.+)$/;
+const BOOLEAN_METADATA_PATTERN = /^[ \t]+@(public)[ \t]*$/;
 const EXTENDS_PATTERN = /^@extends[ \t]+(.+)$/;
 const REFINE_START_PATTERN = /^@refine[ \t]+(.+)$/;
 const COMMENT_PATTERN = /^#/;
@@ -63,10 +64,19 @@ export function parse(input: string, filePath?: string): VarsFile {
         throw new ParseError("Indented line without a parent variable", lineNum, filePath);
       }
 
+      // Boolean metadata directive (no value)
+      const boolMetaMatch = line.match(BOOLEAN_METADATA_PATTERN);
+      if (boolMetaMatch) {
+        const directive = boolMetaMatch[1] as "public";
+        currentVar.metadata[directive] = true;
+        continue;
+      }
+
       // Metadata directive (no = sign)
       const metaMatch = line.match(METADATA_PATTERN);
       if (metaMatch) {
-        const directive = metaMatch[1] as keyof Metadata;
+        type StringMetadataKey = "description" | "expires" | "deprecated" | "owner";
+        const directive = metaMatch[1] as StringMetadataKey;
         const rawValue = metaMatch[2].trim().replace(/^["']|["']$/g, "");
         currentVar.metadata[directive] = rawValue;
         continue;

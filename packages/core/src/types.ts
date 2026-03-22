@@ -27,6 +27,7 @@ export interface Metadata {
   expires?: string;
   deprecated?: string;
   owner?: string;
+  public?: boolean;
 }
 
 /** A cross-variable @refine constraint */

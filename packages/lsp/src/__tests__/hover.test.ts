@@ -120,6 +120,22 @@ describe("hover", () => {
 		expect(result?.contents).toContain("ZodString");
 	});
 
+	it("shows public status in hover", () => {
+		const text = [
+			"PORT  z.coerce.number()",
+			"  @public",
+			"  @default = 3000",
+		].join("\n");
+		const result = computeHover({
+			text,
+			line: 0,
+			character: 2,
+			uri: "/test/.vars",
+		});
+		expect(result).not.toBeNull();
+		expect(result?.contents).toContain("Public");
+	});
+
 	it("returns null for env value lines", () => {
 		const text = ["PORT  z.coerce.number()", "  @dev = 3000"].join("\n");
 		const result = computeHover({

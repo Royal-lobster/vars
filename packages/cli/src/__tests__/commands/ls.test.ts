@@ -51,4 +51,22 @@ describe("vars ls", () => {
     expect(list[0].description).toBe("Main API key");
     expect(list[0].deprecated).toBe("Use NEW_KEY");
   });
+
+  it("includes public status in listing", () => {
+    writeFileSync(
+      join(tmpDir, ".vars"),
+      [
+        "PORT  z.coerce.number()",
+        "  @public",
+        "  @default = 3000",
+        "",
+        "SECRET  z.string()",
+        "  @dev = hidden",
+      ].join("\n"),
+    );
+
+    const list = listVariables(join(tmpDir, ".vars"));
+    expect(list[0].public).toBe(true);
+    expect(list[1].public).toBeUndefined();
+  });
 });
