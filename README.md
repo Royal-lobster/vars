@@ -54,7 +54,9 @@ The encryption key is locked behind a PIN. AI agents can see variable names and 
 ### Quick Start
 
 ```bash
-npx vars init              # create config, set PIN
+npm i -g vars              # install globally (or use npx)
+
+vars init                  # create config, set PIN
 vars show config.vars      # decrypt for editing
 # ... edit in your IDE ...
 vars hide                  # encrypt secrets
