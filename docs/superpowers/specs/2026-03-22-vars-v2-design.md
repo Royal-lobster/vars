@@ -251,9 +251,9 @@ public APP_NAME = "my-app"  # Inline comment
 
 ### Inline Partial Encryption (SOPS-style)
 
-One file per config. No vault/unlocked split. Secret values are encrypted inline. Structure (names, schemas, metadata, comments) is always plaintext.
+One file per config. Secret values are encrypted inline. Structure (names, schemas, metadata, comments) is always plaintext. Unlocked files are **renamed** to `*.unlocked.vars` (gitignored) as a structural safety layer — even if a developer forgets to run `vars hide`, plaintext secrets cannot reach git.
 
-**Committed (locked) state:**
+**Committed (locked) state — `config.vars`:**
 ```
 # @vars-state locked
 env(dev, staging, prod)
@@ -265,7 +265,7 @@ STRIPE_KEY : z.string() {
 }
 ```
 
-**Working (unlocked) state after `vars show`:**
+**Working (unlocked) state after `vars show` — `config.unlocked.vars` (gitignored):**
 ```
 # @vars-state unlocked
 env(dev, staging, prod)
@@ -276,6 +276,8 @@ STRIPE_KEY : z.string() {
   prod = "sk_live_aBcDeFgHiJkLmNoPqRsTuVwX"
 }
 ```
+
+Only one file exists at a time — never both. `vars show` renames `.vars` to `.unlocked.vars` then decrypts. `vars hide` encrypts then renames `.unlocked.vars` back to `.vars`.
 
 ### Deterministic IVs (HMAC-derived)
 
@@ -291,9 +293,8 @@ Format: `enc:v2:aes256gcm-det:<iv>:<ciphertext>:<tag>`
 
 ### State Tracking
 
-- `# @vars-state locked` — committed state, secrets encrypted.
-- `# @vars-state unlocked` — working state, secrets plaintext.
-- Header is machine-readable, used by pre-commit hook and `vars ls`.
+- **Primary signal:** Filename — `*.vars` = locked, `*.unlocked.vars` = unlocked.
+- **Secondary signal:** `# @vars-state locked/unlocked` header — human-readable indicator, used by `vars ls` display. The filename is the authoritative source of lock state.
 
 ### What Is Never Encrypted
 
@@ -302,8 +303,9 @@ Format: `enc:v2:aes256gcm-det:<iv>:<ciphertext>:<tag>`
 
 ### Safety Layers
 
-1. **State header** — `# @vars-state unlocked` is machine-readable.
-2. **Pre-commit hook** — scans staged `.vars` files for `@vars-state unlocked`, blocks commit with "run `vars hide` first". Requires human PIN entry to encrypt. No auto-encrypt — the PIN-as-human-gatekeeper design is intentional to prevent AI agents from accessing secrets.
+1. **Gitignore** — `*.unlocked.vars` is added to `.gitignore` by `vars init`. Even if the user forgets to hide, git will not track unlocked files.
+2. **Pre-commit hook** — checks if any `*.unlocked.vars` files are staged (fast filename check instead of reading file content). Blocks commit with "run `vars hide` first". Requires human PIN entry to encrypt. No auto-encrypt — the PIN-as-human-gatekeeper design is intentional to prevent AI agents from accessing secrets.
+3. **State header** — `# @vars-state locked/unlocked` is a secondary human-readable signal. No longer the primary safety mechanism.
 
 ### Key Management
 
@@ -572,8 +574,8 @@ All application code uses `import { vars } from '#vars'`.
 | `vars init` | Interactive setup: create `.vars` file, set PIN, create key, update `.gitignore`, install hook, set up `#vars` import |
 | `vars gen <file>` | Generate `.ts` from entry point. Resolves `use` imports. No key needed. |
 | `vars gen --all` | Find all entry point `.vars` files, generate each. Discovery heuristic: a `.vars` file is an entry point if it has a sibling `package.json` with a `#vars` import alias, OR if it is explicitly listed in `vars gen --all`. Files that are only `use`-imported by other files are libraries, not entry points. |
-| `vars show [file]` | Decrypt the target file in-place. Does NOT modify `use` dependencies (they remain locked). Dependencies are resolved in-memory for commands like `vars run` and `vars gen`, not decrypted on disk. Requires PIN. |
-| `vars hide` | Encrypt ALL unlocked files in repo (scans for `# @vars-state unlocked` header from git root). Requires PIN. |
+| `vars show [file]` | Rename to `.unlocked.vars` and decrypt in-place. Does NOT modify `use` dependencies (they remain locked). Dependencies are resolved in-memory for commands like `vars run` and `vars gen`, not decrypted on disk. Requires PIN. |
+| `vars hide` | Encrypt all `*.unlocked.vars` files and rename back to `*.vars`. Requires PIN. |
 | `vars toggle [file]` | If locked → show. If unlocked → hide. |
 | `vars run --env <env> [--param key=val] -- cmd` | Decrypt in-memory, inject into `process.env`, spawn cmd |
 | `vars check [file]` | Validate schemas, run `check` blocks, report expired/deprecated, detect stale codegen |
@@ -781,14 +783,18 @@ No migration needed — 0 users, pre-release. v1 code is deleted entirely. Clean
 
 ```
 my-app/
-  config.vars            # single entry point
+  config.vars            # single entry point (locked/committed)
+  config.unlocked.vars   # unlocked variant (gitignored, only exists when shown)
   vars.generated.ts      # generated
   package.json           # { "imports": { "#vars": "./vars.generated.ts" } }
+  .gitignore             # includes *.unlocked.vars
   .vars/
     key                  # PIN-encrypted master key (gitignored)
   src/
     index.ts             # import { vars } from '#vars'
 ```
+
+Note: `*.unlocked.vars` files are gitignored and only exist temporarily while editing secrets. Only one of `config.vars` / `config.unlocked.vars` exists at a time.
 
 ### Monorepo
 
@@ -796,6 +802,7 @@ my-app/
 monorepo/
   .vars/
     key                  # shared key (gitignored)
+  .gitignore             # includes *.unlocked.vars
   shared/
     database.vars        # library — no generated file
     secrets.vars         # library — no generated file
