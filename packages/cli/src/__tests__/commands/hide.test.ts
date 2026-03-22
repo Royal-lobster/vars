@@ -23,7 +23,7 @@ describe("vars hide", () => {
 
     hideVarsFile(join(tmpDir, ".vars"), key);
 
-    const content = readFileSync(join(tmpDir, ".vars"), "utf8");
+    const content = readFileSync(join(tmpDir, "vault.vars"), "utf8");
     expect(content).toContain("enc:v1:aes256gcm:");
     expect(content).not.toContain("my-secret-key");
   });
@@ -37,7 +37,7 @@ describe("vars hide", () => {
 
     hideVarsFile(join(tmpDir, ".vars"), key);
 
-    const content = readFileSync(join(tmpDir, ".vars"), "utf8");
+    const content = readFileSync(join(tmpDir, "vault.vars"), "utf8");
     expect(content).toContain("enc:v1:aes256gcm:");
   });
 
@@ -47,17 +47,57 @@ describe("vars hide", () => {
     const encValue = encrypt(original, key);
 
     writeFileSync(
-      join(tmpDir, ".vars"),
+      join(tmpDir, "vault.vars"),
       `SECRET  z.string()\n  @dev = ${encValue}\n`,
     );
 
-    showVarsFile(join(tmpDir, ".vars"), key);
-    const shown = readFileSync(join(tmpDir, ".vars"), "utf8");
+    showVarsFile(join(tmpDir, "vault.vars"), key);
+    const shown = readFileSync(join(tmpDir, "unlocked.vars"), "utf8");
     expect(shown).toContain(original);
 
-    hideVarsFile(join(tmpDir, ".vars"), key);
-    const hidden = readFileSync(join(tmpDir, ".vars"), "utf8");
+    hideVarsFile(join(tmpDir, "vault.vars"), key);
+    const hidden = readFileSync(join(tmpDir, "vault.vars"), "utf8");
     expect(hidden).not.toContain(original);
     expect(hidden).toContain("enc:v1:aes256gcm:");
+  });
+
+  it("skips encryption for @public variables", () => {
+    writeFileSync(
+      join(tmpDir, ".vars"),
+      [
+        "PORT  z.coerce.number()",
+        "  @public",
+        "  @dev     = 8080",
+        "",
+        "SECRET  z.string()",
+        "  @dev     = my-secret",
+      ].join("\n"),
+    );
+
+    hideVarsFile(join(tmpDir, ".vars"), key);
+
+    const content = readFileSync(join(tmpDir, "vault.vars"), "utf8");
+    // PORT should remain plaintext
+    expect(content).toContain("8080");
+    // SECRET should be encrypted
+    expect(content).not.toContain("my-secret");
+    expect(content).toContain("enc:v1:aes256gcm:");
+  });
+
+  it("preserves @public metadata in output", () => {
+    writeFileSync(
+      join(tmpDir, ".vars"),
+      [
+        "PORT  z.coerce.number()",
+        "  @public",
+        "  @default = 3000",
+      ].join("\n"),
+    );
+
+    hideVarsFile(join(tmpDir, ".vars"), key);
+
+    const content = readFileSync(join(tmpDir, "vault.vars"), "utf8");
+    expect(content).toContain("@public");
+    expect(content).toContain("3000");
   });
 });

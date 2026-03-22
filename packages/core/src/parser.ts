@@ -75,7 +75,8 @@ export function parse(input: string, filePath?: string): VarsFile {
       // Metadata directive (no = sign)
       const metaMatch = line.match(METADATA_PATTERN);
       if (metaMatch) {
-        const directive = metaMatch[1] as keyof Metadata;
+        type StringMetadataKey = "description" | "expires" | "deprecated" | "owner";
+        const directive = metaMatch[1] as StringMetadataKey;
         const rawValue = metaMatch[2].trim().replace(/^["']|["']$/g, "");
         currentVar.metadata[directive] = rawValue;
         continue;

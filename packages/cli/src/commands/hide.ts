@@ -1,7 +1,7 @@
 import { defineCommand } from "citty";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { encrypt, isEncrypted, regenerateIfStale } from "@vars/core";
+import { encrypt, isEncrypted, regenerateIfStale, parse } from "@vars/core";
 import { buildContext, requireKey } from "../utils/context.js";
 import { ENV_VALUE_LINE, countVariables } from "../utils/patterns.js";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
@@ -54,12 +54,36 @@ export function hideVarsFile(filePath: string, key: Buffer): void {
   const lines = content.split("\n");
   const encryptedLines: string[] = [];
 
+  // Parse to find @public variables
+  const parsed = parse(content, sourcePath);
+  const publicVars = new Set(
+    parsed.variables
+      .filter((v) => v.metadata.public)
+      .map((v) => v.name),
+  );
+
+  // Track which variable each line belongs to
+  const VAR_DECL = /^([A-Z][A-Z0-9_]*)[ \t]{2,}z\./;
+  let currentVarName: string | null = null;
+
   // Encrypt into a new array first -- don't modify the file until ALL values succeed
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+
+    // Track current variable
+    const varMatch = line.match(VAR_DECL);
+    if (varMatch) {
+      currentVarName = varMatch[1];
+    }
+
     const match = line.match(ENV_VALUE_LINE);
     if (match) {
       const [, prefix, value] = match;
+      // Skip encryption for @public variables
+      if (currentVarName && publicVars.has(currentVarName)) {
+        encryptedLines.push(line);
+        continue;
+      }
       if (!isEncrypted(value.trim())) {
         try {
           const encrypted = encrypt(value.trim(), key);
