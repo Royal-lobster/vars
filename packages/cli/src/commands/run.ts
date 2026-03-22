@@ -40,6 +40,12 @@ export default defineCommand({
     // Resolve all variables
     const resolved = resolveUseChain(file, { env, params });
 
+    // Validate env name against declared envs
+    if (resolved.envs.length > 0 && !resolved.envs.includes(env)) {
+      console.error(pc.red(`  Unknown environment "${env}". Declared environments: ${resolved.envs.join(", ")}`));
+      process.exit(1);
+    }
+
     // Build env vars (decrypt encrypted values)
     const envVars: Record<string, string> = {};
     for (const v of resolved.vars) {

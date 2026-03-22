@@ -286,5 +286,13 @@ describe("parser", () => {
       expect(result.ast.declarations.length).toBeGreaterThanOrEqual(1);
       expect(result.errors.length).toBeGreaterThan(0);
     });
+
+    it("reports errors instead of silently dropping variables", () => {
+      const result = parse('env(dev)\nBAD_SYNTAX !!!\npublic GOOD = "value"');
+      expect(result.errors.length).toBeGreaterThan(0);
+      // GOOD should still be parsed despite BAD_SYNTAX error
+      const good = result.ast.declarations.find(d => d.kind === "variable" && d.name === "GOOD");
+      expect(good).toBeDefined();
+    });
   });
 });
