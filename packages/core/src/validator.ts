@@ -1,112 +1,103 @@
 import { z } from "zod";
-import { ValidationError } from "./errors.js";
 
-// Allowlist: only permit z.* method chains — no arbitrary code execution
-const SAFE_SCHEMA_PATTERN = /^z\.[\w.(),"'\[\]\s:>=<|&!+\-\/]+$/;
+const FORBIDDEN_KEYWORDS = [
+  "process", "require", "import", "eval", "Function",
+  "globalThis", "window", "document", "fetch",
+  "constructor", "prototype", "__proto__",
+];
 
-const FALSY_STRINGS = new Set(["false", "0", ""]);
+const ALLOWED_ZOD_METHODS = new Set([
+  // Primitives
+  "string", "number", "boolean", "bigint", "date", "symbol", "undefined", "null", "void", "any", "unknown", "never",
+  // Containers
+  "array", "object", "tuple", "record", "map", "set", "union", "intersection", "discriminatedUnion",
+  // Modifiers
+  "optional", "nullable", "nullish", "default", "catch", "transform", "refine", "pipe", "brand",
+  // Validators
+  "min", "max", "length", "email", "url", "uuid", "regex", "startsWith", "endsWith", "includes", "trim", "toLowerCase", "toUpperCase",
+  // Numeric
+  "int", "positive", "negative", "nonnegative", "nonpositive", "finite", "safe", "multipleOf", "step",
+  // Coercion
+  "coerce",
+  // Enum
+  "enum", "nativeEnum",
+  // Effects
+  "preprocess", "superRefine",
+  // Literal
+  "literal",
+]);
 
-/**
- * A z.coerce.boolean() replacement that correctly handles env-var strings.
- * JS Boolean("false") === true, so we preprocess string values first.
- */
-function envBoolean() {
-  return z.preprocess((val) => {
-    if (typeof val === "string") {
-      return !FALSY_STRINGS.has(val.toLowerCase().trim());
+function validateSchemaAllowlist(schemaText: string): void {
+  // Extract all method calls: match .identifier( patterns
+  const methodPattern = /\.(\w+)\s*\(/g;
+  let match;
+  while ((match = methodPattern.exec(schemaText)) !== null) {
+    const method = match[1];
+    if (!ALLOWED_ZOD_METHODS.has(method)) {
+      throw new Error(`Unknown schema method "${method}" in: ${schemaText}`);
     }
-    return Boolean(val);
-  }, z.boolean());
+  }
+
+  // Reject bracket property access notation (bypass vector): )[" or )['
+  // This catches z.string()["constructor"] while allowing z.enum(["a", "b"])
+  if (/\)\s*\[/.test(schemaText)) {
+    throw new Error(`Bracket notation is not allowed in schemas: ${schemaText}`);
+  }
+
+  // Reject backtick template literals
+  if (schemaText.includes("`")) {
+    throw new Error(`Template literals are not allowed in schemas: ${schemaText}`);
+  }
 }
-
-/**
- * Proxy over Zod's `z` that replaces `z.coerce.boolean()` with env-aware coercion.
- * All other methods pass through to Zod unchanged.
- */
-const envZ: typeof z = new Proxy(z, {
-  get(target, prop, receiver) {
-    if (prop === "coerce") {
-      return new Proxy(target.coerce, {
-        get(coerceTarget, coerceProp) {
-          if (coerceProp === "boolean") {
-            return envBoolean;
-          }
-          return Reflect.get(coerceTarget, coerceProp);
-        },
-      });
-    }
-    return Reflect.get(target, prop, receiver);
-  },
-});
-
-/** Alias: evaluateSchema is the internal name, parseSchema matches the PRD public API */
-export const parseSchema = evaluateSchema;
 
 export function evaluateSchema(schemaText: string): z.ZodType {
-  if (!SAFE_SCHEMA_PATTERN.test(schemaText)) {
-    throw new ValidationError(
-      `Unsafe schema expression: ${schemaText}`,
-      [{ variable: "", message: "Schema contains disallowed characters" }],
-    );
+  // Primary security: must start with z.
+  if (!schemaText.startsWith("z.")) {
+    throw new Error(`Schema must start with "z." — got: ${schemaText}`);
   }
 
-  // Additional safety: reject known dangerous patterns
-  const dangerous = ["process", "require", "import", "eval", "Function", "globalThis", "window"];
-  for (const word of dangerous) {
-    if (schemaText.includes(word)) {
-      throw new ValidationError(
-        `Schema contains forbidden keyword: ${word}`,
-        [{ variable: "", message: `Forbidden keyword: ${word}` }],
-      );
+  // Primary security: allowlist of known Zod methods
+  validateSchemaAllowlist(schemaText);
+
+  // Defense in depth: reject forbidden keywords
+  for (const keyword of FORBIDDEN_KEYWORDS) {
+    if (schemaText.includes(keyword)) {
+      throw new Error(`Schema contains forbidden keyword "${keyword}": ${schemaText}`);
     }
   }
+
+  // Handle z.coerce.boolean() specially — Zod coerces any truthy string to true,
+  // but env vars conventionally treat "false"/"0"/"" as false.
+  const needsBooleanFix = schemaText.includes("z.coerce.boolean()");
+  const processedSchema = needsBooleanFix
+    ? schemaText.replace(
+        "z.coerce.boolean()",
+        "z.preprocess((val) => { if (typeof val === 'string') { const lower = val.toLowerCase(); if (lower === 'false' || lower === '0' || lower === '') return false; return true; } return val; }, z.boolean())"
+      )
+    : schemaText;
 
   try {
-    const fn = new Function("z", `"use strict"; return (${schemaText})`);
-    const schema = fn(envZ);
-
-    if (!(schema instanceof z.ZodType)) {
-      throw new Error("Expression did not return a Zod schema");
-    }
-
-    return schema;
+    const fn = new Function("z", `"use strict"; return ${processedSchema}`);
+    return fn(z);
   } catch (err) {
-    if (err instanceof ValidationError) throw err;
-    throw new ValidationError(
-      `Invalid schema: ${schemaText} — ${(err as Error).message}`,
-      [{ variable: "", message: (err as Error).message }],
-    );
+    throw new Error(`Invalid schema expression: ${schemaText} — ${err}`);
   }
 }
 
-export interface ValidateSuccess {
-  success: true;
-  value: unknown;
+export interface ValidateResult {
+  success: boolean;
+  value?: unknown;
+  issues?: Array<{ message: string }>;
 }
-
-export interface ValidateFailure {
-  success: false;
-  issues: Array<{ message: string; path?: string[] }>;
-}
-
-export type ValidateResult = ValidateSuccess | ValidateFailure;
-
-/** Alias: validateValue is the internal name, validate matches the PRD public API */
-export const validate = validateValue;
 
 export function validateValue(schemaText: string, value: unknown): ValidateResult {
   const schema = evaluateSchema(schemaText);
   const result = schema.safeParse(value);
-
   if (result.success) {
     return { success: true, value: result.data };
   }
-
   return {
     success: false,
-    issues: result.error.issues.map((issue) => ({
-      message: issue.message,
-      path: issue.path.map(String),
-    })),
+    issues: result.error.issues.map((i) => ({ message: i.message })),
   };
 }

@@ -1,101 +1,44 @@
 import { defineCommand } from "citty";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import {
-  createMasterKey,
-  encryptMasterKey,
-  decryptMasterKey,
-  encrypt,
-  decrypt,
-  isEncrypted,
-} from "@vars/core";
-import { atomicWriteFileSync } from "../utils/atomic-write.js";
-import { ENV_VALUE_LINE } from "../utils/patterns.js";
-import * as clack from "@clack/prompts";
-import * as output from "../utils/output.js";
-import { promptPIN } from "../utils/prompt.js";
+import { readFileSync, writeFileSync } from "node:fs";
+import { createMasterKey, encryptMasterKey, showFile, hideFile } from "@vars/node";
+import { findKeyFile, findAllVarsFiles, requireKey, getProjectRoot } from "../utils/context.js";
+import * as prompts from "@clack/prompts";
+import pc from "picocolors";
 
 export default defineCommand({
-  meta: {
-    name: "rotate",
-    description: "Generate new key + PIN, re-encrypt all values",
-  },
+  meta: { name: "rotate", description: "Rotate the encryption key" },
+  args: {},
   async run() {
-    output.intro("rotate");
+    const keyFile = findKeyFile(process.cwd());
+    if (!keyFile) { console.error(pc.red("No key found")); process.exit(1); }
 
-    const cwd = process.cwd();
+    // Decrypt with old key
+    const oldKey = await requireKey(keyFile);
 
-    const oldPin = await promptPIN("Enter current PIN");
-    const newPin = await promptPIN("Choose new PIN");
-    const newPinConfirm = await promptPIN("Confirm new PIN");
+    // Create new key + PIN
+    const pin = await prompts.password({ message: "Set new PIN:" });
+    if (prompts.isCancel(pin)) process.exit(0);
+    const confirm = await prompts.password({ message: "Confirm new PIN:" });
+    if (prompts.isCancel(confirm)) process.exit(0);
+    if (pin !== confirm) { console.error(pc.red("PINs do not match")); process.exit(1); }
 
-    if (newPin !== newPinConfirm) {
-      output.error("New PINs do not match. Aborting.");
-      process.exit(1);
-    }
+    const newKey = await createMasterKey();
+    const root = getProjectRoot();
+    const files = findAllVarsFiles(root);
 
-    const s = clack.spinner();
-    try {
-      s.start("Rotating key and re-encrypting values...");
-      await rotateKey(cwd, oldPin, newPin);
-      s.stop("Re-encrypted all values.");
-      output.info("Share the new .vars/key + new PIN with teammates.");
-      output.outro("Rotated. New PIN is active.");
-    } catch (err) {
-      s.stop("Rotation failed.");
-      output.error(`Rotation failed: ${(err as Error).message}`);
-      process.exit(1);
-    }
-  },
-});
-
-/**
- * Rotate the encryption key.
- *
- * Safety order:
- * 1. Write new varskey first (so we never lose the ability to decrypt)
- * 2. Re-encrypt .vars with the new key
- */
-export async function rotateKey(
-  cwd: string,
-  oldPin: string,
-  newPin: string,
-): Promise<{ newKey: Buffer }> {
-  const keyPath = join(cwd, ".vars", "key");
-  const varsPath = join(cwd, ".vars", "vault.vars");
-
-  const oldKeyEncoded = readFileSync(keyPath, "utf8").trim();
-  const oldKey = await decryptMasterKey(oldKeyEncoded, oldPin);
-
-  const newKey = await createMasterKey();
-
-  // Re-encrypt all values in memory first
-  const content = readFileSync(varsPath, "utf8");
-  const lines = content.split("\n");
-  const result: string[] = [];
-
-  for (const line of lines) {
-    const match = line.match(ENV_VALUE_LINE);
-    if (match) {
-      const prefix = match[1];
-      const value = match[2].trim();
-      if (isEncrypted(value)) {
-        const plaintext = decrypt(value, oldKey);
-        const reEncrypted = encrypt(plaintext, newKey);
-        result.push(`${prefix}${reEncrypted}`);
-        continue;
+    // Decrypt all files with old key, re-encrypt with new key
+    for (const f of files) {
+      const content = readFileSync(f, "utf8");
+      if (content.includes("enc:v2:")) {
+        showFile(f, oldKey);
+        hideFile(f, newKey);
+        console.log(pc.green(`  ✓ Re-encrypted ${f}`));
       }
     }
-    result.push(line);
-  }
 
-  const newKeyEncoded = await encryptMasterKey(newKey, newPin);
-
-  // Write key BEFORE re-encrypted vars -- if we crash between these two writes,
-  // we still have the old .vars (encrypted with old key) and old varskey
-  // Use atomic writes for both
-  atomicWriteFileSync(keyPath, newKeyEncoded + "\n");
-  atomicWriteFileSync(varsPath, result.join("\n"));
-
-  return { newKey };
-}
+    // Save new key
+    const encryptedKey = await encryptMasterKey(newKey, pin as string);
+    writeFileSync(keyFile, encryptedKey + "\n");
+    console.log(pc.green("\n  ✓ Key rotated. Share the new .vars/key + PIN with teammates."));
+  },
+});

@@ -1,199 +1,280 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import { parse } from "../parser.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const fixture = (name: string) =>
   readFileSync(resolve(__dirname, "fixtures", name), "utf8");
 
 describe("parser", () => {
-  describe("basic variable declarations", () => {
-    it("parses variable names and schemas", () => {
-      const result = parse(fixture("basic.vars"));
-      const names = result.variables.map((v) => v.name);
-      expect(names).toEqual([
-        "DATABASE_URL",
-        "DATABASE_POOL",
-        "PORT",
-        "LOG_LEVEL",
-        "DEBUG",
-        "ANALYTICS_ID",
-      ]);
+  describe("env declaration", () => {
+    it("parses env list", () => {
+      const result = parse(fixture("simple.vars"));
+      expect(result.ast.envs).toEqual(["dev", "staging", "prod"]);
     });
 
-    it("parses Zod schema expressions", () => {
-      const result = parse(fixture("basic.vars"));
-      const db = result.variables.find((v) => v.name === "DATABASE_URL");
-      expect(db?.schema).toBe('z.string().url().startsWith("postgres://")');
-    });
-
-    it("captures line numbers", () => {
-      const result = parse(fixture("basic.vars"));
-      expect(result.variables[0].line).toBeGreaterThan(0);
-    });
-  });
-
-  describe("environment values", () => {
-    it("parses @env = value assignments", () => {
-      const result = parse(fixture("basic.vars"));
-      const db = result.variables.find((v) => v.name === "DATABASE_URL")!;
-      expect(db.values).toHaveLength(3);
-      expect(db.values[0]).toMatchObject({ env: "dev", value: "postgres://localhost:5432/myapp_dev" });
-      expect(db.values[1]).toMatchObject({ env: "staging", value: "postgres://staging.db:5432/myapp" });
-      expect(db.values[2]).toMatchObject({ env: "prod", value: "postgres://prod.db:5432/myapp" });
-    });
-
-    it("parses @default values", () => {
-      const result = parse(fixture("basic.vars"));
-      const pool = result.variables.find((v) => v.name === "DATABASE_POOL")!;
-      expect(pool.values).toContainEqual(expect.objectContaining({ env: "default", value: "10" }));
-    });
-
-    it("parses optional variables", () => {
-      const result = parse(fixture("basic.vars"));
-      const analytics = result.variables.find((v) => v.name === "ANALYTICS_ID")!;
-      expect(analytics.schema).toContain(".optional()");
-      expect(analytics.values).toHaveLength(1);
-    });
-  });
-
-  describe("comments", () => {
-    it("ignores comment lines", () => {
-      const result = parse(fixture("basic.vars"));
-      // Comments should not appear as variables
-      expect(result.variables.every((v) => !v.name.startsWith("#"))).toBe(true);
-    });
-
-    it("ignores empty lines", () => {
-      const result = parse("# comment\n\nPORT  z.number()\n  @default = 3000\n");
-      expect(result.variables).toHaveLength(1);
-    });
-  });
-
-  describe("metadata directives", () => {
-    it("parses @description", () => {
-      const result = parse(fixture("metadata.vars"));
-      const apiKey = result.variables.find((v) => v.name === "API_KEY")!;
-      expect(apiKey.metadata.description).toBe("Primary API key for external service");
-    });
-
-    it("parses @expires", () => {
-      const result = parse(fixture("metadata.vars"));
-      const apiKey = result.variables.find((v) => v.name === "API_KEY")!;
-      expect(apiKey.metadata.expires).toBe("2026-09-01");
-    });
-
-    it("parses @owner", () => {
-      const result = parse(fixture("metadata.vars"));
-      const apiKey = result.variables.find((v) => v.name === "API_KEY")!;
-      expect(apiKey.metadata.owner).toBe("backend-team");
-    });
-
-    it("parses @deprecated", () => {
-      const result = parse(fixture("metadata.vars"));
-      const legacy = result.variables.find((v) => v.name === "LEGACY_TOKEN")!;
-      expect(legacy.metadata.deprecated).toBe("Use API_KEY instead");
-    });
-
-    it("parses @public as boolean metadata", () => {
+    it("rejects undeclared env names in env blocks", () => {
       const result = parse(
-        "PORT  z.coerce.number()\n  @public\n  @default = 3000\n"
+        'env(dev, prod)\nX : z.string() {\n  staging = "oops"\n}',
       );
-      const port = result.variables.find((v) => v.name === "PORT")!;
-      expect(port.metadata.public).toBe(true);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("variable declarations", () => {
+    it("parses public variable with inferred schema", () => {
+      const result = parse(fixture("simple.vars"));
+      const appName = result.ast.declarations.find(
+        (d) => d.kind === "variable" && d.name === "APP_NAME",
+      );
+      expect(appName).toBeDefined();
+      expect(appName!.kind).toBe("variable");
+      if (appName!.kind === "variable") {
+        expect(appName!.public).toBe(true);
+        expect(appName!.schema).toBeNull();
+      }
     });
 
-    it("defaults public to undefined when not present", () => {
+    it("parses variable with explicit schema and default", () => {
+      const result = parse(fixture("simple.vars"));
+      const port = result.ast.declarations.find(
+        (d) => d.kind === "variable" && d.name === "PORT",
+      );
+      expect(port).toBeDefined();
+      if (port?.kind === "variable") {
+        expect(port.public).toBe(true);
+        expect(port.schema).toBe("z.number().int().min(1).max(65535)");
+        expect(port.value?.kind).toBe("literal");
+        if (port.value?.kind === "literal") expect(port.value.value).toBe(3000);
+      }
+    });
+
+    it("parses env block with encrypted values", () => {
+      const result = parse(fixture("simple.vars"));
+      const dbUrl = result.ast.declarations.find(
+        (d) => d.kind === "variable" && d.name === "DATABASE_URL",
+      );
+      expect(dbUrl).toBeDefined();
+      if (dbUrl?.kind === "variable" && dbUrl.value?.kind === "env_block") {
+        expect(dbUrl.value.entries).toHaveLength(3);
+        expect(dbUrl.value.entries[2]!.value.kind).toBe("encrypted");
+      }
+    });
+
+    it("parses variable with default AND env overrides", () => {
+      const result = parse(fixture("simple.vars"));
+      const logLevel = result.ast.declarations.find(
+        (d) => d.kind === "variable" && d.name === "LOG_LEVEL",
+      );
+      expect(logLevel).toBeDefined();
+      if (logLevel?.kind === "variable") {
+        expect(logLevel.schema).toContain("z.enum");
+        expect(logLevel.value).not.toBeNull();
+        // Has default + env overrides → env_block with "*" default entry
+        if (logLevel.value?.kind === "env_block") {
+          const defaultEntry = logLevel.value.entries.find(
+            (e) => e.env === "*",
+          );
+          expect(defaultEntry).toBeDefined();
+          if (defaultEntry?.value.kind === "literal") {
+            expect(defaultEntry.value.value).toBe("info");
+          }
+        }
+      }
+    });
+  });
+
+  describe("groups", () => {
+    it("parses group with nested variables", () => {
+      const result = parse(fixture("groups.vars"));
+      expect(result.errors).toHaveLength(0);
+      const group = result.ast.declarations.find((d) => d.kind === "group");
+      expect(group).toBeDefined();
+      if (group?.kind === "group") {
+        expect(group.name).toBe("database");
+        expect(group.declarations).toHaveLength(2);
+        expect(group.declarations[0]!.name).toBe("HOST");
+        expect(group.declarations[1]!.name).toBe("PORT");
+        expect(group.declarations[1]!.public).toBe(true);
+      }
+    });
+  });
+
+  describe("metadata", () => {
+    it("parses all metadata fields", () => {
+      const result = parse(fixture("metadata.vars"));
+      expect(result.errors).toHaveLength(0);
+      const apiKey = result.ast.declarations.find(
+        (d) => d.kind === "variable" && d.name === "API_KEY",
+      );
+      expect(apiKey).toBeDefined();
+      if (apiKey?.kind === "variable") {
+        expect(apiKey.metadata?.description).toBe("Primary API key");
+        expect(apiKey.metadata?.owner).toBe("backend-team");
+        expect(apiKey.metadata?.expires).toBe("2026-09-01");
+        expect(apiKey.metadata?.tags).toEqual(["auth", "critical"]);
+      }
+    });
+  });
+
+  describe("interpolation", () => {
+    it("detects interpolated values with refs", () => {
+      const result = parse(fixture("interpolation.vars"));
+      expect(result.errors).toHaveLength(0);
+      const dbUrl = result.ast.declarations.find(
+        (d) => d.kind === "variable" && d.name === "DB_URL",
+      );
+      expect(dbUrl).toBeDefined();
+      if (dbUrl?.kind === "variable" && dbUrl.value?.kind === "interpolated") {
+        expect(dbUrl.value.refs).toContain("DB_HOST");
+        expect(dbUrl.value.refs).toContain("DB_PORT");
+        expect(dbUrl.value.refs).toContain("DB_NAME");
+        expect(dbUrl.value.template).toContain("${DB_HOST}");
+      }
+    });
+  });
+
+  describe("conditionals", () => {
+    it("parses param declaration", () => {
+      const result = parse(fixture("conditionals.vars"));
+      expect(result.ast.params).toHaveLength(1);
+      expect(result.ast.params[0]!.name).toBe("region");
+      expect(result.ast.params[0]!.values).toEqual(["us", "eu"]);
+      expect(result.ast.params[0]!.defaultValue).toBe("us");
+    });
+
+    it("parses pure conditional (when/else only)", () => {
+      const result = parse(fixture("conditionals.vars"));
+      const gdpr = result.ast.declarations.find(
+        (d) => d.kind === "variable" && d.name === "GDPR_MODE",
+      );
+      expect(gdpr).toBeDefined();
+      if (gdpr?.kind === "variable") {
+        expect(gdpr.value?.kind).toBe("conditional");
+        if (gdpr.value?.kind === "conditional") {
+          expect(gdpr.value.whens).toHaveLength(1);
+          expect(gdpr.value.whens[0]!.param).toBe("region");
+          expect(gdpr.value.whens[0]!.value).toBe("eu");
+          expect(gdpr.value.fallback).toBeDefined();
+        }
+      }
+    });
+
+    it("parses env block with when-qualified entries", () => {
+      const result = parse(fixture("conditionals.vars"));
+      const db = result.ast.declarations.find(
+        (d) => d.kind === "variable" && d.name === "DATABASE_URL",
+      );
+      expect(db).toBeDefined();
+      if (db?.kind === "variable") {
+        expect(db.value?.kind).toBe("env_block");
+      }
+    });
+  });
+
+  describe("checks", () => {
+    it("parses check blocks with descriptions", () => {
+      const result = parse(fixture("checks.vars"));
+      expect(result.errors).toHaveLength(0);
+      expect(result.ast.checks).toHaveLength(2);
+      expect(result.ast.checks[0]!.description).toBe(
+        "No debug logging in prod",
+      );
+      expect(result.ast.checks[1]!.description).toBe(
+        "Debug flag consistency",
+      );
+    });
+
+    it("captures check body as predicate AST nodes", () => {
+      const result = parse(fixture("checks.vars"));
+      expect(result.ast.checks[0]!.predicates.length).toBeGreaterThan(0);
+
+      // First check: env == "prod" => LOG_LEVEL != "debug"
+      const pred0 = result.ast.checks[0]!.predicates[0]!;
+      expect(pred0.kind).toBe("implication");
+      if (pred0.kind === "implication") {
+        expect(pred0.antecedent.kind).toBe("comparison");
+        expect(pred0.consequent.kind).toBe("comparison");
+      }
+
+      // Second check: LOG_LEVEL == "debug" => DEBUG == true
+      const pred1 = result.ast.checks[1]!.predicates[0]!;
+      expect(pred1.kind).toBe("implication");
+    });
+  });
+
+  describe("use imports", () => {
+    it("parses use with pick filter", () => {
+      const result = parse(fixture("use-child.vars"));
+      expect(result.errors).toHaveLength(0);
+      expect(result.ast.imports).toHaveLength(1);
+      expect(result.ast.imports[0]!.path).toBe("./use-parent.vars");
+      expect(result.ast.imports[0]!.filter?.kind).toBe("pick");
+      expect(result.ast.imports[0]!.filter?.names).toEqual(["SHARED_HOST"]);
+    });
+
+    it("parses use without filter", () => {
+      const result = parse('env(dev)\nuse "./other.vars"');
+      expect(result.errors).toHaveLength(0);
+      expect(result.ast.imports[0]!.filter).toBeUndefined();
+    });
+  });
+
+  describe("multiline strings", () => {
+    it("parses triple-quoted values", () => {
+      const result = parse(fixture("multiline.vars"));
+      expect(result.errors).toHaveLength(0);
+      const cert = result.ast.declarations.find(
+        (d) => d.kind === "variable" && d.name === "TLS_CERT",
+      );
+      expect(cert).toBeDefined();
+      if (cert?.kind === "variable" && cert.value?.kind === "env_block") {
+        const prod = cert.value.entries.find((e) => e.env === "prod");
+        expect(prod).toBeDefined();
+        if (prod?.value.kind === "literal") {
+          expect(String(prod.value.value)).toContain("BEGIN CERTIFICATE");
+        }
+      }
+    });
+  });
+
+  describe("arrays", () => {
+    it("parses array values in env blocks", () => {
+      const result = parse(fixture("arrays-objects.vars"));
+      expect(result.errors).toHaveLength(0);
+      const cors = result.ast.declarations.find(
+        (d) => d.kind === "variable" && d.name === "CORS",
+      );
+      expect(cors).toBeDefined();
+      if (cors?.kind === "variable" && cors.value?.kind === "env_block") {
+        const dev = cors.value.entries.find((e) => e.env === "dev");
+        expect(dev).toBeDefined();
+        if (dev?.value.kind === "literal") {
+          expect(dev.value.value).toEqual(["http://localhost:3000"]);
+        }
+        const prod = cors.value.entries.find((e) => e.env === "prod");
+        expect(prod).toBeDefined();
+        if (prod?.value.kind === "literal") {
+          expect(prod.value.value).toEqual([
+            "https://app.example.com",
+            "https://admin.example.com",
+          ]);
+        }
+      }
+    });
+  });
+
+  describe("error recovery", () => {
+    it("collects errors and continues parsing", () => {
       const result = parse(
-        "SECRET  z.string()\n  @dev = hidden\n"
+        "$$$ invalid\nenv(dev)\npublic X = 1\n@@@ also bad",
       );
-      const secret = result.variables.find((v) => v.name === "SECRET")!;
-      expect(secret.metadata.public).toBeUndefined();
-    });
-  });
-
-  describe("string quoting", () => {
-    it("strips double quotes from values", () => {
-      const result = parse(fixture("metadata.vars"));
-      const quoted = result.variables.find((v) => v.name === "QUOTED_VAR")!;
-      expect(quoted.values.find((v) => v.env === "dev")?.value).toBe("value with spaces");
-    });
-
-    it("strips single quotes from values", () => {
-      const result = parse(fixture("metadata.vars"));
-      const quoted = result.variables.find((v) => v.name === "QUOTED_VAR")!;
-      expect(quoted.values.find((v) => v.env === "staging")?.value).toBe("single quoted");
-    });
-
-    it("passes through unquoted values", () => {
-      const result = parse(fixture("metadata.vars"));
-      const quoted = result.variables.find((v) => v.name === "QUOTED_VAR")!;
-      expect(quoted.values.find((v) => v.env === "prod")?.value).toBe("simple");
-    });
-
-    it("handles empty quoted strings", () => {
-      const result = parse(fixture("metadata.vars"));
-      const empty = result.variables.find((v) => v.name === "EMPTY_VAR")!;
-      expect(empty.values.find((v) => v.env === "dev")?.value).toBe("");
-    });
-  });
-
-  describe("encrypted values", () => {
-    it("preserves encrypted value strings as-is", () => {
-      const result = parse(fixture("metadata.vars"));
-      const apiKey = result.variables.find((v) => v.name === "API_KEY")!;
-      const prodVal = apiKey.values.find((v) => v.env === "prod");
-      expect(prodVal?.value).toMatch(/^enc:v1:aes256gcm:/);
-    });
-  });
-
-  describe("@extends directive", () => {
-    it("parses @extends path", () => {
-      const result = parse(fixture("refine.vars"));
-      expect(result.extendsPath).toBe("../parent.vars");
-    });
-
-    it("returns null when no @extends", () => {
-      const result = parse(fixture("basic.vars"));
-      expect(result.extendsPath).toBeNull();
-    });
-
-    it("throws on multiple @extends", () => {
-      expect(() =>
-        parse("@extends a.vars\n@extends b.vars\n"),
-      ).toThrow("Multiple @extends");
-    });
-  });
-
-  describe("@refine directive", () => {
-    it("parses @refine expressions", () => {
-      const result = parse(fixture("refine.vars"));
-      expect(result.refines).toHaveLength(2);
-    });
-
-    it("captures expression and message", () => {
-      const result = parse(fixture("refine.vars"));
-      expect(result.refines[0].expression).toContain("LOG_LEVEL");
-      expect(result.refines[0].message).toBe("DEBUG must be true when LOG_LEVEL is debug");
-    });
-
-    it("captures line number", () => {
-      const result = parse(fixture("refine.vars"));
-      expect(result.refines[0].line).toBeGreaterThan(0);
-    });
-  });
-
-  describe("error handling", () => {
-    it("throws ParseError for invalid variable name", () => {
-      expect(() => parse("lowercase  z.string()\n  @default = x\n")).toThrow("UPPER_SNAKE_CASE");
-    });
-
-    it("throws ParseError for missing schema", () => {
-      expect(() => parse("PORT\n  @default = 3000\n")).toThrow();
-    });
-
-    it("throws ParseError for orphan env value (no parent variable)", () => {
-      expect(() => parse("  @dev = value\n")).toThrow();
+      expect(result.ast.envs).toEqual(["dev"]);
+      expect(result.ast.declarations.length).toBeGreaterThanOrEqual(1);
+      expect(result.errors.length).toBeGreaterThan(0);
     });
   });
 });

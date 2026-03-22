@@ -1,83 +1,75 @@
 import { defineCommand } from "citty";
+import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
 import { parse } from "@vars/core";
-import { buildContext } from "../utils/context.js";
-import * as output from "../utils/output.js";
+import { resolveUseChain } from "@vars/node";
+import { findAllVarsFiles, getProjectRoot } from "../utils/context.js";
 import pc from "picocolors";
 
-export interface VarListEntry {
-  name: string;
-  schema: string;
-  envs: string[];
-  required: boolean;
-  public?: boolean;
-  description?: string;
-  deprecated?: string;
-  expires?: string;
-  owner?: string;
-}
-
 export default defineCommand({
-  meta: {
-    name: "ls",
-    description: "List all variables with environments, required/optional status, and metadata",
-  },
+  meta: { name: "ls", description: "List .vars files or variables" },
   args: {
-    file: {
-      type: "string",
-      description: "Path to .vars file",
-      alias: "f",
-    },
+    file: { type: "positional", required: false },
   },
   async run({ args }) {
-    const ctx = buildContext({ file: args.file });
-    const list = listVariables(ctx.varsFilePath);
+    if (args.file) {
+      // Detailed variable listing
+      const file = resolve(args.file);
+      const resolved = resolveUseChain(file, { env: "dev" });
+      console.log();
+      for (const v of resolved.vars) {
+        const vis = v.public ? pc.dim("public") : pc.yellow("secret");
+        const schema = pc.dim(v.schema);
+        const group = v.group ? pc.dim(`[${v.group}]`) : "";
+        let meta = "";
+        if (v.metadata?.owner) meta += pc.dim(` owner:${v.metadata.owner}`);
+        if (v.metadata?.expires) {
+          const expired = new Date(v.metadata.expires) < new Date();
+          meta += expired ? pc.red(` expired:${v.metadata.expires}`) : pc.dim(` expires:${v.metadata.expires}`);
+        }
+        if (v.metadata?.deprecated) meta += pc.yellow(` deprecated`);
+        console.log(`  ${vis} ${v.flatName} ${schema} ${group}${meta}`);
+      }
+      console.log(pc.dim(`\n  ${resolved.vars.length} variables`));
+    } else {
+      // File overview
+      const root = getProjectRoot();
+      const files = findAllVarsFiles(root);
+      if (files.length === 0) {
+        console.log(pc.dim("  No .vars files found"));
+        return;
+      }
+      console.log();
+      for (const f of files) {
+        const content = readFileSync(f, "utf8");
+        const isUnlocked = content.includes("# @vars-state unlocked");
+        const result = parse(content, f);
+        const varCount = countVars(result.ast.declarations);
+        const state = isUnlocked ? pc.yellow("unlocked") : pc.green("locked  ");
+        const relPath = f.replace(root + "/", "");
+        // Count warnings
+        let warns = 0;
+        for (const d of result.ast.declarations) {
+          if (d.kind === "variable" && d.metadata?.deprecated) warns++;
+          if (d.kind === "variable" && d.metadata?.expires && new Date(d.metadata.expires) < new Date()) warns++;
+        }
+        const warnStr = warns > 0 ? pc.yellow(` (${warns} warnings)`) : "";
+        console.log(`  ${state}  ${relPath}  ${pc.dim(`${varCount} vars`)}${warnStr}`);
+      }
 
-    if (list.length === 0) {
-      output.info("No variables found. Run 'vars add' to add one.");
-      return;
+      const unlocked = files.filter(f => readFileSync(f, "utf8").includes("# @vars-state unlocked"));
+      if (unlocked.length > 0) {
+        console.log(pc.yellow(`\n  ${unlocked.length} file(s) unlocked — run \`vars hide\` before committing`));
+      }
     }
-
-    output.heading("Variables");
-    const rows = list.map((entry) => ({
-      Name: entry.deprecated
-        ? pc.strikethrough(pc.dim(entry.name))
-        : pc.bold(entry.name),
-      Schema: pc.dim(entry.schema),
-      Envs: entry.envs.join(", "),
-      Required: entry.required ? pc.green("yes") : pc.dim("no"),
-      Notes: [
-        entry.public ? "public" : null,
-        entry.description,
-        entry.deprecated ? `deprecated: ${entry.deprecated}` : null,
-        entry.expires ? `expires: ${entry.expires}` : null,
-        entry.owner ? `owner: ${entry.owner}` : null,
-      ]
-        .filter(Boolean)
-        .join("; "),
-    }));
-
-    output.table(rows);
-    output.info(`${list.length} variable(s) total`);
   },
 });
 
-/**
- * List all variables from a .vars file with metadata.
- */
-export function listVariables(filePath: string): VarListEntry[] {
-  const content = readFileSync(filePath, "utf8");
-  const parsed = parse(content, filePath);
-
-  return parsed.variables.map((v) => ({
-    name: v.name,
-    schema: v.schema,
-    envs: v.values.map((val) => val.env),
-    required: !v.schema.includes(".optional()"),
-    public: v.metadata.public || undefined,
-    description: v.metadata.description,
-    deprecated: v.metadata.deprecated,
-    expires: v.metadata.expires,
-    owner: v.metadata.owner,
-  }));
+function countVars(decls: any[]): number {
+  let count = 0;
+  for (const d of decls) {
+    if (d.kind === "variable") count++;
+    if (d.kind === "group") count += d.declarations.length;
+  }
+  return count;
 }

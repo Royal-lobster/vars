@@ -1,99 +1,101 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import { evaluateSchema, validateValue } from "../validator.js";
 
 describe("validator", () => {
   describe("evaluateSchema", () => {
     it("evaluates z.string()", () => {
       const schema = evaluateSchema("z.string()");
-      expect(schema.parse("hello")).toBe("hello");
+      expect(schema.safeParse("hello").success).toBe(true);
+      expect(schema.safeParse(123).success).toBe(false);
+    });
+
+    it("evaluates z.number().min(1).max(100)", () => {
+      const schema = evaluateSchema("z.number().min(1).max(100)");
+      expect(schema.safeParse(50).success).toBe(true);
+      expect(schema.safeParse(0).success).toBe(false);
+    });
+
+    it("evaluates z.enum([...])", () => {
+      const schema = evaluateSchema('z.enum(["debug", "info", "warn"])');
+      expect(schema.safeParse("debug").success).toBe(true);
+      expect(schema.safeParse("trace").success).toBe(false);
     });
 
     it("evaluates z.coerce.number()", () => {
       const schema = evaluateSchema("z.coerce.number()");
-      expect(schema.parse("42")).toBe(42);
+      expect(schema.safeParse("42").success).toBe(true);
+      if (schema.safeParse("42").success) expect(schema.safeParse("42").data).toBe(42);
     });
 
-    it("evaluates z.coerce.boolean()", () => {
+    it("evaluates z.coerce.boolean() — string 'false' → false", () => {
       const schema = evaluateSchema("z.coerce.boolean()");
-      expect(schema.parse("true")).toBe(true);
-      expect(schema.parse("1")).toBe(true);
-      expect(schema.parse("yes")).toBe(true);
+      const result = schema.safeParse("false");
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data).toBe(false);
     });
 
-    it("coerces 'false', '0', and '' to false", () => {
+    it("evaluates z.coerce.boolean() — string 'true' → true", () => {
       const schema = evaluateSchema("z.coerce.boolean()");
-      expect(schema.parse("false")).toBe(false);
-      expect(schema.parse("FALSE")).toBe(false);
-      expect(schema.parse("False")).toBe(false);
-      expect(schema.parse("0")).toBe(false);
-      expect(schema.parse("")).toBe(false);
+      const result = schema.safeParse("true");
+      expect(result.success).toBe(true);
+      if (result.success) expect(result.data).toBe(true);
     });
 
     it("evaluates z.string().url()", () => {
       const schema = evaluateSchema("z.string().url()");
-      expect(schema.parse("https://example.com")).toBe("https://example.com");
-      expect(() => schema.parse("not-a-url")).toThrow();
-    });
-
-    it("evaluates z.enum()", () => {
-      const schema = evaluateSchema('z.enum(["a", "b", "c"])');
-      expect(schema.parse("a")).toBe("a");
-      expect(() => schema.parse("d")).toThrow();
-    });
-
-    it("evaluates z.string().min().max()", () => {
-      const schema = evaluateSchema("z.string().min(2).max(5)");
-      expect(schema.parse("abc")).toBe("abc");
-      expect(() => schema.parse("a")).toThrow();
+      expect(schema.safeParse("https://example.com").success).toBe(true);
+      expect(schema.safeParse("not-a-url").success).toBe(false);
     });
 
     it("evaluates z.string().optional()", () => {
       const schema = evaluateSchema("z.string().optional()");
-      expect(schema.parse(undefined)).toBeUndefined();
+      expect(schema.safeParse(undefined).success).toBe(true);
+      expect(schema.safeParse("hello").success).toBe(true);
     });
 
-    it("evaluates z.coerce.number().int().min().max()", () => {
-      const schema = evaluateSchema("z.coerce.number().int().min(1).max(100)");
-      expect(schema.parse("50")).toBe(50);
-      expect(() => schema.parse("0")).toThrow();
-      expect(() => schema.parse("3.5")).toThrow();
+    it("rejects dangerous schemas — process", () => {
+      expect(() => evaluateSchema("process.exit(1)")).toThrow();
     });
 
-    it('evaluates z.string().startsWith()', () => {
-      const schema = evaluateSchema('z.string().startsWith("postgres://")');
-      expect(schema.parse("postgres://localhost")).toBe("postgres://localhost");
-      expect(() => schema.parse("mysql://localhost")).toThrow();
+    it("rejects dangerous schemas — require", () => {
+      expect(() => evaluateSchema("require('fs')")).toThrow();
     });
 
-    it("throws on invalid schema expression", () => {
-      expect(() => evaluateSchema("not.valid()")).toThrow();
+    it("rejects schemas not starting with z.", () => {
+      expect(() => evaluateSchema("String('hello')")).toThrow();
     });
 
-    it("throws on dangerous code", () => {
-      expect(() => evaluateSchema("z.string(); process.exit(1)")).toThrow();
+    it("rejects bracket notation (bypass attempt)", () => {
+      expect(() => evaluateSchema('z.string()["constructor"]')).toThrow(/bracket/i);
+    });
+
+    it("rejects unknown methods", () => {
+      expect(() => evaluateSchema("z.strng()")).toThrow(/unknown.*method/i);
+    });
+
+    it("allows known Zod methods", () => {
+      expect(() => evaluateSchema("z.string().min(1).max(100).url()")).not.toThrow();
+      expect(() => evaluateSchema("z.coerce.number().int().positive()")).not.toThrow();
+      expect(() => evaluateSchema('z.enum(["a", "b"])')).not.toThrow();
     });
   });
 
   describe("validateValue", () => {
-    it("returns success for valid value", () => {
+    it("validates a string value", () => {
       const result = validateValue("z.string().url()", "https://example.com");
       expect(result.success).toBe(true);
     });
 
-    it("returns failure with issues for invalid value", () => {
+    it("returns issues for invalid value", () => {
       const result = validateValue("z.string().url()", "not-a-url");
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.issues.length).toBeGreaterThan(0);
-      }
+      expect(result.issues!.length).toBeGreaterThan(0);
     });
 
-    it("coerces string to number", () => {
-      const result = validateValue("z.coerce.number()", "42");
+    it("coerces string number for z.coerce.number()", () => {
+      const result = validateValue("z.coerce.number().min(1)", "42");
       expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.value).toBe(42);
-      }
+      if (result.success) expect(result.value).toBe(42);
     });
   });
 });

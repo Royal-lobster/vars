@@ -1,79 +1,39 @@
 import { defineCommand } from "citty";
-import { readFileSync } from "node:fs";
-import { parse } from "@vars/core";
-import { buildContext } from "../utils/context.js";
-import * as clack from "@clack/prompts";
-import * as output from "../utils/output.js";
+import { resolve } from "node:path";
+import { resolveUseChain } from "@vars/node";
+import { findVarsFile } from "../utils/context.js";
 import pc from "picocolors";
 
-export interface CoverageResult {
-  percentage: number;
-  total: number;
-  covered: number;
-  missing: string[];
-}
-
 export default defineCommand({
-  meta: {
-    name: "coverage",
-    description: "Show % of variables with values set per environment",
-  },
+  meta: { name: "coverage", description: "Show environment value coverage" },
   args: {
-    env: {
-      type: "string",
-      description: "Environment to check coverage for",
-    },
-    file: {
-      type: "string",
-      description: "Path to .vars file",
-      alias: "f",
-    },
+    file: { type: "positional", required: false },
   },
   async run({ args }) {
-    const ctx = buildContext({ file: args.file, env: args.env });
-    const result = calculateCoverage(ctx.varsFilePath, ctx.env);
+    const file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
+    if (!file) { console.error(pc.red("No .vars file found")); process.exit(1); }
 
-    output.heading(`Coverage: @${ctx.env}`);
+    const preliminary = resolveUseChain(file, { env: "dev" });
+    const envs = preliminary.envs;
 
-    const color = result.percentage === 100
-      ? pc.green
-      : result.percentage >= 80
-        ? pc.yellow
-        : pc.red;
+    // Resolve for each env
+    const matrix: Record<string, Record<string, boolean>> = {};
+    for (const env of envs) {
+      const resolved = resolveUseChain(file, { env });
+      for (const v of resolved.vars) {
+        if (!matrix[v.flatName]) matrix[v.flatName] = {};
+        matrix[v.flatName][env] = v.value !== undefined;
+      }
+    }
 
-    clack.log.message(`${color(`${result.percentage}%`)} (${result.covered}/${result.total} required variables)`);
+    console.log();
+    const header = `  ${"Variable".padEnd(30)} ${envs.map(e => e.padEnd(8)).join(" ")}`;
+    console.log(pc.bold(header));
+    console.log("  " + "-".repeat(header.length - 2));
 
-    if (result.missing.length > 0) {
-      const lines = result.missing.map((name) => `  ${pc.dim("\u2022")} ${name}`);
-      clack.log.message(`${pc.red("Missing:")}\n${lines.join("\n")}`);
+    for (const [name, coverage] of Object.entries(matrix).sort(([a], [b]) => a.localeCompare(b))) {
+      const cells = envs.map(e => coverage[e] ? pc.green("  ✓     ") : pc.red("  ✗     "));
+      console.log(`  ${name.padEnd(30)} ${cells.join(" ")}`);
     }
   },
 });
-
-/**
- * Calculate what percentage of required variables have values for a given environment.
- */
-export function calculateCoverage(filePath: string, env: string): CoverageResult {
-  const content = readFileSync(filePath, "utf8");
-  const parsed = parse(content, filePath);
-
-  const required = parsed.variables.filter(
-    (v) => !v.schema.includes(".optional()"),
-  );
-
-  const missing: string[] = [];
-
-  for (const v of required) {
-    const hasEnvValue = v.values.some((val) => val.env === env);
-    const hasDefault = v.values.some((val) => val.env === "default");
-    if (!hasEnvValue && !hasDefault) {
-      missing.push(v.name);
-    }
-  }
-
-  const total = required.length;
-  const covered = total - missing.length;
-  const percentage = total === 0 ? 100 : Math.round((covered / total) * 100);
-
-  return { percentage, total, covered, missing };
-}

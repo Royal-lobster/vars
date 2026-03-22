@@ -1,185 +1,95 @@
 import { defineCommand } from "citty";
-import { readFileSync } from "node:fs";
-import {
-  parse,
-  resolveValue,
-  evaluateSchema,
-  validateValue,
-  applyRefines,
-  isEncrypted,
-} from "@vars/core";
-import { z } from "zod";
-import { buildContext } from "../utils/context.js";
-import * as output from "../utils/output.js";
-
-export interface CheckError {
-  variable: string;
-  env?: string;
-  message: string;
-  expected?: string;
-  got?: string;
-}
-
-export interface CheckWarning {
-  variable: string;
-  message: string;
-  detail?: string;
-}
-
-export interface CheckResult {
-  valid: boolean;
-  errors: CheckError[];
-  warnings: CheckWarning[];
-}
+import { resolve } from "node:path";
+import { resolveUseChain, decrypt, getKeyFromEnv } from "@vars/node";
+import { validateValue, evaluateCheck, isEncrypted } from "@vars/core";
+import { findVarsFile, findKeyFile, requireKey } from "../utils/context.js";
+import pc from "picocolors";
 
 export default defineCommand({
-  meta: {
-    name: "check",
-    description: "Validate all values against schemas",
-  },
+  meta: { name: "check", description: "Validate schemas and run check blocks" },
   args: {
-    env: {
-      type: "string",
-      description: "Environment to validate",
-    },
-    file: {
-      type: "string",
-      description: "Path to .vars file",
-      alias: "f",
-    },
+    file: { type: "positional", required: false },
   },
   async run({ args }) {
-    const ctx = buildContext({ file: args.file, env: args.env });
-    const result = checkVarsFile(ctx.varsFilePath, ctx.env);
-
-    if (result.valid && result.warnings.length === 0) {
-      output.success(`vars check passed (${ctx.env})`);
-    } else if (result.valid && result.warnings.length > 0) {
-      output.success(`vars check passed with ${result.warnings.length} warning(s)`);
-      output.validationErrors([], result.warnings);
-    } else {
-      output.validationErrors(result.errors, result.warnings);
+    const file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
+    if (!file) {
+      console.error(pc.red("No .vars file found"));
       process.exit(1);
+    }
+
+    let key: Buffer | null = getKeyFromEnv();
+    const keyFile = findKeyFile(file);
+
+    let errors = 0;
+    let warnings = 0;
+
+    // Get env list from a preliminary parse
+    const preliminary = resolveUseChain(file, { env: "dev" });
+
+    for (const env of preliminary.envs) {
+      const resolved = resolveUseChain(file, { env });
+
+      for (const v of resolved.vars) {
+        if (v.value === undefined) continue;
+
+        let value = v.value;
+        if (isEncrypted(value)) {
+          if (!key && keyFile) {
+            try { key = await requireKey(keyFile); } catch { /* skip */ }
+          }
+          if (key) { value = decrypt(value, key); }
+          else { continue; }
+        }
+
+        const result = validateValue(v.schema, value);
+        if (!result.success) {
+          console.error(pc.red(`  ✗ ${v.flatName} [${env}]: ${result.issues?.[0]?.message}`));
+          errors++;
+        }
+      }
+
+      // Run check blocks
+      if (resolved.checks.length > 0) {
+        const varMap: Record<string, string | undefined> = {};
+        for (const v of resolved.vars) {
+          let val = v.value;
+          if (val && isEncrypted(val) && key) val = decrypt(val, key);
+          varMap[v.name] = val;
+          varMap[v.flatName] = val;
+        }
+        for (const check of resolved.checks) {
+          for (const pred of check.predicates) {
+            try {
+              if (!evaluateCheck(pred, varMap, env, {})) {
+                console.error(pc.red(`  ✗ check "${check.description}" failed [${env}]`));
+                errors++;
+              }
+            } catch (e: any) {
+              console.error(pc.red(`  ✗ check "${check.description}" error: ${e.message}`));
+              errors++;
+            }
+          }
+        }
+      }
+    }
+
+    // Metadata warnings
+    for (const v of preliminary.vars) {
+      if (v.metadata?.expires && new Date(v.metadata.expires) < new Date()) {
+        console.warn(pc.yellow(`  ⚠ ${v.flatName}: expired on ${v.metadata.expires}`));
+        warnings++;
+      }
+      if (v.metadata?.deprecated) {
+        console.warn(pc.yellow(`  ⚠ ${v.flatName}: deprecated — ${v.metadata.deprecated}`));
+        warnings++;
+      }
+    }
+
+    if (errors === 0 && warnings === 0) {
+      console.log(pc.green("  ✓ All checks passed"));
+    } else {
+      console.log(`\n  ${errors} error(s), ${warnings} warning(s)`);
+      if (errors > 0) process.exit(1);
     }
   },
 });
-
-/**
- * Check a .vars file: validate all values against schemas and check metadata.
- */
-export function checkVarsFile(filePath: string, env: string): CheckResult {
-  const content = readFileSync(filePath, "utf8");
-  const parsed = parse(content, filePath);
-  const errors: CheckError[] = [];
-  const warnings: CheckWarning[] = [];
-
-  const resolvedValues: Record<string, unknown> = {};
-
-  for (const variable of parsed.variables) {
-    checkMetadataWarnings(variable.name, variable.metadata, warnings);
-
-    const rawValue = resolveValue(variable, env);
-
-    // Skip encrypted values
-    if (rawValue !== undefined && isEncrypted(rawValue)) {
-      continue;
-    }
-
-    const isOptional = variable.schema.includes(".optional()");
-    if (rawValue === undefined && !isOptional) {
-      errors.push({
-        variable: variable.name,
-        env,
-        message: `Missing required value. Add @${env} value or set @default`,
-      });
-      continue;
-    }
-
-    if (rawValue !== undefined) {
-      const result = validateValue(variable.schema, rawValue);
-      if (result.success) {
-        resolvedValues[variable.name] = result.value;
-      } else {
-        for (const issue of result.issues) {
-          errors.push({
-            variable: variable.name,
-            env,
-            expected: variable.schema,
-            got: `string of length ${rawValue.length}`,
-            message: issue.message,
-          });
-        }
-      }
-    } else {
-      resolvedValues[variable.name] = undefined;
-    }
-  }
-
-  // Cross-variable @refine validation
-  if (parsed.refines.length > 0 && errors.length === 0) {
-    try {
-      const schemaShape: Record<string, z.ZodType> = {};
-      for (const v of parsed.variables) {
-        schemaShape[v.name] = evaluateSchema(v.schema);
-      }
-      const baseSchema = z.object(schemaShape);
-      const refined = applyRefines(baseSchema, parsed.refines);
-      const refineResult = refined.safeParse(resolvedValues);
-      if (!refineResult.success) {
-        for (const issue of refineResult.error.issues) {
-          errors.push({
-            variable: "@refine",
-            message: issue.message,
-          });
-        }
-      }
-    } catch (err) {
-      errors.push({
-        variable: "@refine",
-        message: `Refinement evaluation failed: ${(err as Error).message}`,
-      });
-    }
-  }
-
-  return {
-    valid: errors.length === 0,
-    errors,
-    warnings,
-  };
-}
-
-function checkMetadataWarnings(
-  name: string,
-  metadata: { expires?: string; deprecated?: string },
-  warnings: CheckWarning[],
-): void {
-  if (metadata.deprecated) {
-    warnings.push({
-      variable: name,
-      message: `Deprecated: "${metadata.deprecated}"`,
-      detail: "Migrate usages and remove this variable",
-    });
-  }
-
-  if (metadata.expires) {
-    const expiryDate = new Date(metadata.expires);
-    const now = new Date();
-    const daysUntil = Math.floor(
-      (expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-    );
-
-    if (daysUntil < 0) {
-      warnings.push({
-        variable: name,
-        message: `Secret expired on ${metadata.expires} (${Math.abs(daysUntil)} days ago)`,
-        detail: "Rotate this secret immediately",
-      });
-    } else if (daysUntil <= 30) {
-      warnings.push({
-        variable: name,
-        message: `Expires in ${daysUntil} days (${metadata.expires})`,
-        detail: "Rotate this secret before expiry",
-      });
-    }
-  }
-}

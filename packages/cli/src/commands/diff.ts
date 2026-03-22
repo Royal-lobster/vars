@@ -1,126 +1,59 @@
 import { defineCommand } from "citty";
-import { readFileSync } from "node:fs";
-import { parse, decrypt, isEncrypted } from "@vars/core";
-import { buildContext, getKeyFromEnv } from "../utils/context.js";
-import * as clack from "@clack/prompts";
-import * as output from "../utils/output.js";
+import { resolve } from "node:path";
+import { resolveUseChain, decrypt, getKeyFromEnv } from "@vars/node";
+import { isEncrypted } from "@vars/core";
+import { findVarsFile, findKeyFile, requireKey } from "../utils/context.js";
 import pc from "picocolors";
 
-export interface EnvDiff {
-  same: string[];
-  different: Array<{ variable: string; leftHas: boolean; rightHas: boolean }>;
-  onlyLeft: string[];
-  onlyRight: string[];
-}
-
 export default defineCommand({
-  meta: {
-    name: "diff",
-    description: "Show differences between environments",
-  },
+  meta: { name: "diff", description: "Compare values across environments" },
   args: {
-    env: {
-      type: "string",
-      description: "Compare two envs: --env dev,prod",
-    },
-    file: {
-      type: "string",
-      description: "Path to .vars file",
-      alias: "f",
-    },
+    env: { type: "string", required: true, description: "Comma-separated envs (e.g., dev,prod)" },
+    file: { type: "positional", required: false },
   },
   async run({ args }) {
-    const ctx = buildContext({ file: args.file });
-    const envPair = (args.env ?? "dev,prod").split(",");
-    if (envPair.length !== 2) {
-      output.error("Provide two environments: --env dev,prod");
+    const file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
+    if (!file) { console.error(pc.red("No .vars file found")); process.exit(1); }
+
+    const envs = (args.env as string).split(",").map(e => e.trim());
+    if (envs.length < 2) {
+      console.error(pc.red("Provide at least 2 environments: --env dev,prod"));
       process.exit(1);
     }
 
-    const key = getKeyFromEnv();
+    let key: Buffer | null = getKeyFromEnv();
+    const keyFile = findKeyFile(file);
 
-    const [left, right] = envPair;
-    const diff = diffEnvironments(ctx.varsFilePath, left, right, key ?? undefined);
-
-    output.heading(`Diff: @${left} vs @${right}`);
-
-    if (!key) {
-      output.warn("No decryption key available. Encrypted values compared as ciphertext.");
+    // Resolve for each env
+    const byEnv: Record<string, Record<string, string | undefined>> = {};
+    for (const env of envs) {
+      const resolved = resolveUseChain(file, { env });
+      byEnv[env] = {};
+      for (const v of resolved.vars) {
+        let val = v.value;
+        if (val && isEncrypted(val)) {
+          if (!key && keyFile) try { key = await requireKey(keyFile); } catch {}
+          if (key) val = decrypt(val, key);
+          else val = pc.dim("<encrypted>");
+        }
+        byEnv[env][v.flatName] = val;
+      }
     }
 
-    if (diff.same.length > 0) {
-      const lines = diff.same.map((name) => `  ${pc.dim(name)}`);
-      clack.log.message(`${pc.green("Same in both")} (${diff.same.length}):\n${lines.join("\n")}`);
-    }
+    // Find all variable names
+    const allVars = new Set<string>();
+    for (const env of envs) for (const name of Object.keys(byEnv[env])) allVars.add(name);
 
-    if (diff.different.length > 0) {
-      const lines = diff.different.map((d) => `  ${pc.bold(d.variable)}`);
-      clack.log.message(`${pc.yellow("Different values")} (${diff.different.length}):\n${lines.join("\n")}`);
-    }
+    console.log();
+    const header = `  ${"Variable".padEnd(30)} ${envs.map(e => e.padEnd(30)).join(" ")}`;
+    console.log(pc.bold(header));
+    console.log("  " + "-".repeat(header.length - 2));
 
-    if (diff.onlyLeft.length > 0) {
-      const lines = diff.onlyLeft.map((name) => `  ${name}`);
-      clack.log.message(`${pc.red(`Only in @${left}`)} (${diff.onlyLeft.length}):\n${lines.join("\n")}`);
-    }
-
-    if (diff.onlyRight.length > 0) {
-      const lines = diff.onlyRight.map((name) => `  ${name}`);
-      clack.log.message(`${pc.red(`Only in @${right}`)} (${diff.onlyRight.length}):\n${lines.join("\n")}`);
+    for (const name of [...allVars].sort()) {
+      const values = envs.map(e => byEnv[e][name] ?? pc.dim("—"));
+      const allSame = new Set(values).size === 1;
+      const line = `  ${name.padEnd(30)} ${values.map(v => String(v).padEnd(30)).join(" ")}`;
+      console.log(allSame ? pc.dim(line) : line);
     }
   },
 });
-
-/**
- * Resolve a value, decrypting if a key is provided.
- */
-function resolveForDiff(raw: string, key?: Buffer): string {
-  if (isEncrypted(raw) && key) {
-    return decrypt(raw, key);
-  }
-  return raw;
-}
-
-/**
- * Compare two environments structurally.
- * When a key is provided, encrypted values are decrypted before comparison.
- */
-export function diffEnvironments(
-  filePath: string,
-  leftEnv: string,
-  rightEnv: string,
-  key?: Buffer,
-): EnvDiff {
-  const content = readFileSync(filePath, "utf8");
-  const parsed = parse(content, filePath);
-
-  const same: string[] = [];
-  const different: Array<{ variable: string; leftHas: boolean; rightHas: boolean }> = [];
-  const onlyLeft: string[] = [];
-  const onlyRight: string[] = [];
-
-  for (const v of parsed.variables) {
-    const leftVal = v.values.find((val) => val.env === leftEnv)
-      ?? v.values.find((val) => val.env === "default");
-    const rightVal = v.values.find((val) => val.env === rightEnv)
-      ?? v.values.find((val) => val.env === "default");
-
-    const hasLeft = leftVal !== undefined;
-    const hasRight = rightVal !== undefined;
-
-    if (hasLeft && hasRight) {
-      const leftResolved = resolveForDiff(leftVal.value, key);
-      const rightResolved = resolveForDiff(rightVal.value, key);
-      if (leftResolved === rightResolved) {
-        same.push(v.name);
-      } else {
-        different.push({ variable: v.name, leftHas: true, rightHas: true });
-      }
-    } else if (hasLeft && !hasRight) {
-      onlyLeft.push(v.name);
-    } else if (!hasLeft && hasRight) {
-      onlyRight.push(v.name);
-    }
-  }
-
-  return { same, different, onlyLeft, onlyRight };
-}

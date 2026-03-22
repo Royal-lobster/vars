@@ -1,59 +1,50 @@
 import { defineCommand } from "citty";
-import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { parse, generateTypes } from "@vars/core";
-import { buildContext } from "../utils/context.js";
-import * as clack from "@clack/prompts";
-import * as output from "../utils/output.js";
-import { addTsconfigPathAlias } from "../utils/tsconfig.js";
+import { writeFileSync } from "node:fs";
+import { resolveUseChain } from "@vars/node";
+import { generateTypeScript } from "@vars/core";
+import { findVarsFile, findAllVarsFiles, getProjectRoot } from "../utils/context.js";
+import pc from "picocolors";
 
 export default defineCommand({
-  meta: {
-    name: "gen",
-    description: "Generate typed accessors from .vars",
-  },
+  meta: { name: "gen", description: "Generate TypeScript types from .vars files" },
   args: {
-    file: {
-      type: "string",
-      description: "Path to .vars file",
-      alias: "f",
-    },
-    output: {
-      type: "string",
-      description: "Output file path",
-      alias: "o",
-      default: "env.generated.ts",
-    },
-    lang: {
-      type: "string",
-      description: "Target language (ts)",
-      default: "ts",
-    },
+    file: { type: "positional", required: false, description: "Entry point .vars file" },
+    all: { type: "boolean", description: "Generate for all entry point files" },
+    platform: { type: "string", default: "node", description: "Target: node, cloudflare, deno, static" },
   },
   async run({ args }) {
-    output.intro("gen");
+    const platform = (args.platform ?? "node") as "node" | "cloudflare" | "deno" | "static";
 
-    const ctx = buildContext({ file: args.file });
-    const outputPath = resolve(ctx.cwd, args.output ?? "env.generated.ts");
-
-    const s = clack.spinner();
-    s.start("Generating typed accessors...");
-    generateFromFile(ctx.varsFilePath, outputPath);
-    s.stop("Generated typed accessors.");
-
-    addTsconfigPathAlias(ctx.cwd);
-
-    output.outro("Generated .vars/vars.generated.ts");
+    if (args.all) {
+      const root = getProjectRoot();
+      const files = findAllVarsFiles(root);
+      if (files.length === 0) {
+        console.log(pc.dim("  No .vars files found"));
+        return;
+      }
+      for (const f of files) {
+        generateForFile(f, platform);
+      }
+    } else {
+      const file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
+      if (!file) {
+        console.error(pc.red("No .vars file found. Run `vars init` first."));
+        process.exit(1);
+      }
+      generateForFile(file, platform);
+    }
   },
 });
 
-/**
- * Parse a .vars file and generate a typed accessor file.
- */
-export function generateFromFile(varsFilePath: string, outputPath: string): void {
-  const content = readFileSync(varsFilePath, "utf8");
-  const parsed = parse(content, varsFilePath);
-  const generated = generateTypes(parsed, varsFilePath);
-  writeFileSync(outputPath, generated);
+function generateForFile(filePath: string, platform: string) {
+  try {
+    const resolved = resolveUseChain(filePath, { env: "dev" });
+    const code = generateTypeScript(resolved, { platform: platform as any });
+    const outPath = filePath.replace(/\.vars$/, ".generated.ts");
+    writeFileSync(outPath, code);
+    console.log(pc.green(`  ✓ ${outPath}`));
+  } catch (err: any) {
+    console.error(pc.red(`  ✗ ${filePath}: ${err.message}`));
+  }
 }
-

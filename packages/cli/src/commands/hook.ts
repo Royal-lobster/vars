@@ -1,82 +1,46 @@
 import { defineCommand } from "citty";
-import {
-  existsSync,
-  readFileSync,
-  writeFileSync,
-  chmodSync,
-  mkdirSync,
-} from "node:fs";
+import { existsSync, readFileSync, writeFileSync, chmodSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { execSync } from "node:child_process";
-import * as output from "../utils/output.js";
-import { HOOK_MARKER } from "../utils/patterns.js";
+import { getProjectRoot } from "../utils/context.js";
+import pc from "picocolors";
+
+const HOOK_MARKER = "# vars: check for unlocked files";
 const HOOK_SCRIPT = `
 ${HOOK_MARKER}
-# Block commit if secrets are decrypted
-if [ -f .vars/unlocked.vars ]; then
-  echo ""
-  echo "\u26a0 vars: secrets are currently decrypted (.vars/unlocked.vars exists)"
-  echo "  Run 'vars hide' to re-encrypt before committing."
-  echo ""
-  exit 1
-fi
+for f in $(git diff --cached --name-only 2>/dev/null | grep '\\.vars$'); do
+  if head -1 "$f" 2>/dev/null | grep -q '@vars-state unlocked'; then
+    echo ""
+    echo "vars: $f contains decrypted secrets."
+    echo "  Run 'vars hide' to encrypt before committing."
+    echo ""
+    exit 1
+  fi
+done
 `;
 
 export default defineCommand({
-  meta: {
-    name: "hook",
-    description: "Install git pre-commit hook for auto-encryption",
-  },
-  subCommands: {
-    install: defineCommand({
-      meta: {
-        name: "install",
-        description: "Install the pre-commit hook",
-      },
-      async run() {
-        output.intro("hook");
-        const cwd = process.cwd();
-        installHook(cwd);
-        output.outro("Pre-commit hook installed.");
-      },
-    }),
+  meta: { name: "hook", description: "Install pre-commit hook" },
+  args: {},
+  async run() {
+    const root = getProjectRoot();
+    // Try husky first, then raw git hooks
+    const huskyPath = join(root, ".husky", "pre-commit");
+    const gitHookPath = join(root, ".git", "hooks", "pre-commit");
+    const hookPath = existsSync(join(root, ".husky")) ? huskyPath : gitHookPath;
+
+    if (existsSync(hookPath)) {
+      const content = readFileSync(hookPath, "utf8");
+      if (content.includes(HOOK_MARKER)) {
+        console.log(pc.dim("  Hook already installed"));
+        return;
+      }
+      writeFileSync(hookPath, content.trimEnd() + "\n" + HOOK_SCRIPT + "\n");
+    } else {
+      const dir = join(hookPath, "..");
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+      writeFileSync(hookPath, "#!/bin/sh\n" + HOOK_SCRIPT + "\n");
+    }
+    chmodSync(hookPath, 0o755);
+    console.log(pc.green("  ✓ Pre-commit hook installed"));
   },
 });
-
-/**
- * Install the vars pre-commit hook.
- */
-export function installHook(cwd: string): void {
-  const huskyDir = join(cwd, ".husky");
-  const gitHooksDir = join(cwd, ".git", "hooks");
-
-  let hookPath: string;
-  if (existsSync(huskyDir)) {
-    hookPath = join(huskyDir, "pre-commit");
-  } else if (existsSync(gitHooksDir)) {
-    hookPath = join(gitHooksDir, "pre-commit");
-  } else {
-    // Auto-init git repo if none exists, then use .git/hooks
-    try {
-      execSync("git init", { cwd, stdio: "ignore" });
-    } catch {
-      throw new Error(
-        "No .git/hooks or .husky directory found and could not initialize git.",
-      );
-    }
-    mkdirSync(join(cwd, ".git", "hooks"), { recursive: true });
-    hookPath = join(cwd, ".git", "hooks", "pre-commit");
-  }
-
-  if (existsSync(hookPath)) {
-    const existing = readFileSync(hookPath, "utf8");
-    if (existing.includes(HOOK_MARKER)) {
-      return;
-    }
-    writeFileSync(hookPath, existing.trimEnd() + "\n" + HOOK_SCRIPT + "\n");
-  } else {
-    writeFileSync(hookPath, "#!/bin/sh\n" + HOOK_SCRIPT + "\n");
-  }
-
-  chmodSync(hookPath, 0o755);
-}
