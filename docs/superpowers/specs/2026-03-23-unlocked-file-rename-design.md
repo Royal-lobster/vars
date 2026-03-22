@@ -26,30 +26,43 @@ Only one file exists at a time — never both. The `# @vars-state` header is kep
 
 ### `vars show [file]`
 
-1. Find the target `.vars` file (existing resolution logic)
-2. Prompt for PIN, decrypt master key
-3. `fs.renameSync("config.vars", "config.unlocked.vars")`
-4. Read content from `config.unlocked.vars`
-5. Decrypt encrypted values in-place, update header to `# @vars-state unlocked`
-6. Write back to `config.unlocked.vars`
+1. Resolve the target file. If an explicit path is given (e.g., `vars show config.vars`), check for the `.unlocked.vars` variant too — if only the unlocked variant exists, the file is already shown; print a message and exit.
+2. If the `.unlocked.vars` file already exists (crash recovery or double-show), skip the rename and re-decrypt in-place from the existing `.unlocked.vars` file.
+3. Prompt for PIN, decrypt master key.
+4. `fs.renameSync("config.vars", "config.unlocked.vars")` (skipped if already at `.unlocked.vars`).
+5. Read content from `config.unlocked.vars`.
+6. Decrypt encrypted values in-place, update header to `# @vars-state unlocked`.
+7. Write back to `config.unlocked.vars`.
 
 ### `vars hide`
 
-1. Scan for all `*.unlocked.vars` files (filename match, not header scan)
-2. Prompt for PIN, decrypt master key
-3. Read content from each `.unlocked.vars` file
-4. Encrypt secret values, update header to `# @vars-state locked`
-5. Write back to the `.unlocked.vars` file
-6. `fs.renameSync("config.unlocked.vars", "config.vars")`
+1. Scan for all `*.unlocked.vars` files (filename glob, not header scan — faster than reading file content).
+2. Prompt for PIN, decrypt master key.
+3. For each `.unlocked.vars` file:
+   a. Read content.
+   b. Encrypt secret values, update header to `# @vars-state locked`. Already-encrypted values (`enc:v2:...`) are skipped (idempotent), making crash recovery safe — if a previous hide crashed after writing encrypted content but before renaming, re-running hide will not double-encrypt.
+   c. Write encrypted content back to the `.unlocked.vars` file.
+   d. `fs.renameSync("config.unlocked.vars", "config.vars")`.
+   e. If a stale `config.vars` already exists (e.g., from a git checkout while unlocked), overwrite it — the `.unlocked.vars` version is the most recent state.
 
 ### `vars toggle [file]`
 
-- If `config.vars` exists at the resolved path, run show
-- If `config.unlocked.vars` exists at the resolved path, run hide
+- If `config.vars` exists at the resolved path, run show.
+- If `config.unlocked.vars` exists at the resolved path, run hide.
+
+### Edge Cases
+
+**Both files exist simultaneously:** Can happen if git restores `.vars` while `.unlocked.vars` is on disk, or if the user manually copies. Resolution: `.unlocked.vars` is treated as the most recent state. `vars hide` encrypts from `.unlocked.vars` and overwrites `.vars`. `vars doctor` warns about this state.
+
+**`use "./foo.unlocked.vars"` in source:** This is a user error. The parser/validator should produce a warning: use statements should reference the canonical `.vars` name, not the unlocked variant.
 
 ### Crash Safety
 
-If the process dies between rename and write, the file exists at the new name but with stale content. The header still says the old state. Recovery: re-run the command. Since the file already has the target name, show/hide detects the state from the filename and re-processes.
+**Show crash (after rename, before write):** File is at `config.unlocked.vars` with encrypted content. Header still says `# @vars-state locked`. Re-running `vars show` detects the `.unlocked.vars` file, skips the rename, and re-decrypts.
+
+**Hide crash (after write, before rename):** File is at `config.unlocked.vars` with encrypted content and `# @vars-state locked` header. Re-running `vars hide` finds the `.unlocked.vars` file, the encryption step is idempotent (already-encrypted values are skipped), and the rename completes.
+
+Both crash recovery paths are safe because: (1) encryption skips already-encrypted values, (2) the filename-based detection does not depend on the header, and (3) the operations are idempotent.
 
 ## File Resolution
 
@@ -68,7 +81,12 @@ Same approach. Treats `config.vars` and `config.unlocked.vars` as the same logic
 
 ### `use` Resolution
 
-When a file says `use "./shared/database.vars"`, the resolver checks for both `database.vars` and `database.unlocked.vars` at that path. The `use` statement always references the `.vars` name (the canonical name). The resolver transparently finds whichever exists on disk.
+When a file says `use "./shared/database.vars"`, the resolver:
+1. Tries the literal path (`database.vars`).
+2. If not found, tries the unlocked variant (`database.unlocked.vars`).
+3. If neither exists, reports a resolution error.
+
+The `use` statement always references the `.vars` name (the canonical name). The resolver transparently finds whichever exists on disk. A `use` statement referencing an `.unlocked.vars` path directly should produce a parser warning.
 
 ### Per-Command Behavior
 
@@ -115,8 +133,8 @@ The current hook scans file content for `@vars-state unlocked`. Updated to check
 
 Filename-based `when` clauses replace the runtime `setContext` approach:
 
-- **Show button** (eye icon): `resourceLangId == vars && resourceFilename =~ /^[^.]+\.vars$/`
-  - Matches `config.vars` but not `config.unlocked.vars`
+- **Show button** (eye icon): `resourceLangId == vars && !(resourceFilename =~ /\.unlocked\.vars$/)`
+  - Matches any `.vars` file that is NOT an `.unlocked.vars` file
 - **Hide button** (eye-closed icon): `resourceLangId == vars && resourceFilename =~ /\.unlocked\.vars$/`
 
 No runtime state tracking needed — pure declarative `when` clauses.
@@ -148,6 +166,26 @@ The `updateVarsState` function and `setContext` calls added for the content-base
 | `packages/vscode/src/extension.ts` | Remove `updateVarsState`/`setContext`, simplify to declarative approach |
 | Pre-commit hook template in `init.ts` | Check for staged `*.unlocked.vars` files instead of scanning content |
 
+### `vars ls` Display
+
+When listing files, `vars ls` shows the canonical `.vars` name with a lock state indicator:
+
+```
+  config.vars          4 vars   unlocked
+  shared/database.vars 6 vars   locked
+```
+
+The display always uses the canonical name regardless of which file exists on disk.
+
 ### Not Changed
 
 `@vars/core` (parser, codegen, resolver) — the rename pattern is purely a file-layer concern. Core remains a pure computation engine with no filesystem awareness.
+
+### v2 Design Doc Updates Required
+
+The following sections of `2026-03-22-vars-v2-design.md` need updating after this change is implemented:
+
+- **Section 3 (Encryption Model):** Add file rename as the primary safety mechanism; note that `# @vars-state` header is now a secondary signal.
+- **Section 6 (CLI Commands):** Update `vars show` description from "in-place" to "rename + decrypt". Update `vars hide` from "scans for header" to "scans for `*.unlocked.vars` filenames".
+- **Safety Layers subsection:** Add gitignore as the third safety layer.
+- **Appendix B (File Layout):** Note the `*.unlocked.vars` pattern and its gitignore status.
