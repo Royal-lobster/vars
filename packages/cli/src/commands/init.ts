@@ -148,6 +148,7 @@ public PORT : z.number() = 3000
 });
 
 function migrateFromEnv(envContent: string): string {
+  const PUBLIC_PREFIXES = ["NEXT_PUBLIC_", "VITE_", "REACT_APP_", "NUXT_PUBLIC_", "EXPO_PUBLIC_", "GATSBY_"];
   const lines = ["# @vars-state unlocked", "env(dev, staging, prod)", ""];
   for (const line of envContent.split("\n")) {
     const trimmed = line.trim();
@@ -155,14 +156,36 @@ function migrateFromEnv(envContent: string): string {
     const eqIdx = trimmed.indexOf("=");
     if (eqIdx === -1) continue;
     const key = trimmed.slice(0, eqIdx).trim();
-    const value = trimmed.slice(eqIdx + 1).trim();
-    // Infer if it looks like a number or boolean
-    if (/^\d+$/.test(value)) {
-      lines.push(`public ${key} : z.number() = ${value}`);
-    } else if (value === "true" || value === "false") {
-      lines.push(`public ${key} : z.boolean() = ${value}`);
+    // Skip invalid identifiers
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
+      console.warn(pc.yellow(`  Skipping invalid variable name: ${key}`));
+      continue;
+    }
+    let value = trimmed.slice(eqIdx + 1).trim();
+    // Strip inline comments (space + #) from unquoted values
+    if (!value.startsWith('"') && !value.startsWith("'")) {
+      const commentIdx = value.indexOf(" #");
+      if (commentIdx !== -1) {
+        value = value.slice(0, commentIdx).trim();
+      }
+    }
+    // Strip surrounding quotes (double or single)
+    let wasQuoted = false;
+    if (value.length >= 2 &&
+        ((value.startsWith('"') && value.endsWith('"')) ||
+         (value.startsWith("'") && value.endsWith("'")))) {
+      value = value.slice(1, -1);
+      wasQuoted = true;
+    }
+    const isPublic = PUBLIC_PREFIXES.some(p => key.startsWith(p));
+    const pub = isPublic ? "public " : "";
+    // Infer type only for unquoted values
+    if (!wasQuoted && /^\d+$/.test(value)) {
+      lines.push(`${pub}${key} : z.number() = ${value}`);
+    } else if (!wasQuoted && (value === "true" || value === "false")) {
+      lines.push(`${pub}${key} : z.boolean() = ${value}`);
     } else {
-      lines.push(`${key} = "${value}"`);
+      lines.push(`${pub}${key} = "${value}"`);
     }
   }
   return lines.join("\n") + "\n";
