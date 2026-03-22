@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { showFile, hideFile } from "../show-hide.js";
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createMasterKey } from "../key-manager.js";
@@ -44,8 +44,9 @@ SECRET : z.string() {
     const f = join(dir, "config.vars");
     writeFileSync(f, content);
     hideFile(f, key);
-    showFile(f, key);
-    const result = readFileSync(f, "utf8");
+    // hideFile on a .vars file (not .unlocked.vars) keeps it at .vars
+    const unlocked = showFile(f, key);
+    const result = readFileSync(unlocked, "utf8");
     expect(result).toContain("# @vars-state unlocked");
     expect(result).toContain("my-secret");
   });
@@ -61,9 +62,10 @@ SECRET : z.string() {
     writeFileSync(f, content);
     hideFile(f, key);
     const first = readFileSync(f, "utf8");
-    showFile(f, key);
-    hideFile(f, key);
-    const second = readFileSync(f, "utf8");
+    const unlocked = showFile(f, key);
+    hideFile(unlocked, key);
+    // hideFile currently writes in-place; after Task 3 it will rename back to .vars
+    const second = readFileSync(unlocked, "utf8");
     expect(first).toBe(second);
   });
 
@@ -88,6 +90,46 @@ group stripe {
     expect(result).not.toContain("sk_secret_value"); // secret not in plaintext
   });
 
+  it("show renames .vars to .unlocked.vars and decrypts", () => {
+    const content = `# @vars-state locked
+env(dev)
+
+SECRET : z.string() {
+  dev = "my-secret"
+}`;
+    const locked = join(dir, "config.vars");
+    const unlocked = join(dir, "config.unlocked.vars");
+    writeFileSync(locked, content);
+    hideFile(locked, key);
+    showFile(locked, key);
+
+    expect(existsSync(locked)).toBe(false);
+    expect(existsSync(unlocked)).toBe(true);
+    const result = readFileSync(unlocked, "utf8");
+    expect(result).toContain("# @vars-state unlocked");
+    expect(result).toContain("my-secret");
+  });
+
+  it("show is idempotent — re-running on .unlocked.vars re-decrypts", () => {
+    const content = `# @vars-state locked
+env(dev)
+
+SECRET : z.string() {
+  dev = "my-secret"
+}`;
+    const locked = join(dir, "config.vars");
+    const unlocked = join(dir, "config.unlocked.vars");
+    writeFileSync(locked, content);
+    hideFile(locked, key);
+    // Simulate crash: rename but don't decrypt
+    renameSync(locked, unlocked);
+    // Re-run show — should detect .unlocked.vars and re-decrypt
+    showFile(unlocked, key);
+    const result = readFileSync(unlocked, "utf8");
+    expect(result).toContain("# @vars-state unlocked");
+    expect(result).toContain("my-secret");
+  });
+
   it("handles flat (non-env-block) encrypted values in show", async () => {
     // First create a file with a flat encrypted value
     const content = `# @vars-state unlocked
@@ -102,8 +144,8 @@ SECRET = "flat-secret"`;
     expect(encrypted).toContain("enc:v2:"); // encrypted
     expect(encrypted).not.toContain("flat-secret");
 
-    showFile(f, key);
-    const decrypted = readFileSync(f, "utf8");
+    const unlockedFlat = showFile(f, key);
+    const decrypted = readFileSync(unlockedFlat, "utf8");
     expect(decrypted).toContain("flat-secret"); // restored
   });
 });
