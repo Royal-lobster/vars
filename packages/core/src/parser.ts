@@ -662,6 +662,11 @@ function parseMetadata(cursor: TokenCursor): Metadata {
       metadata.expires = parseDateValue(cursor);
     }
 
+    // After parsing a key = value pair, consume optional comma
+    if (cursor.check(TokenType.COMMA)) {
+      cursor.advance(); // skip comma between metadata entries
+    }
+
     cursor.skipTrivia();
   }
 
