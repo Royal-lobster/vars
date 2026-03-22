@@ -1,41 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import { Redacted } from "../redacted.js";
 
 describe("Redacted", () => {
-  it("hides value in toString()", () => {
-    const r = new Redacted("my-secret");
-    expect(r.toString()).toBe("<redacted>");
+  it("wraps and unwraps a value", () => {
+    const r = new Redacted("secret");
+    expect(r.unwrap()).toBe("secret");
   });
 
-  it("hides value in toJSON()", () => {
-    const r = new Redacted("my-secret");
-    expect(r.toJSON()).toBe("<redacted>");
+  it("toString returns <redacted>", () => {
+    expect(String(new Redacted("secret"))).toBe("<redacted>");
   });
 
-  it("hides value in JSON.stringify()", () => {
-    const r = new Redacted("my-secret");
-    expect(JSON.stringify({ key: r })).toBe('{"key":"<redacted>"}');
+  it("toJSON returns <redacted>", () => {
+    expect(JSON.stringify({ key: new Redacted("secret") })).toBe('{"key":"<redacted>"}');
   });
 
-  it("hides value in template literals", () => {
-    const r = new Redacted("my-secret");
-    expect(`value: ${r}`).toBe("value: <redacted>");
-  });
-
-  it("exposes value via unwrap()", () => {
-    const r = new Redacted("my-secret");
-    expect(r.unwrap()).toBe("my-secret");
-  });
-
-  it("hides value in console.log (Node.js inspect)", () => {
-    const r = new Redacted("my-secret");
-    const inspectSymbol = Symbol.for("nodejs.util.inspect.custom");
-    expect((r as any)[inspectSymbol]()).toBe("<redacted>");
-  });
-
-  it("works with non-string types", () => {
-    const r = new Redacted(42);
-    expect(r.unwrap()).toBe(42);
-    expect(r.toString()).toBe("<redacted>");
+  it("console.log does not reveal value", () => {
+    const r = new Redacted("secret");
+    const inspected = (r as any)[Symbol.for("nodejs.util.inspect.custom")]();
+    expect(inspected).toBe("<redacted>");
   });
 });

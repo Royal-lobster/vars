@@ -1,124 +1,96 @@
-import { existsSync, readFileSync } from "node:fs";
-import { resolve, dirname } from "node:path";
-import { decryptMasterKey } from "@vars/core";
-import { promptPIN } from "./prompt.js";
+import { resolve, dirname, join } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { getKeyFromEnv, decryptMasterKey } from "@vars/node";
+import * as prompts from "@clack/prompts";
 
 export interface CliContext {
   varsFilePath: string;
-  keyFilePath: string;
+  keyFilePath: string | null;
   env: string;
-  cwd: string;
+  projectRoot: string;
 }
 
-/**
- * Walk up from `startDir` looking for a `.vars` file.
- * Also checks for `.vars.unlocked` (active show mode) and returns
- * the base `.vars` path regardless, so commands always reference the canonical name.
- */
-export function findVarsFile(startDir: string = process.cwd()): string | null {
+/** Find the nearest .vars file, walking up from startDir */
+export function findVarsFile(startDir: string, fileName?: string): string | null {
+  if (fileName) {
+    const abs = resolve(startDir, fileName);
+    return existsSync(abs) ? abs : null;
+  }
   let dir = resolve(startDir);
-  const root = resolve("/");
-
-  while (dir !== root) {
-    const candidate = resolve(dir, ".vars", "vault.vars");
-    if (existsSync(candidate)) return candidate;
-    // If .vars/unlocked exists, we're in unlocked mode (init or show)
-    const decrypted = resolve(dir, ".vars", "unlocked.vars");
-    if (existsSync(decrypted)) return decrypted;
+  while (true) {
+    try {
+      const files = readdirSync(dir).filter(f => f.endsWith(".vars") && !f.startsWith("."));
+      if (files.length > 0) return resolve(dir, files[0]);
+    } catch { /* permission error, skip */ }
     const parent = dirname(dir);
-    if (parent === dir) break;
+    if (parent === dir) return null;
     dir = parent;
   }
-
-  return null;
 }
 
-/**
- * Resolve the varskey file path relative to the .vars file.
- */
-export function findKeyFile(varsFilePath: string): string {
-  return resolve(dirname(varsFilePath), "key");
-}
-
-/** Map common long environment names to the short forms used in .vars files. */
-const ENV_ALIASES: Record<string, string> = {
-  development: "dev",
-  production: "prod",
-  staging: "staging",
-  test: "test",
-};
-
-/**
- * Determine which environment to use.
- * Priority: --env flag > VARS_ENV env var > "dev"
- * Long names like "development" are automatically mapped to their short form.
- */
-export function resolveEnv(flagEnv?: string): string {
-  const raw = flagEnv ?? process.env.VARS_ENV ?? "dev";
-  return ENV_ALIASES[raw] ?? raw;
-}
-
-/**
- * Build a full CLI context from options.
- */
-export function buildContext(options: {
-  file?: string;
-  env?: string;
-  cwd?: string;
-}): CliContext {
-  const cwd = options.cwd ?? process.cwd();
-  const varsFilePath = options.file
-    ? resolve(cwd, options.file)
-    : findVarsFile(cwd) ?? resolve(cwd, ".vars", "vault.vars");
-  const keyFilePath = findKeyFile(varsFilePath);
-  const env = resolveEnv(options.env);
-
-  return { varsFilePath, keyFilePath, env, cwd };
-}
-
-/**
- * Read the raw key file contents (PIN-encrypted master key).
- */
-export function readKeyFile(keyFilePath: string): string {
-  if (!existsSync(keyFilePath)) {
-    throw new Error(
-      `Key file not found: ${keyFilePath}\nRun 'vars init' to create one, or set VARS_KEY env var for CI/CD.`,
-    );
+/** Find all .vars files recursively in a directory */
+export function findAllVarsFiles(rootDir: string): string[] {
+  const results: string[] = [];
+  const SKIP = new Set(["node_modules", ".git", "dist", ".vars"]);
+  function walk(dir: string) {
+    try {
+      const entries = readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (SKIP.has(entry.name)) continue;
+        const fullPath = join(dir, entry.name);
+        if (entry.isDirectory()) walk(fullPath);
+        else if (entry.name.endsWith(".vars")) results.push(fullPath);
+      }
+    } catch { /* permission error */ }
   }
-  return readFileSync(keyFilePath, "utf8").trim();
+  walk(rootDir);
+  return results;
 }
 
-/**
- * Try to get the key without prompting. Returns null if unavailable.
- * Only checks VARS_KEY env var — no PIN prompt, no keychain.
- */
-export function getKeyFromEnv(): Buffer | null {
-  const envKey = process.env.VARS_KEY;
-  if (envKey) {
-    return Buffer.from(envKey, "base64");
+/** Find .vars/key file, walking up from startDir */
+export function findKeyFile(startDir: string): string | null {
+  let dir = resolve(startDir);
+  while (true) {
+    const keyPath = join(dir, ".vars", "key");
+    if (existsSync(keyPath)) return keyPath;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
   }
-  return null;
 }
 
-/**
- * Resolve the encryption key. Prompts for PIN every time.
- * Priority: VARS_KEY env var (for CI/CD) > PIN prompt.
- * The key is never cached — human must authenticate each time.
- */
-export async function requireKey(ctx?: CliContext): Promise<Buffer> {
-  // CI/CD escape hatch
-  const envKey = process.env.VARS_KEY;
-  if (envKey) {
-    return Buffer.from(envKey, "base64");
+/** Get encryption key — from env var or by prompting for PIN */
+export async function requireKey(keyFilePath: string | null): Promise<Buffer> {
+  const envKey = getKeyFromEnv();
+  if (envKey) return envKey;
+  if (!keyFilePath || !existsSync(keyFilePath)) {
+    throw new Error("No encryption key found. Run `vars key init` first.");
   }
+  const encoded = readFileSync(keyFilePath, "utf8").trim();
+  const pin = await prompts.password({ message: "Enter PIN:" });
+  if (prompts.isCancel(pin)) process.exit(0);
+  return decryptMasterKey(encoded, pin as string);
+}
 
-  // Find the key file
-  const keyFilePath = ctx?.keyFilePath ?? findKeyFile(
-    findVarsFile() ?? resolve(process.cwd(), ".vars", "vault.vars"),
-  );
-  const encoded = readKeyFile(keyFilePath);
+/** Resolve environment name with common aliases */
+export function resolveEnv(env: string): string {
+  const aliases: Record<string, string> = {
+    development: "dev",
+    production: "prod",
+  };
+  return aliases[env] ?? env;
+}
 
-  // Prompt for PIN and decrypt
-  const pin = await promptPIN("Enter PIN");
-  return decryptMasterKey(encoded, pin);
+/** Get the git root directory */
+export function getProjectRoot(startDir?: string): string {
+  try {
+    return execSync("git rev-parse --show-toplevel", {
+      cwd: startDir ?? process.cwd(),
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+  } catch {
+    return startDir ?? process.cwd();
+  }
 }

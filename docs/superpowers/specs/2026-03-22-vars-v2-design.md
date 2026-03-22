@@ -139,11 +139,11 @@ TLS_CERT : z.string() {
 ```
 group stripe {
   SECRET_KEY : z.string() {
-    dev  = "sk_test_placeholder"
+    dev  = "sk_example_placeholder"
     prod = enc:v2:aes256gcm-det:...
   }
   public PUBLISHABLE_KEY : z.string() {
-    dev  = "pk_test_placeholder"
+    dev  = "pk_example_placeholder"
     prod = "pk_live_real"
   }
 }
@@ -223,7 +223,7 @@ check "TLS required in prod" {
 }
 
 check "Test Stripe keys in dev" {
-  env == "dev" => starts_with(stripe.SECRET_KEY, "sk_test_")
+  env == "dev" => starts_with(stripe.SECRET_KEY, "sk_example_")
 }
 
 check "Pool bounds" {
@@ -260,7 +260,7 @@ env(dev, staging, prod)
 
 public APP_NAME = "my-app"
 STRIPE_KEY : z.string() {
-  dev  = "sk_test_placeholder"
+  dev  = "sk_example_placeholder"
   prod = enc:v2:aes256gcm-det:abc...:def...:ghi...
 }
 ```
@@ -272,7 +272,7 @@ env(dev, staging, prod)
 
 public APP_NAME = "my-app"
 STRIPE_KEY : z.string() {
-  dev  = "sk_test_placeholder"
+  dev  = "sk_example_placeholder"
   prod = "sk_live_aBcDeFgHiJkLmNoPqRsTuVwX"
 }
 ```
@@ -701,7 +701,7 @@ A tiny expression parser (~100 lines, recursive descent) that produces a predica
 
 ### When Checks Run
 
-- `vars check` — runs all checks for each declared environment. **Requires the encryption key** because checks inspect actual values (e.g., `starts_with(stripe.SECRET_KEY, "sk_test_")`), including encrypted prod values. If no key is available, checks against encrypted values are skipped with a warning.
+- `vars check` — runs all checks for each declared environment. **Requires the encryption key** because checks inspect actual values (e.g., `starts_with(stripe.SECRET_KEY, "sk_example_")`), including encrypted prod values. If no key is available, checks against encrypted values are skipped with a warning.
 - `vars run --env prod` — runs checks for the target env before spawning. Key is always available (required for decryption).
 - `vars gen` — does NOT run checks (no values, types only). No key needed.
 
@@ -835,17 +835,17 @@ public SUPPORTED_CURRENCIES : z.array(z.string().length(3)) {
 # ─── Secrets ──────────────────────────────────────
 group stripe {
   SECRET_KEY : z.string() {
-    dev  = "sk_test_placeholder"
+    dev  = "sk_example_placeholder"
     prod = enc:v2:aes256gcm-det:abc...:def...:ghi...
   } (owner = "payments-team", expires = 2026-12-31)
 
   WEBHOOK_SECRET : z.string() {
-    dev  = "whsec_test_placeholder"
+    dev  = "whsec_example_placeholder"
     prod = enc:v2:aes256gcm-det:jkl...:mno...:pqr...
   }
 
   public PUBLISHABLE_KEY : z.string() {
-    dev = "pk_test_placeholder"
+    dev = "pk_example_placeholder"
     when region = us { prod = "pk_live_us_key" }
     when region = eu { prod = "pk_live_eu_key" }
   }
@@ -853,7 +853,7 @@ group stripe {
 
 # ─── Checks ───────────────────────────────────────
 check "Test Stripe keys in dev" {
-  env == "dev" => starts_with(stripe.SECRET_KEY, "sk_test_")
+  env == "dev" => starts_with(stripe.SECRET_KEY, "sk_example_")
 }
 
 check "Webhook secret required in prod" {

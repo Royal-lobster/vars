@@ -53,7 +53,7 @@ describe("hover", () => {
 			'  @description "Primary API key"',
 			"  @expires 2026-09-01",
 			"  @owner backend-team",
-			"  @dev = sk_test_abc",
+			"  @dev = sk_example_abc",
 		].join("\n");
 		const result = computeHover({
 			text,

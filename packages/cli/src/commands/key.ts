@@ -1,17 +1,58 @@
 import { defineCommand } from "citty";
-import { requireKey } from "../utils/context.js";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { createMasterKey, encryptMasterKey, decryptMasterKey } from "@vars/node";
+import { findKeyFile, getProjectRoot } from "../utils/context.js";
+import * as prompts from "@clack/prompts";
+import pc from "picocolors";
 
 export default defineCommand({
-  meta: {
-    name: "key",
-    description: "Print the master key for CI/CD (e.g. Vercel, GitHub Actions)",
-  },
-  async run() {
-    const key = await requireKey();
-
-    process.stdout.write(key.toString("base64") + "\n");
-
-    // Chrome to stderr so piping works: vars key | pbcopy
-    process.stderr.write("\nSet this as VARS_KEY in your CI/CD environment.\n");
+  meta: { name: "key", description: "Manage encryption keys" },
+  subCommands: {
+    init: defineCommand({
+      meta: { name: "init", description: "Create a new encryption key" },
+      async run() {
+        const root = getProjectRoot();
+        const varsDir = join(root, ".vars");
+        const keyPath = join(varsDir, "key");
+        if (existsSync(keyPath)) {
+          console.log(pc.yellow("  Key already exists at .vars/key"));
+          return;
+        }
+        if (!existsSync(varsDir)) mkdirSync(varsDir, { recursive: true });
+        const pin = await prompts.password({ message: "Set a PIN:" });
+        if (prompts.isCancel(pin)) process.exit(0);
+        const confirm = await prompts.password({ message: "Confirm PIN:" });
+        if (prompts.isCancel(confirm)) process.exit(0);
+        if (pin !== confirm) { console.error(pc.red("PINs do not match")); process.exit(1); }
+        const key = await createMasterKey();
+        const encrypted = await encryptMasterKey(key, pin as string);
+        writeFileSync(keyPath, encrypted + "\n");
+        console.log(pc.green("  ✓ Key created at .vars/key"));
+      },
+    }),
+    fingerprint: defineCommand({
+      meta: { name: "fingerprint", description: "Print key fingerprint" },
+      async run() {
+        const keyFile = findKeyFile(process.cwd());
+        if (!keyFile) { console.error(pc.red("No key found")); process.exit(1); }
+        const encoded = readFileSync(keyFile, "utf8").trim();
+        const hash = createHash("sha256").update(encoded).digest("hex").slice(0, 16);
+        console.log(`  ${hash}`);
+      },
+    }),
+    export: defineCommand({
+      meta: { name: "export", description: "Print base64 master key for CI" },
+      async run() {
+        const keyFile = findKeyFile(process.cwd());
+        if (!keyFile) { console.error(pc.red("No key found")); process.exit(1); }
+        const encoded = readFileSync(keyFile, "utf8").trim();
+        const pin = await prompts.password({ message: "Enter PIN:" });
+        if (prompts.isCancel(pin)) process.exit(0);
+        const key = await decryptMasterKey(encoded, pin as string);
+        console.log(key.toString("base64"));
+      },
+    }),
   },
 });

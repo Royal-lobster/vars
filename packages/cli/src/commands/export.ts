@@ -1,128 +1,68 @@
 import { defineCommand } from "citty";
-import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { parse, decrypt, isEncrypted, resolveValue } from "@vars/core";
-import { buildContext, requireKey, getKeyFromEnv, findVarsFile } from "../utils/context.js";
-import { promptSelect } from "../utils/prompt.js";
-import * as output from "../utils/output.js";
-
-/**
- * Collect all unique environment names from a parsed .vars file.
- * Excludes "default" since it's a fallback, not a selectable environment.
- */
-export function listEnvironments(filePath: string): string[] {
-  const content = readFileSync(filePath, "utf8");
-  const parsed = parse(content, filePath);
-  const envSet = new Set<string>();
-  for (const v of parsed.variables) {
-    for (const val of v.values) {
-      if (val.env !== "default") {
-        envSet.add(val.env);
-      }
-    }
-  }
-  return [...envSet].sort();
-}
+import { resolveUseChain, decrypt, getKeyFromEnv } from "@vars/node";
+import { isEncrypted } from "@vars/core";
+import { findVarsFile, findKeyFile, requireKey, resolveEnv } from "../utils/context.js";
+import pc from "picocolors";
 
 export default defineCommand({
-  meta: {
-    name: "export",
-    description: "Export decrypted vars as .env format to stdout",
-  },
+  meta: { name: "export", description: "Export resolved values" },
   args: {
-    env: {
-      type: "string",
-      description: "Environment to export",
-    },
-    file: {
-      type: "string",
-      description: "Path to .vars file",
-      alias: "f",
-    },
+    env: { type: "string", required: true, alias: "e" },
+    format: { type: "string", default: "dotenv", description: "Output format: dotenv, json, k8s-secret" },
+    file: { type: "positional", required: false },
+    param: { type: "string" },
   },
   async run({ args }) {
-    // Two separate TTY checks:
-    // canPrompt: whether we can show interactive prompts (needs both stdin + stderr)
-    // showChrome: whether we should show clack intro/outro (only needs stderr)
-    const canPrompt = process.stdin.isTTY && process.stderr.isTTY;
-    const showChrome = !!process.stderr.isTTY;
-
-    // Resolve file path without building full context yet
-    const varsFilePath = args.file
-      ? resolve(process.cwd(), args.file)
-      : findVarsFile() ?? resolve(process.cwd(), ".vars", "vault.vars");
-
-    // Resolve env: flag > interactive picker > "dev" fallback
-    let env = args.env;
-
-    if (!env && canPrompt && existsSync(varsFilePath)) {
-      const envs = listEnvironments(varsFilePath);
-      if (envs.length > 0) {
-        output.intro("export");
-        env = await promptSelect("Select environment", envs);
-      } else {
-        env = "dev";
+    const env = resolveEnv(args.env);
+    const params: Record<string, string> = {};
+    if (args.param) {
+      for (const p of (Array.isArray(args.param) ? args.param : [args.param])) {
+        const [k, v] = (p as string).split("=");
+        if (k && v) params[k] = v;
       }
-    } else if (!env) {
-      env = "dev";
     }
 
-    // Build context with resolved env
-    const ctx = buildContext({ file: args.file, env });
+    const file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
+    if (!file) { console.error(pc.red("No .vars file found")); process.exit(1); }
 
-    // Get key: VARS_KEY env var or interactive PIN prompt
     let key: Buffer | null = getKeyFromEnv();
     if (!key) {
-      key = await requireKey(ctx);
+      const keyFile = findKeyFile(file);
+      key = await requireKey(keyFile);
     }
 
-    const result = generateExport(ctx.varsFilePath, ctx.env, key);
+    const resolved = resolveUseChain(file, { env, params });
+    const pairs: [string, string][] = [];
+    for (const v of resolved.vars) {
+      if (v.value === undefined) continue;
+      const val = isEncrypted(v.value) ? decrypt(v.value, key) : v.value;
+      pairs.push([v.flatName, val]);
+    }
 
-    process.stdout.write(result);
-
-    if (showChrome) {
-      const lineCount = result.split("\n").filter((l) => l && !l.startsWith("#")).length;
-      output.outro(`Exported ${lineCount} variable${lineCount !== 1 ? "s" : ""} (@${ctx.env})`);
+    switch (args.format) {
+      case "dotenv":
+        for (const [k, v] of pairs) {
+          const escaped = v.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+          console.log(`${k}="${escaped}"`);
+        }
+        break;
+      case "json":
+        console.log(JSON.stringify(Object.fromEntries(pairs), null, 2));
+        break;
+      case "k8s-secret": {
+        const data: Record<string, string> = {};
+        for (const [k, v] of pairs) data[k] = Buffer.from(v).toString("base64");
+        console.log(JSON.stringify({
+          apiVersion: "v1", kind: "Secret",
+          metadata: { name: "app-secrets" },
+          type: "Opaque", data,
+        }, null, 2));
+        break;
+      }
+      default:
+        console.error(pc.red(`Unknown format: ${args.format}`));
+        process.exit(1);
     }
   },
 });
-
-/**
- * Generate a .env-formatted string from a .vars file.
- */
-export function generateExport(
-  filePath: string,
-  env: string,
-  key: Buffer | null,
-): string {
-  const content = readFileSync(filePath, "utf8");
-  const parsed = parse(content, filePath);
-  const lines: string[] = [];
-
-  lines.push(`# Generated by 'vars export --env ${env}'`);
-  lines.push(`# Source: ${filePath}`);
-  lines.push("");
-
-  for (const v of parsed.variables) {
-    const raw = resolveValue(v, env);
-    if (raw === undefined) continue;
-
-    let value = raw;
-    if (isEncrypted(value)) {
-      if (key) {
-        value = decrypt(value, key);
-      } else {
-        continue;
-      }
-    }
-
-    if (value.includes(" ") || value.includes("#") || value.includes("=")) {
-      lines.push(`${v.name}="${value}"`);
-    } else {
-      lines.push(`${v.name}=${value}`);
-    }
-  }
-
-  lines.push("");
-  return lines.join("\n");
-}

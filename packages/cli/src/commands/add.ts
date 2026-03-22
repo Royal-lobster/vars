@@ -1,96 +1,69 @@
 import { defineCommand } from "citty";
+import { resolve } from "node:path";
 import { readFileSync, writeFileSync } from "node:fs";
-import { encrypt, parse } from "@vars/core";
-import { buildContext, requireKey } from "../utils/context.js";
-import * as output from "../utils/output.js";
-import { promptText } from "../utils/prompt.js";
+import { parse } from "@vars/core";
+import { findVarsFile } from "../utils/context.js";
+import * as prompts from "@clack/prompts";
+import pc from "picocolors";
 
 export default defineCommand({
-  meta: {
-    name: "add",
-    description: "Add a new variable with type, values per env, auto-encrypt",
-  },
+  meta: { name: "add", description: "Add a variable to a .vars file" },
   args: {
-    name: {
-      type: "positional",
-      description: "Variable name (UPPER_SNAKE_CASE)",
-      required: true,
-    },
-    schema: {
-      type: "string",
-      description: "Zod schema (e.g., z.string().url())",
-      alias: "s",
-    },
-    file: {
-      type: "string",
-      description: "Path to .vars file",
-      alias: "f",
-    },
-    public: {
-      type: "boolean",
-      description: "Store value without encryption (for non-secret config)",
-      default: false,
-    },
+    name: { type: "positional", required: true, description: "Variable name (UPPER_SNAKE_CASE)" },
+    file: { type: "string", alias: "f" },
   },
   async run({ args }) {
-    output.intro("add");
-
-    const ctx = buildContext({ file: args.file });
-    const key = await requireKey();
+    const file = args.file ? resolve(args.file as string) : findVarsFile(process.cwd());
+    if (!file) { console.error(pc.red("No .vars file found")); process.exit(1); }
 
     const name = args.name as string;
-    const schema = args.schema ?? (await promptText("Zod schema", { placeholder: "z.string()" }));
-
-    const values: Array<{ env: string; value: string }> = [];
-    const envs = ["default", "dev", "staging", "prod"];
-    for (const envName of envs) {
-      const value = await promptText(`Value for @${envName} (leave empty to skip)`, {
-        default: "",
-      });
-      if (value) {
-        values.push({ env: envName, value });
-      }
+    if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
+      console.error(pc.red("Variable name must be UPPER_SNAKE_CASE"));
+      process.exit(1);
     }
 
-    addVariable(ctx.varsFilePath, key, { name, schema, values, isPublic: args.public as boolean });
-    output.outro(`Added ${name}`);
+    const isPublic = await prompts.confirm({ message: "Is this a public (non-secret) variable?" });
+    if (prompts.isCancel(isPublic)) process.exit(0);
+
+    const schema = await prompts.text({
+      message: "Zod schema (or press Enter for z.string()):",
+      placeholder: "z.string()",
+      defaultValue: "z.string()",
+    });
+    if (prompts.isCancel(schema)) process.exit(0);
+
+    // Get envs from file
+    const content = readFileSync(file, "utf8");
+    const result = parse(content, file);
+    const envs = result.ast.envs.length > 0 ? result.ast.envs : ["default"];
+
+    const values: Record<string, string> = {};
+    for (const env of envs) {
+      const val = await prompts.text({ message: `Value for ${env} (or skip):`, defaultValue: "" });
+      if (prompts.isCancel(val)) process.exit(0);
+      if (val) values[env] = val as string;
+    }
+
+    // Build the new variable block
+    const lines: string[] = [];
+    const prefix = isPublic ? "public " : "";
+    const schemaStr = schema !== "z.string()" ? ` : ${schema}` : "";
+
+    if (Object.keys(values).length === 0) {
+      lines.push(`${prefix}${name}${schemaStr}`);
+    } else if (Object.keys(values).length === 1 && values["default"]) {
+      lines.push(`${prefix}${name}${schemaStr} = "${values["default"]}"`);
+    } else {
+      lines.push(`${prefix}${name}${schemaStr} {`);
+      for (const [env, val] of Object.entries(values)) {
+        lines.push(`  ${env} = "${val}"`);
+      }
+      lines.push("}");
+    }
+
+    // Append to file
+    const newContent = content.trimEnd() + "\n\n" + lines.join("\n") + "\n";
+    writeFileSync(file, newContent);
+    console.log(pc.green(`  ✓ Added ${name} to ${file}`));
   },
 });
-
-/**
- * Add a variable to a .vars file. Encrypts values before writing.
- */
-export function addVariable(
-  filePath: string,
-  key: Buffer,
-  variable: {
-    name: string;
-    schema: string;
-    values: Array<{ env: string; value: string }>;
-    isPublic?: boolean;
-  },
-): void {
-  const content = readFileSync(filePath, "utf8");
-
-  // Check if variable already exists
-  const parsed = parse(content || "# vars\n", filePath);
-  if (parsed.variables.some((v) => v.name === variable.name)) {
-    throw new Error(`Variable "${variable.name}" already exists in ${filePath}`);
-  }
-
-  // Build new lines
-  const lines: string[] = [];
-  lines.push("");
-  lines.push(`${variable.name}  ${variable.schema}`);
-  if (variable.isPublic) {
-    lines.push("  @public");
-  }
-  for (const { env, value } of variable.values) {
-    const finalValue = variable.isPublic ? value : encrypt(value, key);
-    lines.push(`  @${env.padEnd(8)} = ${finalValue}`);
-  }
-
-  const newContent = content.trimEnd() + "\n" + lines.join("\n") + "\n";
-  writeFileSync(filePath, newContent);
-}
-

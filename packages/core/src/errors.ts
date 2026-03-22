@@ -11,7 +11,7 @@ export class ParseError extends VarsError {
     public readonly line: number,
     public readonly filePath?: string,
   ) {
-    super(`${filePath ?? ".vars"}:${line}: ${message}`);
+    super(`${filePath ?? "<input>"}:${line}: ${message}`);
     this.name = "ParseError";
   }
 }
@@ -19,7 +19,7 @@ export class ParseError extends VarsError {
 export class ValidationError extends VarsError {
   constructor(
     message: string,
-    public readonly errors: ValidationIssue[],
+    public readonly issues: ValidationIssue[],
   ) {
     super(message);
     this.name = "ValidationError";
@@ -28,10 +28,8 @@ export class ValidationError extends VarsError {
 
 export interface ValidationIssue {
   variable: string;
-  env?: string;
-  expected?: string;
-  got?: string;
   message: string;
+  env?: string;
 }
 
 export class CryptoError extends VarsError {
@@ -48,12 +46,13 @@ export class KeyError extends VarsError {
   }
 }
 
-export class ExtendsError extends VarsError {
+export class CheckError extends VarsError {
   constructor(
     message: string,
-    public readonly filePath: string,
+    public readonly checkDescription: string,
+    public readonly env: string,
   ) {
-    super(message);
-    this.name = "ExtendsError";
+    super(`check "${checkDescription}" failed for env ${env}: ${message}`);
+    this.name = "CheckError";
   }
 }
