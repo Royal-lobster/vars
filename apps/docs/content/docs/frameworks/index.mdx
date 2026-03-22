@@ -34,10 +34,28 @@ Wrap your dev and build scripts with `vars run`:
 
 ## Choose your framework
 
-- [Next.js](/docs/frameworks/nextjs) — client vars work out of the box via `NEXT_PUBLIC_*`
-- [Vite / React](/docs/frameworks/vite) — needs static gen or `vite.config.ts` define bridge
-- [SvelteKit](/docs/frameworks/sveltekit) — server routes work, client needs bridge
-- [Astro](/docs/frameworks/astro) — server islands work, client islands need static gen
-- [Remix](/docs/frameworks/remix) — server-only, no client concerns
-- [Express / Hono / Fastify](/docs/frameworks/express) — pure server, just works
-- [Cloudflare Workers](/docs/frameworks/cloudflare) — use `--platform cloudflare`
+import { Globe, Zap, Flame, Star, RefreshCw, Server, Cloud } from 'lucide-react';
+
+<Cards>
+  <Card icon={<Globe />} href="/docs/frameworks/nextjs" title="Next.js">
+    Client vars work out of the box via NEXT_PUBLIC_*
+  </Card>
+  <Card icon={<Zap />} href="/docs/frameworks/vite" title="Vite / React">
+    Needs static gen or vite.config.ts define bridge for client
+  </Card>
+  <Card icon={<Flame />} href="/docs/frameworks/sveltekit" title="SvelteKit">
+    Server routes work, client needs bridge
+  </Card>
+  <Card icon={<Star />} href="/docs/frameworks/astro" title="Astro">
+    Server islands work, client islands need static gen
+  </Card>
+  <Card icon={<RefreshCw />} href="/docs/frameworks/remix" title="Remix">
+    Server-only — no client concerns
+  </Card>
+  <Card icon={<Server />} href="/docs/frameworks/express" title="Express / Hono / Fastify">
+    Pure server, just works
+  </Card>
+  <Card icon={<Cloud />} href="/docs/frameworks/cloudflare" title="Cloudflare Workers">
+    Use --platform cloudflare for env bindings
+  </Card>
+</Cards>
