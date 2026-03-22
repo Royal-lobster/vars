@@ -1,0 +1,81 @@
+---
+title: Next.js
+description: Using vars with Next.js — App Router, Pages Router, and API routes.
+---
+
+## Setup
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- next dev",
+    "build": "vars run --env prod -- next build"
+  }
+}
+```
+
+## Server Components & API Routes
+
+Import vars directly — they run on the server where `process.env` is available:
+
+```typescript
+import { vars } from '#vars'
+
+export async function GET() {
+  return Response.json({ db: vars.DATABASE_URL.unwrap() })
+}
+```
+
+## Client Components
+
+Next.js automatically inlines `NEXT_PUBLIC_*` variables from `process.env` into client bundles at build time. **No extra config needed** — this is the easiest framework for vars.
+
+Mark client-safe variables with `public` and prefix with `NEXT_PUBLIC_`:
+
+```hcl
+public NEXT_PUBLIC_API_URL : z.string().url() {
+  dev  = "http://localhost:3000/api"
+  prod = "https://api.example.com"
+}
+
+public NEXT_PUBLIC_POSTHOG_KEY : z.string() {
+  dev  = "phc_dev_placeholder"
+  prod = "phc_live_real_key"
+}
+```
+
+These are available in both server and client code.
+
+## Example config.vars
+
+```hcl
+env(dev, staging, prod)
+
+# Server-only secrets
+DATABASE_URL : z.string().url() {
+  dev  = "postgres://localhost:5432/myapp"
+  prod = "postgres://prod.db:5432/myapp"
+}
+
+NEXTAUTH_SECRET : z.string().min(32) {
+  dev  = "dev-secret-at-least-32-characters-long!"
+  prod = "prod-secret-very-secure-value-here-64ch"
+}
+
+# Client-safe (inlined into browser bundle by Next.js)
+public NEXT_PUBLIC_API_URL : z.string().url() {
+  dev  = "http://localhost:3000/api"
+  prod = "https://api.example.com"
+}
+```
+
+## CI/CD
+
+```yaml
+# GitHub Actions
+env:
+  VARS_KEY: ${{ secrets.VARS_KEY }}
+
+steps:
+  - run: vars run --env prod -- next build
+```

@@ -1,0 +1,58 @@
+---
+title: Express / Hono / Fastify
+description: Using vars with server-side Node.js frameworks.
+---
+
+## Setup
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- tsx src/index.ts",
+    "start": "vars run --env prod -- node dist/index.js"
+  }
+}
+```
+
+Pure server frameworks — `process.env` works everywhere. No client-side concerns, no adapters, no plugins.
+
+## Usage
+
+```typescript
+import { vars } from '#vars'
+import express from 'express'
+
+const app = express()
+
+app.get('/health', (req, res) => {
+  res.json({
+    app: vars.APP_NAME,
+    port: vars.PORT,
+    db: String(vars.DATABASE_URL), // prints <redacted>
+  })
+})
+
+app.listen(vars.PORT, () => {
+  console.log(`${vars.APP_NAME} on port ${vars.PORT}`)
+})
+```
+
+## Example config.vars
+
+```hcl
+env(dev, staging, prod)
+
+public APP_NAME = "my-api"
+public PORT : z.number() = 3000
+
+DATABASE_URL : z.string().url() {
+  dev     = "postgres://localhost/myapp"
+  staging = "postgres://staging.db/myapp"
+  prod    = "postgres://prod.db/myapp"
+}
+
+JWT_SECRET : z.string().min(32) {
+  dev  = "dev-jwt-secret-placeholder-32-chars!!"
+  prod = "prod-jwt-secret-very-long-and-secure"
+} (owner = "auth-team", expires = 2026-12-31)
+```

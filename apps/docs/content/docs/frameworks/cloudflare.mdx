@@ -1,0 +1,73 @@
+---
+title: Cloudflare Workers
+description: Using vars with Cloudflare Workers — env bindings and the getVars pattern.
+---
+
+## Setup
+
+Generate a Workers-compatible module:
+
+```bash
+vars gen config.vars --platform cloudflare
+```
+
+This generates a `getVars(env)` function instead of reading from `process.env`.
+
+## Usage
+
+```typescript
+import { getVars } from '#vars'
+import { Hono } from 'hono'
+
+const app = new Hono()
+
+app.get('/', (c) => {
+  const vars = getVars(c.env)
+  return c.json({ app: vars.APP_NAME })
+})
+
+export default app
+```
+
+For vanilla Workers:
+
+```typescript
+import { getVars } from '#vars'
+
+export default {
+  async fetch(request: Request, env: Record<string, string>) {
+    const vars = getVars(env)
+    return new Response(vars.APP_NAME)
+  }
+}
+```
+
+## Deploying
+
+Export your vars and set them in wrangler:
+
+```bash
+vars export --env prod --format json
+```
+
+Copy the values to `wrangler.toml` or set them via the Cloudflare dashboard.
+
+## Example config.vars
+
+```hcl
+env(dev, prod)
+
+public APP_NAME = "worker-api"
+
+API_SECRET : z.string().min(16) {
+  dev  = "worker-dev-secret-val"
+  prod = "worker-prod-secret-val"
+}
+
+DATABASE_URL : z.string().url() {
+  dev  = "postgres://localhost/worker_dev"
+  prod = "postgres://prod.db/worker_prod"
+}
+```
+
+Note: Workers don't use `PORT` — remove it from your config for Workers projects.

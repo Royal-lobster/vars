@@ -1,0 +1,45 @@
+---
+title: Astro
+description: Using vars with Astro — server islands, API routes, and client islands.
+---
+
+## Setup
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- astro dev",
+    "build": "vars run --env prod -- astro build"
+  }
+}
+```
+
+## Server Code
+
+Astro components, API routes, and server islands use `process.env` directly:
+
+```typescript
+import { vars } from '#vars'
+
+const data = await fetch(vars.API_URL.unwrap())
+```
+
+## Client Islands
+
+For client-side islands, use static generation or pass values as props from the server component.
+
+## Example config.vars
+
+```hcl
+env(dev, prod)
+
+public PUBLIC_SITE_URL : z.string().url() {
+  dev  = "http://localhost:4321"
+  prod = "https://mysite.com"
+}
+
+CMS_API_KEY : z.string() {
+  dev  = "cms-dev-key-placeholder"
+  prod = "cms-prod-key-real-value"
+}
+```
