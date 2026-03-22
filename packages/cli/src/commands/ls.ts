@@ -44,7 +44,18 @@ export default defineCommand({
         const content = readFileSync(f, "utf8");
         const isUnlocked = content.includes("# @vars-state unlocked");
         const result = parse(content, f);
-        const varCount = countVars(result.ast.declarations);
+        // Count: if file has imports, show resolved count
+        let varCount: number;
+        if (result.ast.imports.length > 0) {
+          try {
+            const resolved = resolveUseChain(f, { env: result.ast.envs[0] ?? "dev" });
+            varCount = resolved.vars.length;
+          } catch {
+            varCount = countVars(result.ast.declarations);
+          }
+        } else {
+          varCount = countVars(result.ast.declarations);
+        }
         const state = isUnlocked ? pc.yellow("unlocked") : pc.green("locked  ");
         const relPath = f.replace(root + "/", "");
         // Count warnings

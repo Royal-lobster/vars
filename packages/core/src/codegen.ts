@@ -366,7 +366,10 @@ export function generateTypeScript(resolved: ResolvedVars, options?: CodegenOpti
     }
 
     parts.push("");
-    parts.push(generateClientVarsExport(grouped));
+    // Skip clientVars for cloudflare platform (no module-level vars object)
+    if (platform !== "cloudflare") {
+      parts.push(generateClientVarsExport(grouped));
+    }
   }
 
   return parts.join("\n");

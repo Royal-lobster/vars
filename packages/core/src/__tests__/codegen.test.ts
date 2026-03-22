@@ -141,4 +141,13 @@ describe("codegen", () => {
     ]));
     expect(code).toMatch(/OPT\??: string/);
   });
+
+  it("does not generate broken clientVars for cloudflare platform", () => {
+    const code = generateTypeScript(makeResolved([
+      { name: "PUB", public: true, schema: "z.string()", value: "x" },
+      { name: "SEC", public: false, schema: "z.string()", value: "y" },
+    ]), { platform: "cloudflare" });
+    // Should not reference a non-existent vars constant
+    expect(code).not.toMatch(/const clientVars.*=.*\bvars\./);
+  });
 });

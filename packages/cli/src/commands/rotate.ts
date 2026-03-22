@@ -9,6 +9,10 @@ export default defineCommand({
   meta: { name: "rotate", description: "Rotate the encryption key" },
   args: {},
   async run() {
+    if (!process.stdin.isTTY) {
+      console.error("This command requires an interactive terminal.");
+      process.exit(1);
+    }
     const keyFile = findKeyFile(process.cwd());
     if (!keyFile) { console.error(pc.red("No key found")); process.exit(1); }
 

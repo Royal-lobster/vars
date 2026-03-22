@@ -128,6 +128,29 @@ When someone new joins:
 
 No `.env` file to find. No 1Password vault to configure. No Doppler invite to send.
 
+## CI/CD Setup
+
+In CI/CD pipelines where you can't enter a PIN interactively, use the `VARS_KEY` environment variable:
+
+```bash
+# Get your base64-encoded master key (run locally, once)
+vars key export
+
+# Set it in your CI platform (GitHub Actions, GitLab CI, etc.)
+# Then use vars normally — no PIN prompt needed
+VARS_KEY=<base64-key> vars run --env prod -- npm run build
+VARS_KEY=<base64-key> vars export --env prod > .env.prod
+```
+
+```yaml
+# GitHub Actions example
+env:
+  VARS_KEY: ${{ secrets.VARS_KEY }}
+
+steps:
+  - run: vars run --env prod -- npm run build
+```
+
 ## What's next?
 
 - [File format reference](/docs/file-format) — full syntax guide (groups, conditionals, check blocks, interpolation)

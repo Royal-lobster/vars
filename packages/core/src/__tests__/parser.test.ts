@@ -118,6 +118,16 @@ describe("parser", () => {
         expect(apiKey.metadata?.tags).toEqual(["auth", "critical"]);
       }
     });
+
+    it("parses metadata with multiple comma-separated keys", () => {
+      const result = parse('env(dev)\nAPI_KEY : z.string() {\n  dev = "key"\n} (\n  owner = "team",\n  description = "API key",\n  expires = 2026-12-31\n)');
+      const apiKey = result.ast.declarations.find(d => d.kind === "variable" && d.name === "API_KEY");
+      expect(apiKey).toBeDefined();
+      if (apiKey?.kind === "variable") {
+        expect(apiKey.metadata?.owner).toBe("team");
+        expect(apiKey.metadata?.description).toBe("API key");
+      }
+    });
   });
 
   describe("interpolation", () => {
@@ -275,6 +285,14 @@ describe("parser", () => {
       expect(result.ast.envs).toEqual(["dev"]);
       expect(result.ast.declarations.length).toBeGreaterThanOrEqual(1);
       expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it("reports errors instead of silently dropping variables", () => {
+      const result = parse('env(dev)\nBAD_SYNTAX !!!\npublic GOOD = "value"');
+      expect(result.errors.length).toBeGreaterThan(0);
+      // GOOD should still be parsed despite BAD_SYNTAX error
+      const good = result.ast.declarations.find(d => d.kind === "variable" && d.name === "GOOD");
+      expect(good).toBeDefined();
     });
   });
 });
