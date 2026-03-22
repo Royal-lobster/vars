@@ -1,257 +1,486 @@
 ---
 title: File Format
-description: Complete reference for the .vars file format.
+description: Complete reference for the v2 .vars file format.
 ---
 
 Here's a `.vars` file using every feature. Read this first, then use the sections below as a reference.
 
-> **Note:** Examples below show values as they appear in `unlocked.vars` (after `vars show`). In your committed `vault.vars`, all values are encrypted. See the [Encrypted values](#encrypted-values) section for what that looks like.
+> **Note:** Examples below show values as they appear after `vars show` (unlocked state). In the committed file, all secret values are encrypted inline. See [Encrypted values](#encrypted-values) for details.
 
 ```vars
-# Database config
-DATABASE_URL  z.string().url().startsWith("postgres://")
-  @description "Primary database connection"
-  @owner       "platform-team"
-  @dev         = postgres://localhost/myapp
-  @staging     = postgres://staging-host/myapp
-  @prod        = postgres://prod-host/myapp
+# @vars-state locked
+env(dev, staging, prod)
+param region : enum(us, eu) = us
 
-# Port — same across all envs, so @default covers it
-PORT  z.coerce.number().int().min(1024).max(65535)
-  @default = 3000
+use "../../shared/database.vars"
+use "../../shared/secrets.vars" { pick: [SENTRY_DSN] }
 
-# Feature flags
-ENABLE_BETA  z.enum(["true", "false"])
-  @deprecated "Use FEATURE_FLAGS instead"
-  @dev        = true
-  @prod       = false
+# ─── Public config ────────────────────────────────
+public APP_NAME = "payments-api"
+public PORT : z.number().int().min(1).max(65535) = 4000
+public LOG_LEVEL : z.enum(["debug", "info", "warn", "error"]) = "info" {
+  dev = "debug"
+  prod = "warn"
+}
 
-# Expiring API key
-STRIPE_KEY  z.string().startsWith("sk_")
-  @expires "2026-01-01"
-  @dev     = sk_test_abc123def456
-  @prod    = sk_live_xyz789uvw321
+public CORS_ORIGINS : z.array(z.string().url()) {
+  dev  = ["http://localhost:3000"]
+  prod = ["https://app.example.com", "https://admin.example.com"]
+}
 
-# Cross-variable constraint
-@refine env.PORT !== 443 || env.DATABASE_URL.startsWith("postgres://")
-  "Port 443 requires a postgres:// DATABASE_URL"
+# ─── Secrets ──────────────────────────────────────
+group stripe {
+  SECRET_KEY : z.string() {
+    dev  = "sk_example_placeholder"
+    prod = enc:v2:aes256gcm-det:abc...:def...:ghi...
+  } (owner = "payments-team", expires = 2026-12-31)
 
-# Inherit shared base config
-@extends ./base.vars
+  public PUBLISHABLE_KEY : z.string() {
+    when region = us { prod = "pk_live_us_key" }
+    when region = eu { prod = "pk_live_eu_key" }
+    dev = "pk_example_placeholder"
+  }
+}
+
+JWT_SECRET : z.string().min(64) {
+  dev  = "dev-only-placeholder-not-a-real-secret"
+  prod = enc:v2:aes256gcm-det:xyz...:uvw...:rst...
+} (
+  description = "Signs auth tokens"
+  owner       = "auth-team"
+  expires     = 2026-09-01
+)
+
+DB_URL : z.string().url() = "postgres://${DB_USER}:${DB_PASS}@${DB_HOST}:5432/myapp"
+
+TLS_CERT : z.string() {
+  prod = """
+    -----BEGIN CERTIFICATE-----
+    MIIBxTCCAWug...
+    -----END CERTIFICATE-----
+  """
+}
+
+# ─── Checks ───────────────────────────────────────
+check "Test Stripe keys in dev" {
+  env == "dev" => starts_with(stripe.SECRET_KEY, "sk_example_")
+}
+
+check "Webhook secret required in prod" {
+  env == "prod" => defined(stripe.WEBHOOK_SECRET)
+}
 ```
+
+---
+
+## File header
+
+Every `.vars` file starts with a state header, environment declaration, and optional params.
+
+### State header
+
+```vars
+# @vars-state locked
+```
+
+The first line of every committed `.vars` file. Machine-readable — used by the pre-commit hook and `vars ls`. Two states:
+
+- `# @vars-state locked` — committed state, secret values are encrypted blobs.
+- `# @vars-state unlocked` — working state after `vars show`, secret values are plaintext.
+
+### `env()` declaration
+
+```vars
+env(dev, staging, prod)
+```
+
+Declares the valid environment names for this file. Any environment name used in the file that isn't listed here is a parse error — this catches typos like `stagng` or `prd` at parse time rather than silently producing wrong values at runtime.
+
+### `param` declaration
+
+```vars
+param region : enum(us, eu, ap) = us
+```
+
+Declares a parameterized dimension with an enum type and a required default value. Params are resolved at runtime via `--param region=eu`. Optional — only needed if values vary along a dimension other than environment (e.g., region, tier, tenant).
+
+```vars
+env(dev, staging, prod)
+param region : enum(us, eu) = us
+param tier   : enum(free, pro) = free
+```
+
+---
+
+## Imports
+
+```vars
+use "../../shared/database.vars"
+use "../../shared/secrets.vars" { pick: [STRIPE_KEY, SENTRY_DSN] }
+use "../../shared/infra.vars"   { omit: [INTERNAL_DEBUG] }
+```
+
+`use` pulls variables from another `.vars` file into the current one. Paths are relative to the importing file's directory.
+
+- `pick` narrows the import to the listed variable names only.
+- `omit` excludes the listed variable names.
+- Importing the same variable from two different files is a parse error. Use `pick`/`omit` to resolve.
+- A local declaration always shadows an import — intentional override, no error.
 
 ---
 
 ## Variable declarations
 
-Name on the left, Zod schema on the right, separated by two or more spaces (or tabs).
-
 ```vars
-VARIABLE_NAME  z.string()
+NAME : z.schema() = default_value
 ```
 
-- Name must be `UPPER_SNAKE_CASE` — starts with a capital letter, then uppercase letters, digits, and underscores
-- Schema is any valid Zod expression starting with `z.`
-- The separator needs to be at least two spaces (one space won't parse)
+- **Name** — `UPPER_SNAKE_CASE` on the left.
+- **Schema** — colon `:`, then any valid Zod expression starting with `z.`.
+- **Default** — equals `=`, then a value.
+
+Both schema and default are optional:
 
 ```vars
-# Valid
-DATABASE_URL   z.string().url()
-PORT           z.coerce.number().int()
-NODE_ENV       z.enum(["development", "production", "test"])
-TIMEOUT_MS     z.number().positive().default(5000)
-
-# These will error
-database_url   z.string()   # lowercase name
-DATABASE_URL z.string()     # only one space
-DATABASE_URL                # missing schema
+public APP_NAME = "my-app"                                    # inferred z.string()
+public PORT : z.number().int().min(1).max(65535) = 3000       # schema + default
+DATABASE_URL : z.string().url()                               # required, no default
+DEBUG : z.boolean() = false                                   # schema + default
 ```
+
+### `public` keyword
+
+Prefix a variable with `public` to mark it as non-secret:
+
+```vars
+public APP_NAME = "my-app"
+public PORT : z.number().int() = 3000
+```
+
+Public variables are **never encrypted** — their values stay plaintext in the committed file regardless of lock state. They generate plain TypeScript types (`string`, `number`) rather than `Redacted<string>`. Use `public` for config that is safe to expose: port numbers, feature flags, public API keys.
+
+Variables without `public` are secret by default: encrypted at rest, generated as `Redacted<string>`.
+
+---
 
 ## Environment blocks
 
-Values live inside a variable block, indented at least one space or tab. Tag each value with `@env-name`.
+When a variable's value differs by environment, use a brace block:
 
 ```vars
-API_URL  z.string().url()
-  @dev        = http://localhost:3000/api
-  @staging    = https://staging.example.com/api
-  @prod       = https://api.example.com
+DATABASE_URL : z.string().url() {
+  dev     = "postgres://localhost:5432/myapp"
+  staging = "postgres://staging.db:5432/myapp"
+  prod    = enc:v2:aes256gcm-det:abc...:def...:ghi...
+}
 ```
 
-Environment names are freeform — `@dev`, `@prod`, `@staging`, `@ci`, whatever you want.
-
-`@default` is the catch-all. It applies when no environment-specific value matches.
+Environment names must match the `env()` declaration at the top of the file. A variable with the same value everywhere stays flat (no braces needed):
 
 ```vars
-LOG_LEVEL  z.enum(["debug", "info", "warn", "error"])
-  @default  = info
-  @dev      = debug
+public APP_NAME = "my-app"
 ```
 
-Here `@prod`, `@staging`, `@ci` all get the `@default` value. Only `@dev` gets its own value. Run `vars show` to unlock and see values in `unlocked.vars`.
-
-### Value quoting
-
-Quoted or unquoted both work. Quotes get stripped before use.
-
-In `unlocked.vars`, you'll see plaintext values. Quoting rules apply here:
+A variable can mix a default and environment-specific overrides:
 
 ```vars
-# What you see during `vars edit`
-APP_NAME  z.string()
-  @default = "My App"    # same result as: My App
-
-SECRET    z.string()
-  @dev     = 'my-secret' # single or double, doesn't matter
+public LOG_LEVEL : z.enum(["debug", "info", "warn", "error"]) = "info" {
+  dev  = "debug"
+  prod = "warn"
+}
 ```
 
-Inline comments work on unquoted values — the parser drops everything from ` #` onward.
+Here `staging` gets the default `"info"`. Only `dev` and `prod` have their own values.
+
+---
+
+## Interpolation
+
+Reference other variables inside a value with `${}`:
 
 ```vars
-PORT  z.coerce.number()
-  @default = 3000 # this comment is ignored
+DB_URL : z.string().url() = "postgres://${DB_USER}:${DB_PASS}@${DB_HOST}:5432/myapp"
 ```
 
-After `vars hide`, these are encrypted back into `vault.vars`.
+References resolve per-environment: when `DB_URL` is resolved for `prod`, `${DB_HOST}` pulls the `prod` value of `DB_HOST`. References look up the current file first, then `use`-imported files.
 
-## Encrypted values
+Interpolation happens at resolution time — during `vars run`, `vars export`, and `vars check`. `vars show` decrypts encrypted literals in-place but does not resolve interpolation: the template `${DB_PASS}` remains as-is in the unlocked file.
 
-In `vault.vars`, values are stored as encrypted blobs:
+Escape a literal `${` with a backslash: `\${`.
 
-```
-enc:v1:aes256gcm:<iv>:<ciphertext>:<tag>
-```
-
-Always six colon-separated segments. All three data parts are base64-encoded.
-
-| Part | What it is |
-|------|-----------|
-| `enc` | Literal prefix |
-| `v1` | Format version |
-| `aes256gcm` | AES-256-GCM |
-| `<iv>` | 12-byte initialization vector |
-| `<ciphertext>` | The encrypted value |
-| `<tag>` | 16-byte auth tag |
-
-You never write these by hand. `vars hide` encrypts into `vault.vars`, `vars show` decrypts into `unlocked.vars`.
-
-The auth tag catches tampering — decryption fails loudly rather than giving you corrupted data.
-
-## Comments
-
-Start a line with `#` to comment it out. For inline comments on unquoted values, use ` #` (space then hash).
+Cross-group references use dot notation:
 
 ```vars
-# This whole line is a comment
-
-# In unlocked.vars, inline comments work on plaintext values:
-DATABASE_URL  z.string().url()
-  @dev = postgres://localhost/myapp  # dev DB, no auth needed
+DB_URL = "postgres://${database.HOST}:${database.PORT}/myapp"
 ```
 
-Inside a quoted string, `#` is part of the value and won't be stripped.
+---
+
+## Multi-line values
+
+Triple-quoted strings for certificates, private keys, and other multi-line content:
+
+```vars
+TLS_CERT : z.string() {
+  prod = """
+    -----BEGIN CERTIFICATE-----
+    MIIBxTCCAWug...
+    -----END CERTIFICATE-----
+  """
+}
+```
+
+Leading whitespace is stripped using the column position of the closing `"""` as the baseline — the same convention as Kotlin. Each line has that many leading characters removed.
+
+Interpolation works inside triple-quoted strings. Use `r"""..."""` to suppress it:
+
+```vars
+RAW_TEMPLATE : z.string() = r"""
+  Hello ${name}, welcome!
+"""
+```
+
+---
+
+## Groups
+
+Groups organize related variables and prefix their generated names:
+
+```vars
+group stripe {
+  SECRET_KEY : z.string() {
+    dev  = "sk_example_placeholder"
+    prod = enc:v2:aes256gcm-det:...
+  }
+
+  public PUBLISHABLE_KEY : z.string() {
+    dev  = "pk_example_placeholder"
+    prod = "pk_live_real"
+  }
+}
+
+group database {
+  HOST : z.string() = "localhost"
+  PORT : z.number() = 5432
+}
+```
+
+Groups are purely organizational. They produce:
+
+- Flat `process.env` names: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `DATABASE_HOST`, `DATABASE_PORT`
+- Nested TypeScript interfaces: `vars.stripe.SECRET_KEY`, `vars.database.HOST`
+
+Inside a group, reference variables from another group using dot notation: `${stripe.SECRET_KEY}`. Groups cannot be nested — flat groups only. The `public` keyword is per-variable, never on the group itself.
+
+---
 
 ## Metadata
 
-Metadata lives inside a variable block, indented like env values, but with no `=` sign.
+Annotate a variable with a parenthesized block after its value:
 
 ```vars
-API_KEY  z.string().min(32)
-  @description "Third-party service API key"
-  @owner       "backend-team"
-  @expires     "2026-06-01"
-  @dev         = ak_test_1234567890abcdef1234567890abcdef
+JWT_SECRET : z.string().min(64) {
+  dev  = "dev-placeholder"
+  prod = enc:v2:aes256gcm-det:...
+} (
+  description = "Signs auth tokens"
+  owner       = "auth-team"
+  expires     = 2026-09-01
+  deprecated  = "Migrating to asymmetric keys by Q3"
+  tags        = [auth, critical]
+)
 ```
 
-### `@description`
-
-What the variable is for.
+Or inline for short annotations:
 
 ```vars
-REDIS_URL  z.string().url()
-  @description "Redis connection for session storage"
+STRIPE_KEY : z.string() {
+  dev  = "sk_example_placeholder"
+  prod = enc:v2:aes256gcm-det:...
+} (owner = "payments-team", expires = 2026-12-31)
 ```
 
-### `@owner`
+| Key | Value | Effect |
+|---|---|---|
+| `description` | string | What the variable is for |
+| `owner` | string | Team or person responsible |
+| `expires` | date (`YYYY-MM-DD`) | `vars check` warns when approaching |
+| `deprecated` | string | Warning message shown on use |
+| `tags` | `[tag, tag]` | Organizational labels |
+| `see` | string | Link or reference |
 
-Who's responsible for it. Pays off in big repos where many teams share one file.
+Unknown keys produce a parse warning and are ignored (forward-compatible).
+
+---
+
+## Arrays and objects
+
+Variables can hold structured values using JSON-like syntax:
 
 ```vars
-PAYMENT_WEBHOOK_SECRET  z.string()
-  @owner "payments-team"
+public CORS_ORIGINS : z.array(z.string().url()) {
+  dev  = ["http://localhost:3000"]
+  prod = ["https://app.example.com", "https://admin.example.com"]
+}
+
+FEATURE_FLAGS : z.object({
+  new_checkout:  z.boolean(),
+  max_upload_mb: z.number()
+}) = {
+  new_checkout:  true,
+  max_upload_mb: 50
+}
 ```
 
-### `@expires`
+Structured values are serialized to environment variables as JSON strings. The generated TypeScript parses them back to the correct type.
 
-Rotation date. vars warns you when it's coming up.
+---
+
+## Conditionals
+
+`when` blocks switch a value based on a `param`:
 
 ```vars
-OAUTH_CLIENT_SECRET  z.string()
-  @expires "2026-03-01"
+public GDPR_MODE : z.boolean() {
+  when region = eu => true
+  else => false
+}
 ```
 
-### `@deprecated`
-
-Still works, but raises a warning with your message.
+Combined with environment blocks:
 
 ```vars
-OLD_API_URL  z.string().url()
-  @deprecated "Use NEW_API_URL instead, migrating by Q2"
-  @default    = https://old-api.example.com
+DATABASE_URL : z.string().url() {
+  dev = "postgres://localhost/myapp"
+  when region = us { prod = "postgres://us-prod.db/myapp" }
+  when region = eu { prod = "postgres://eu-prod.db/myapp" }
+}
 ```
 
-## `@refine`
+Pass params at runtime:
 
-Validates relationships between variables. Two lines: an expression, then an indented error message.
+```bash
+vars run --env prod --param region=eu -- node server.js
+vars export --env prod --param region=eu --format json
+```
+
+If no `--param` is given, the default from the `param` declaration is used.
+
+Rules:
+- Each `when` matches exactly one param value. Compound expressions are not supported.
+- For multi-dimensional matrices (region × tier), use file composition with `use`.
+- Params affect values, not types. `vars gen` does not accept `--param`.
+
+---
+
+## Check blocks
+
+`check` validates relationships between variables using a restricted expression language — not JavaScript:
 
 ```vars
-@refine env.DATABASE_URL.includes("localhost") || env.NODE_ENV !== "production"
-  "Production must not use localhost DATABASE_URL"
+check "TLS required in prod" {
+  env == "prod" => defined(TLS_CERT)
+}
+
+check "Test Stripe keys in dev" {
+  env == "dev" => starts_with(stripe.SECRET_KEY, "sk_example_")
+}
+
+check "Pool bounds" {
+  database.POOL_SIZE >= 5 and database.POOL_SIZE <= 200
+}
 ```
 
-The expression runs after all values are loaded. Reference any variable with `env.VARIABLE_NAME`.
+Checks run during `vars check` and `vars run` (before spawning). They do not run during `vars gen`.
+
+### Operators
+
+| Operator | Meaning |
+|---|---|
+| `==`, `!=` | Equality, inequality |
+| `>`, `<`, `>=`, `<=` | Numeric comparison |
+| `and`, `or`, `not` | Boolean logic |
+| `=>` | Implication: "if left is true, right must also be true" |
+
+### Built-in functions
+
+| Function | Description |
+|---|---|
+| `defined(var)` | True if the variable has a value for the current env |
+| `matches(var, "regex")` | Regex test |
+| `one_of(var, ["a", "b"])` | Enum membership |
+| `length(var)` | String or array length |
+| `starts_with(var, "prefix")` | String prefix check |
+
+### Special variables
+
+- `env` — current environment name (`"dev"`, `"prod"`, etc.)
+- Declared param names — e.g., `region` if `param region` is declared.
+
+---
+
+## Encrypted values
+
+In the locked (committed) state, secret values are encrypted blobs:
+
+```
+enc:v2:aes256gcm-det:<iv>:<ciphertext>:<tag>
+```
+
+Five colon-separated segments after `enc`. All three data parts are base64-encoded.
+
+| Segment | What it is |
+|---|---|
+| `enc` | Literal marker |
+| `v2` | Format version |
+| `aes256gcm-det` | AES-256-GCM with deterministic (HMAC-derived) IV |
+| `<iv>` | 12-byte IV derived from `HMAC-SHA256(key, "VAR_NAME@env:" + plaintext)` |
+| `<ciphertext>` | The encrypted value |
+| `<tag>` | 16-byte authentication tag |
+
+You never write these by hand. `vars hide` encrypts plaintext values into the file; `vars show` decrypts them back.
+
+The auth tag catches tampering — decryption fails loudly rather than silently producing corrupted data.
+
+The deterministic IV means the same value for the same variable in the same environment always produces the same ciphertext. Unchanged values produce zero diff on re-encryption. See [Encryption & Security](/docs/encryption-security) for the full model.
+
+---
+
+## Comments
+
+Start a line with `#` for a line comment. Inline comments work on unquoted values with a space before `#`:
 
 ```vars
-@refine env.MAX_CONNECTIONS >= env.MIN_CONNECTIONS
-  "MAX_CONNECTIONS must be >= MIN_CONNECTIONS"
+# This whole line is a comment
+public APP_NAME = "my-app"  # inline comment
+
+DATABASE_URL : z.string().url()  # schema comment too
 ```
 
-One `@refine` per constraint. Stack as many as you need.
+Inside a quoted string, `#` is part of the value and is not stripped.
 
-## `@extends`
-
-Pulls in variables from a base file. Your values win on conflicts.
-
-```vars
-@extends ./base.vars
-```
-
-Paths are relative to the current file. Only one `@extends` per file.
-
-```vars
-# base.vars (shown unlocked for clarity)
-LOG_LEVEL  z.enum(["debug", "info", "warn", "error"])
-  @default = info
-
-# app.vars
-@extends ./base.vars
-
-LOG_LEVEL  z.enum(["debug", "info", "warn", "error"])
-  @dev = debug   # overrides the base @default for dev
-```
+---
 
 ## Quick reference
 
 | Syntax | Effect |
-|--------|--------|
-| `NAME  z.schema()` | Variable declaration |
-| `  @env = value` | Value for a specific environment |
-| `  @default = value` | Fallback value |
-| `  @description "..."` | Description annotation |
-| `  @owner "..."` | Owner annotation |
-| `  @expires "..."` | Expiry date |
-| `  @deprecated "..."` | Deprecation warning |
-| `@refine expr` + indented message | Cross-variable constraint |
-| `@extends ./path` | Inherit from another file |
-| `# comment` | Line comment |
-| `enc:v1:aes256gcm:iv:ct:tag` | Encrypted value (in `vault.vars`) |
+|---|---|
+| `# @vars-state locked` | State header (machine-readable) |
+| `env(dev, staging, prod)` | Declare valid environment names |
+| `param name : enum(a, b) = a` | Declare a parameterized dimension |
+| `use "path"` | Import variables from another file |
+| `use "path" { pick: [A, B] }` | Import only listed variables |
+| `use "path" { omit: [C] }` | Import all except listed variables |
+| `public NAME = value` | Non-secret variable (never encrypted) |
+| `NAME : z.schema() = default` | Variable with schema and default |
+| `NAME { dev = "a"; prod = "b" }` | Per-environment values |
+| `NAME { when p = v => x; else => y }` | Param-conditional value |
+| `group name { ... }` | Organize variables, prefix generated names |
+| `(description = "...", owner = "...")` | Metadata annotation |
+| `"postgres://${DB_HOST}/db"` | Interpolation |
+| `""" ... """` | Multi-line triple-quoted string |
+| `["a", "b"]` | Array value |
+| `{ key: value }` | Object value |
+| `check "desc" { predicate }` | Validation rule |
+| `enc:v2:aes256gcm-det:iv:ct:tag` | Encrypted value (in locked file) |
+| `# comment` | Line or inline comment |

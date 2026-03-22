@@ -7,65 +7,199 @@ Your `.vars` file is safe to commit. That's the whole point. Here's how it works
 
 ---
 
+## SOPS-style inline encryption
+
+vars uses a single-file model: there is no separate vault file and no unlocked copy to manage. Secret values are encrypted **inline** — the file structure (variable names, schemas, metadata, comments, `use` directives, `check` blocks) is always plaintext, and only the values are encrypted.
+
+**Committed (locked) state:**
+
+```vars
+# @vars-state locked
+env(dev, staging, prod)
+
+public APP_NAME = "my-app"
+STRIPE_KEY : z.string() {
+  dev  = "sk_example_placeholder"
+  prod = enc:v2:aes256gcm-det:abc...:def...:ghi...
+}
+```
+
+**Working (unlocked) state after `vars show`:**
+
+```vars
+# @vars-state unlocked
+env(dev, staging, prod)
+
+public APP_NAME = "my-app"
+STRIPE_KEY : z.string() {
+  dev  = "sk_example_placeholder"
+  prod = "sk_live_aBcDeFgHiJkLmNoPqRsTuVwX"
+}
+```
+
+`vars show` decrypts secret values in-place. `vars hide` encrypts them back. The file is the same file — there is no sync step.
+
+---
+
 ## How encryption works
 
-Every value gets encrypted independently with AES-256-GCM.
+Every secret value is encrypted independently with AES-256-GCM.
 
-AES-256-GCM: 256-bit key (very hard to brute-force), GCM mode (Galois/Counter Mode — it adds a tamper-proof auth tag so corrupted or modified data gets rejected, not silently swallowed).
+AES-256-GCM: 256-bit key (very hard to brute-force), GCM mode (Galois/Counter Mode — it adds a tamper-proof authentication tag so corrupted or modified data is rejected, not silently accepted).
 
 Each encrypted value looks like:
 
 ```text
-enc:v1:aes256gcm:<iv>:<ciphertext>:<tag>
+enc:v2:aes256gcm-det:<iv>:<ciphertext>:<tag>
 ```
 
-Six colon-separated segments. All three data parts are base64-encoded.
-
 | Segment | What it is |
-|---------|------------|
+|---|---|
 | `enc` | Literal marker |
-| `v1` | Format version |
-| `aes256gcm` | Algorithm |
-| `<iv>` | 12-byte random IV (initialization vector) |
+| `v2` | Format version |
+| `aes256gcm-det` | AES-256-GCM with HMAC-derived deterministic IV |
+| `<iv>` | 12-byte initialization vector |
 | `<ciphertext>` | The encrypted value |
 | `<tag>` | 16-byte authentication tag |
 
-A fresh random 12-byte IV is generated for every value, every time you run `vars hide`. Two identical plaintext values will look completely different in the file. Attackers can't learn anything by comparing ciphertexts.
+The auth tag catches tampering. If anyone modifies the ciphertext — even one byte — decryption throws an error. You find out immediately, not after your app boots with corrupted data.
 
-The auth tag catches tampering. If anyone modifies the ciphertext — even one byte — decryption throws an error. You find out immediately, not after your app boots with garbage data.
+---
+
+## Deterministic IVs — zero diff on unchanged values
+
+v2 uses **HMAC-derived deterministic IVs** instead of random IVs:
+
+```
+IV = HMAC-SHA256(key, "VAR_NAME@env:" + plaintext)[0:12]
+```
+
+The same key + variable name + environment + plaintext always produces the same IV, and therefore the same ciphertext. This means:
+
+- **Zero diff on re-encryption** — if a value hasn't changed, running `vars hide` again produces identical ciphertext. Your git diff shows only the values that actually changed.
+- **`git blame` is preserved** — unchanged lines keep their original commit attribution.
+- **Merge conflicts only happen on real conflicts** — two branches that both encrypt the same unchanged value produce the same bytes, so git's merge has nothing to conflict on.
+
+The nonce reuse is safe because the nonce is derived from the plaintext itself: identical nonces always correspond to identical plaintexts. It is standard AES-256-GCM — not AES-GCM-SIV — with HMAC-derived nonces instead of random nonces. The `-det` suffix in the algorithm name indicates deterministic nonce derivation.
 
 ---
 
 ## The PIN/key model
 
-When you run `vars init`, two things get created:
+When you run `vars init`, two things are created:
 
-1. A master key — 32 bytes of random data. This is what actually encrypts your values.
-2. An encrypted copy of that master key — stored in `.vars/key` (gitignored), locked behind your PIN.
+1. A **master key** — 32 bytes of random data. This is what actually encrypts your values.
+2. An **encrypted copy of that master key** — stored in `.vars/key` (gitignored), locked behind your PIN.
 
-The PIN is never stored anywhere. Instead, it goes through Argon2id — a password-hashing algorithm designed to be slow and memory-intensive, so brute-forcing it is expensive — to derive a wrapping key. That wrapping key decrypts the master key, the master key decrypts your values, and then the wrapping key is discarded.
+The PIN is never stored anywhere. It goes through **Argon2id** — a memory-hard, brute-force-resistant KDF — to derive a wrapping key. That wrapping key decrypts the master key, the master key decrypts your values, and then the wrapping key is discarded.
 
 The master key never touches disk in plaintext. Knowing the PIN is the only way to get it.
 
-The PIN is prompted at the terminal every time vars needs to decrypt (`show`, `hide`, `run`). Not cached. Not stored in an env var. Not passed as a flag. You type it, it unlocks, done.
+The PIN is prompted at the terminal every time vars needs to decrypt (`vars show`, `vars hide`, `vars run`). Not cached. Not stored in an env var. Not passed as a flag. You type it, it unlocks, done.
 
-This two-layer design means changing your PIN only re-encrypts the 32-byte master key — not every secret in the vault.
+This two-layer design means changing your PIN only re-encrypts the 32-byte master key — not every secret in the file.
 
 ---
 
-## Why AI agents can't access your secrets
+## `VARS_KEY` for CI
+
+CI environments cannot enter a PIN interactively. Instead, set the `VARS_KEY` environment variable to the base64-encoded master key:
+
+```bash
+# Export your master key (run this locally, put the output in your CI secrets)
+vars key export
+
+# In CI (GitHub Actions, etc.)
+VARS_KEY=<base64-master-key> vars run --env prod -- node server.js
+```
+
+`VARS_KEY` bypasses the PIN prompt. Treat it like a root credential — store it in your CI secrets manager, rotate it with `vars key rotate`, and never commit it.
+
+---
+
+## `@vars-state` header
+
+The first line of every `.vars` file is a machine-readable state header:
+
+- `# @vars-state locked` — committed state, secrets are encrypted blobs.
+- `# @vars-state unlocked` — working state, secrets are plaintext.
+
+This header is used by:
+
+- **The pre-commit hook** — scans staged `.vars` files for `# @vars-state unlocked` and blocks the commit with: _"run `vars hide` first"_. The hook does not auto-encrypt. A human must type their PIN to lock the file.
+- **`vars ls`** — shows lock state for all `.vars` files in the repo.
+
+---
+
+## `vars show` / `vars hide` workflow
+
+```bash
+# Decrypt in-place to edit secrets
+vars show
+
+# ... edit the file ...
+
+# Encrypt back before committing
+vars hide
+
+git add config.vars
+git commit -m "update prod API key"
+```
+
+`vars show` decrypts only the target file on disk. `use`-imported dependency files remain locked — they are resolved in-memory during commands like `vars run` and `vars gen`.
+
+`vars hide` encrypts all unlocked files in the repo (it scans from the git root for any file with `# @vars-state unlocked`).
+
+`vars toggle` switches based on the current state — locked becomes unlocked, unlocked becomes locked.
+
+---
+
+## `public` keyword skips encryption
+
+Variables declared with `public` are never encrypted, regardless of lock state:
+
+```vars
+public APP_NAME = "my-app"
+public PORT : z.number().int() = 3000
+```
+
+Public variables appear as-is in the committed file. They generate plain TypeScript types (`string`, `number`, `boolean`) instead of `Redacted<string>`. Use `public` for config that is safe to expose: port numbers, environment names, public API keys, feature flag values.
+
+The `public` keyword is per-variable. It cannot be applied to a group as a whole.
+
+---
+
+## Pre-commit hook
+
+`vars init` installs a pre-commit hook that blocks commits containing unlocked `.vars` files:
+
+```
+error: .vars file is unlocked — run `vars hide` first
+```
+
+The hook is content-based: it checks for `# @vars-state unlocked` in the staged content. It does not auto-encrypt — encryption requires the PIN, which requires a human. This is intentional: the PIN is the gatekeeper between AI tools and your secrets.
+
+If you need to reinstall the hook manually:
+
+```bash
+vars doctor  # diagnoses missing hook and other setup issues
+```
+
+---
+
+## AI safety: PIN as human gatekeeper
 
 The PIN prompt goes to a TTY — a real interactive terminal. Automated tools don't have one.
 
-If an AI agent, CI script, or background process tries to run a vars command that needs decryption, it hits the PIN prompt and hangs. No flag to skip it. No env var to bypass it. The prompt is the lock.
+If an AI agent, CI script, or background process tries to run a vars command that needs decryption, it hits the PIN prompt and hangs. There is no flag to skip it and no env var to bypass it (other than `VARS_KEY`, which is explicitly set by a human for CI). The prompt is the lock.
 
-File-system access alone isn't enough. Anything with access to your `.vars` file — an AI with tool use, a misconfigured backup, etc. — just sees encrypted blobs.
+File-system access alone is not enough. An AI with tool use, a misconfigured backup, a leaked dotfiles repo — anything that gets your `.vars` file — just sees encrypted blobs and a structure that tells it the names and schemas of your variables, but not their values.
 
 ---
 
 ## The `Redacted<T>` type
 
-When vars decrypts values and hands them to your code, sensitive ones come wrapped in `Redacted<T>`.
+When vars decrypts values and hands them to your TypeScript code, secret string values come wrapped in `Redacted<T>`.
 
 You can't accidentally log a secret:
 
@@ -87,20 +221,25 @@ const actualKey = key.unwrap(); // "sk_live_abc123"
 
 `unwrap()` shows up in code review as the exact spot where a secret is deliberately exposed — easy to find, easy to audit.
 
+Numbers and booleans are not wrapped in `Redacted` — they cannot leak meaningful information through `toString()` or `console.log`, and wrapping them would break arithmetic and comparison operators. The encryption-at-rest protection still applies to number/boolean secrets in the `.vars` file.
+
+The `Redacted` class is inlined in the generated `.ts` file. Your application has no runtime dependency on any vars package.
+
 ---
 
 ## Threat model
 
 ### What vars protects against
 
-- **Accidental commits** — the `.vars` file is only encrypted blobs. You can commit it.
+- **Accidental commits** — the `.vars` file only contains encrypted blobs for secrets. You can commit it safely.
 - **Log leaks** — `Redacted<T>` keeps secrets out of structured logs, error reporters, and `console.log` dumps.
-- **Unauthorized file access** — if someone grabs your `.vars` file (leaked backup, overly-permissive S3 bucket, etc.), they get ciphertext. Useless without the PIN.
-- **Automated tools** — AI agents and scripts with file-system access can read the file, but can't decrypt it. The PIN prompt stops them.
+- **Unauthorized file access** — if someone gets your `.vars` file (leaked backup, overly-permissive S3 bucket), they get ciphertext. Useless without the PIN or `VARS_KEY`.
+- **Automated tools and AI agents** — tools with file-system access can read the file, but can't decrypt it. The PIN prompt blocks them.
 
 ### What vars doesn't protect against
 
 - **A compromised machine where the attacker also knows the PIN.** If they can sit at your keyboard and type your PIN, they can decrypt everything. vars doesn't solve physical security.
-- **Memory on a live system.** Once values are decrypted in memory for your running app, an attacker with OS-level access can read them. That's true of every secret manager, not just vars.
+- **Memory on a live system.** Once values are decrypted in memory for your running app, an attacker with OS-level access can read them. This is true of every secret manager, not just vars.
 - **PIN brute-forcing with offline access.** If an attacker copies your `.vars/key` file, they can attempt to guess the PIN offline. Argon2id makes it slow and expensive, but a weak PIN is still a weak PIN.
 - **Supply chain attacks.** vars can't help if a dependency is exfiltrating `process.env` values after injection. Audit your dependencies.
+- **`VARS_KEY` exposure.** If your CI secrets are compromised and `VARS_KEY` leaks, rotate immediately with `vars key rotate`.
