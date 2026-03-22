@@ -17,7 +17,7 @@ Your team shares secrets over Slack. Your `.env.production` lives on three lapto
 
 Here's what you actually work with:
 
-```
+```hcl
 # config.vars — what you edit
 
 env(dev, staging, prod)
@@ -38,7 +38,7 @@ API_KEY : z.string().min(32) {
 
 When you commit, secret values are encrypted. Public values stay readable:
 
-```
+```hcl
 # config.vars — what git sees
 
 DATABASE_URL : z.string().url() {
