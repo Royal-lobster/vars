@@ -32,9 +32,12 @@ z.enum(["development", "staging", "production"])`,
     image: '/images/fireflies.webp',
     span: 'narrow',
     lang: 'vars',
-    code: `PORT  z.coerce.number()
-  @default = 3000
-  @prod    = 8080`,
+    code: `public PORT : z.number().min(1024) = 3000
+
+DATABASE_URL : z.string().url() {
+  dev  = "postgres://localhost/myapp"
+  prod = "postgres://prod.db.internal/myapp"
+}`,
   },
   {
     label: 'CLI',
@@ -73,15 +76,15 @@ $ vars gen      # typed exports`,
     image: '/images/fireflies.webp',
     span: 'wide',
     lang: 'bash',
-    code: `$ vars push --env prod --vercel   # vault → Vercel
-$ vars pull --netlify             # Netlify → vault
-$ vars template --env prod > .env # generate .env`,
+    code: `$ vars push --env prod --vercel   # config → Vercel
+$ vars pull --netlify             # Netlify → config
+$ vars export --env prod > .env  # generate .env`,
   },
 ];
 
 const REFINE_CODE = `# Cross-variable constraint
-@refine env.LOG_LEVEL !== "debug" || env.DEBUG === true
-  "DEBUG must be true when LOG_LEVEL is debug"`;
+refine(env.LOG_LEVEL !== "debug" || env.DEBUG === true,
+  "DEBUG must be true when LOG_LEVEL is debug")`;
 
 function spanClass(span: BentoItem['span']) {
   switch (span) {

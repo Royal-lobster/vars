@@ -1,43 +1,115 @@
 ---
 title: Platform Integration
-description: Generate .env files from your vault and push/pull vars to deployment platforms.
+description: Export resolved values, rotate your key, and push/pull vars to deployment platforms.
 ---
 
-`template` works. `push` and `pull` are coming.
+`export` works. `push` and `pull` are coming.
 
 ---
 
-## template
+## export
 
 ```bash
-npx vars template --env prod > .env.production
+npx vars export --env <env> --format <format>
 ```
 
-Decrypts your vault for a given environment and writes a valid `.env` to stdout. Pipe it wherever.
+Decrypts `config.vars` for a given environment and writes the resolved values in the requested format to stdout. Pipe it wherever.
 
-stdout gets the `.env`. stderr gets status messages. Pipes work fine.
+stdout gets the data. stderr gets status messages. Pipes work fine.
 
-Values with spaces, `#`, or `=` get quoted automatically. Encrypted values are skipped in non-interactive mode (CI, pipes) so you don't get a passphrase prompt halfway through a pipeline.
+**Formats**
 
-**Flags**
-
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--env <name>` | | Environment to render (default: `dev`) |
-| `--file <path>` | `-f` | Use a different vault file |
+| Format | Output |
+|--------|--------|
+| `dotenv` | Standard `.env` key=value pairs |
+| `json` | JSON object of key/value pairs |
+| `k8s-secret` | Kubernetes `Secret` manifest (base64-encoded values) |
 
 **Examples**
 
 ```bash
 # Write a .env file for prod
-npx vars template --env prod > .env.production
+npx vars export --env prod --format dotenv > .env.production
 
 # Pipe straight into your deploy script
-npx vars template --env staging | some-deploy-tool --env-file /dev/stdin
+npx vars export --env staging --format dotenv | some-deploy-tool --env-file /dev/stdin
 
-# Use a non-default vault
-npx vars template --env prod -f .vars/backend.vars > backend.env
+# Generate a Kubernetes secret manifest
+npx vars export --env prod --format k8s-secret > secret.yaml
+
+# Export as JSON for custom tooling
+npx vars export --env prod --format json | jq '.DATABASE_URL'
 ```
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--env <name>` | | Environment to export (required) |
+| `--format <fmt>` | | Output format: `dotenv`, `json`, `k8s-secret` (required) |
+| `--file <path>` | `-f` | Use a different vars file |
+
+---
+
+## key rotate
+
+```bash
+npx vars key rotate
+```
+
+Generates a new encryption key, re-encrypts all values in every `*.vars` file, and replaces `.vars/key`. The old key is overwritten.
+
+Before rotating, export your current key as a backup:
+
+```bash
+npx vars key export > vars-key.bak
+npx vars key rotate
+```
+
+Share the new key with teammates using `vars key export`.
+
+---
+
+## CI/CD setup
+
+In CI, there is no `.vars/key` file on disk. Set the `VARS_KEY` environment variable instead — vars reads it automatically.
+
+```bash
+# In your CI environment (GitHub Actions, etc.)
+VARS_KEY=<paste output of `vars key export`>
+```
+
+Then run commands normally:
+
+```bash
+npx vars run --env prod -- node scripts/deploy.js
+npx vars export --env prod --format dotenv > .env.production
+```
+
+`vars gen` and `vars check` on locked files do not require `VARS_KEY`.
+
+### GitHub Actions example
+
+```yaml
+- name: Deploy
+  env:
+    VARS_KEY: ${{ secrets.VARS_KEY }}
+  run: npx vars run --env prod -- npm run deploy
+```
+
+---
+
+## Platform targets in `vars gen`
+
+When generating types for edge or serverless runtimes, use `--platform` to get the right accessor pattern:
+
+```bash
+npx vars gen config.vars --platform cloudflare   # Cloudflare Workers
+npx vars gen config.vars --platform deno         # Deno Deploy
+npx vars gen config.vars --platform static       # Static/CDN (import.meta.env)
+```
+
+See [Running Apps](/docs/cli/running-apps) for full `gen` documentation.
 
 ---
 
@@ -47,20 +119,7 @@ npx vars template --env prod -f .vars/backend.vars > backend.env
 npx vars push --env prod --vercel
 ```
 
-Decrypts your vault and pushes the values to your deployment platform. Prompts for confirmation before writing anything.
-
-The command exists but none of the platform adapters are wired up yet. It won't do anything useful right now.
-
-**Flags**
-
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--env <name>` | | Environment to push (required) |
-| `--file <path>` | `-f` | Use a different vault file |
-| `--vercel` | | Push to Vercel |
-| `--netlify` | | Push to Netlify |
-| `--railway` | | Push to Railway |
-| `--fly` | | Push to Fly.io |
+Decrypts your vault and pushes the values to your deployment platform. The scaffolding exists but platform adapters are not wired up yet.
 
 ---
 
@@ -70,18 +129,7 @@ The command exists but none of the platform adapters are wired up yet. It won't 
 npx vars pull --vercel
 ```
 
-Pulls environment variables from your platform, encrypts them, and merges them into your `.vars` vault. Existing values aren't overwritten by default.
-
-Same deal — scaffolded, not implemented.
-
-**Flags**
-
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--env <name>` | | Environment to pull (default: `prod`) |
-| `--file <path>` | `-f` | Use a different vault file |
-| `--vercel` | | Pull from Vercel |
-| `--netlify` | | Pull from Netlify |
+Pulls environment variables from your platform, encrypts them, and merges them into `config.vars`. Existing values aren't overwritten by default. Scaffolded, not implemented.
 
 ---
 
@@ -89,7 +137,10 @@ Same deal — scaffolded, not implemented.
 
 | Command | Status |
 |---------|--------|
-| `template` | Working |
+| `export --format dotenv` | Working |
+| `export --format json` | Working |
+| `export --format k8s-secret` | Working |
+| `key rotate` | Working |
 | `push --vercel` | Coming soon |
 | `push --netlify` | Coming soon |
 | `push --railway` | Coming soon |
@@ -97,4 +148,4 @@ Same deal — scaffolded, not implemented.
 | `pull --vercel` | Coming soon |
 | `pull --netlify` | Coming soon |
 
-For CI, `template` covers most cases. Generate the `.env`, hand it to your deploy tool.
+For CI, `export` covers most cases. Generate the `.env`, hand it to your deploy tool.
