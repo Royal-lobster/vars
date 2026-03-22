@@ -66,4 +66,44 @@ SECRET : z.string() {
     const second = readFileSync(f, "utf8");
     expect(first).toBe(second);
   });
+
+  it("encrypts grouped variables correctly", async () => {
+    const content = `# @vars-state unlocked
+env(dev)
+
+group stripe {
+  SECRET_KEY : z.string() {
+    dev = "sk_secret_value"
+  }
+  public PUB_KEY : z.string() {
+    dev = "pk_public_value"
+  }
+}`;
+    const f = join(dir, "grouped.vars");
+    writeFileSync(f, content);
+    hideFile(f, key);
+    const result = readFileSync(f, "utf8");
+    expect(result).toContain("enc:v2:aes256gcm-det:"); // secret encrypted
+    expect(result).toContain('"pk_public_value"'); // public unchanged
+    expect(result).not.toContain("sk_secret_value"); // secret not in plaintext
+  });
+
+  it("handles flat (non-env-block) encrypted values in show", async () => {
+    // First create a file with a flat encrypted value
+    const content = `# @vars-state unlocked
+env(dev)
+
+SECRET = "flat-secret"`;
+    const f = join(dir, "flat.vars");
+    writeFileSync(f, content);
+    hideFile(f, key);
+
+    const encrypted = readFileSync(f, "utf8");
+    expect(encrypted).toContain("enc:v2:"); // encrypted
+    expect(encrypted).not.toContain("flat-secret");
+
+    showFile(f, key);
+    const decrypted = readFileSync(f, "utf8");
+    expect(decrypted).toContain("flat-secret"); // restored
+  });
 });
