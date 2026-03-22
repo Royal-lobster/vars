@@ -166,14 +166,28 @@ function generateParseVars(grouped: GroupedVars): string {
 
   // Top-level vars
   for (const v of grouped.topLevel) {
-    lines.push(`  raw["${v.name}"] = source["${v.flatName}"];`);
+    const inf = inferType(v);
+    if (inf.base === "number") {
+      lines.push(`  raw["${v.name}"] = source["${v.flatName}"] !== undefined ? Number(source["${v.flatName}"]) : undefined;`);
+    } else if (inf.base === "boolean") {
+      lines.push(`  raw["${v.name}"] = source["${v.flatName}"] !== undefined ? (source["${v.flatName}"] === "true" || source["${v.flatName}"] === "1") : undefined;`);
+    } else {
+      lines.push(`  raw["${v.name}"] = source["${v.flatName}"];`);
+    }
   }
 
   // Groups
   for (const [groupName, vars] of grouped.groups) {
     lines.push(`  raw["${groupName}"] = {`);
     for (const v of vars) {
-      lines.push(`    "${v.name}": source["${v.flatName}"],`);
+      const inf = inferType(v);
+      if (inf.base === "number") {
+        lines.push(`    "${v.name}": source["${v.flatName}"] !== undefined ? Number(source["${v.flatName}"]) : undefined,`);
+      } else if (inf.base === "boolean") {
+        lines.push(`    "${v.name}": source["${v.flatName}"] !== undefined ? (source["${v.flatName}"] === "true" || source["${v.flatName}"] === "1") : undefined,`);
+      } else {
+        lines.push(`    "${v.name}": source["${v.flatName}"],`);
+      }
     }
     lines.push(`  };`);
   }
@@ -357,17 +371,16 @@ export function generateTypeScript(resolved: ResolvedVars, options?: CodegenOpti
     // Platform-specific export
     if (platform === "node") {
       parts.push("export const vars: Vars = parseVars(process.env);");
+      parts.push("");
+      parts.push(generateClientVarsExport(grouped));
     } else if (platform === "cloudflare") {
       parts.push("export function getVars(env: Record<string, string>): Vars {");
       parts.push("  return parseVars(env);");
       parts.push("}");
+      // clientVars doesn't make sense for Cloudflare (no module-level vars object)
     } else if (platform === "deno") {
       parts.push("export const vars: Vars = parseVars(Deno.env.toObject());");
-    }
-
-    parts.push("");
-    // Skip clientVars for cloudflare platform (no module-level vars object)
-    if (platform !== "cloudflare") {
+      parts.push("");
       parts.push(generateClientVarsExport(grouped));
     }
   }

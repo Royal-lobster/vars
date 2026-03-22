@@ -668,6 +668,8 @@ function parseMetadata(cursor: TokenCursor): Metadata {
     }
 
     cursor.skipTrivia();
+    cursor.match(TokenType.COMMA);
+    cursor.skipTrivia();
   }
 
   cursor.expect(TokenType.RPAREN);

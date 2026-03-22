@@ -7,7 +7,7 @@ import pc from "picocolors";
 export default defineCommand({
   meta: { name: "coverage", description: "Show environment value coverage" },
   args: {
-    file: { type: "positional", required: false },
+    file: { type: "string", alias: "f", description: ".vars file to check coverage for" },
   },
   async run({ args }) {
     const file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
