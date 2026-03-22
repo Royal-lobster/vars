@@ -1,7 +1,27 @@
-/**
- * Matches a variable declaration line in a .vars file.
- * Captures: (1) the variable name, (2) the Zod schema expression.
- *
- * Example: `DATABASE_URL  z.string().url()` -> ["DATABASE_URL", "z.string().url()"]
- */
-export const VAR_DECL_RE = /^([A-Z_][A-Z0-9_]*)\s{2,}(z\..+)$/;
+import { parse } from "@vars/core";
+import type { ParseResult, VarsFile, VariableDecl } from "@vars/core";
+
+export function parseDocument(text: string, uri?: string): ParseResult {
+  return parse(text, uri);
+}
+
+export function findVariableAtLine(ast: VarsFile, line: number): VariableDecl | null {
+  for (const decl of ast.declarations) {
+    if (decl.kind === "variable" && decl.line === line) return decl;
+    if (decl.kind === "group") {
+      for (const v of decl.declarations) {
+        if (v.line === line) return v;
+      }
+    }
+  }
+  return null;
+}
+
+export function getAllVariables(ast: VarsFile): VariableDecl[] {
+  const vars: VariableDecl[] = [];
+  for (const decl of ast.declarations) {
+    if (decl.kind === "variable") vars.push(decl);
+    if (decl.kind === "group") vars.push(...decl.declarations);
+  }
+  return vars;
+}

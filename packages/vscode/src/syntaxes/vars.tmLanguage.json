@@ -3,97 +3,358 @@
 	"name": "vars",
 	"scopeName": "source.vars",
 	"patterns": [
+		{ "include": "#state-header" },
 		{ "include": "#comment" },
-		{ "include": "#extends" },
-		{ "include": "#refine" },
-		{ "include": "#refine-message" },
-		{ "include": "#variable" },
-		{ "include": "#env-value" },
-		{ "include": "#directive" }
+		{ "include": "#env-declaration" },
+		{ "include": "#param-declaration" },
+		{ "include": "#use-declaration" },
+		{ "include": "#check-block" },
+		{ "include": "#group-block" },
+		{ "include": "#variable-declaration" },
+		{ "include": "#env-block-entry" },
+		{ "include": "#metadata-block-entry" },
+		{ "include": "#conditional" }
 	],
 	"repository": {
+		"state-header": {
+			"match": "^(#)\\s+(@vars-state)\\s+(locked|unlocked)\\s*$",
+			"captures": {
+				"1": { "name": "comment.line.number-sign.vars" },
+				"2": { "name": "comment.line.state.vars" },
+				"3": { "name": "comment.line.state.vars" }
+			}
+		},
 		"comment": {
 			"match": "^\\s*#.*$",
 			"name": "comment.line.number-sign.vars"
 		},
-		"extends": {
-			"match": "^(@extends)\\s+(.+)$",
-			"captures": {
-				"1": { "name": "keyword.control.import.vars" },
-				"2": { "name": "string.unquoted.path.vars" }
-			}
-		},
-		"refine": {
-			"begin": "^(@refine)\\s+",
-			"end": "$",
+		"env-declaration": {
+			"begin": "\\b(env)\\s*(\\()",
+			"end": "\\)",
 			"beginCaptures": {
-				"1": { "name": "keyword.control.flow.vars" }
+				"1": { "name": "keyword.control.vars" },
+				"2": { "name": "punctuation.brackets.round.vars" }
+			},
+			"endCaptures": {
+				"0": { "name": "punctuation.brackets.round.vars" }
 			},
 			"patterns": [
 				{
-					"match": "===|!==|==|!=|&&|\\|\\||>=|<=|>|<",
-					"name": "keyword.operator.comparison.vars"
+					"match": "[a-z][a-zA-Z0-9_]*",
+					"name": "variable.other.env.vars"
 				},
 				{
-					"match": "=>",
-					"name": "storage.type.function.arrow.vars"
-				},
-				{
-					"match": "\\benv\\.([A-Z_][A-Z0-9_]*)",
-					"captures": {
-						"0": { "name": "variable.other.readwrite.vars" }
-					}
-				},
-				{
-					"match": "\\(env\\)",
-					"name": "variable.parameter.function.vars"
-				},
-				{
-					"match": "\\btrue\\b|\\bfalse\\b",
-					"name": "constant.language.boolean.vars"
-				},
-				{
-					"match": "\"[^\"]*\"",
-					"name": "string.quoted.double.vars"
-				},
-				{
-					"match": "\\b\\d+\\b",
-					"name": "constant.numeric.decimal.vars"
+					"match": ",",
+					"name": "punctuation.separator.comma.vars"
 				}
 			]
 		},
-		"refine-message": {
-			"match": "^(\\s+)(\"[^\"]*\")\\s*$",
+		"param-declaration": {
+			"match": "^(param)\\s+([a-z][a-zA-Z0-9_]*)\\s*(?::\\s*(enum)\\s*(\\()([^)]*)(\\)))?(?:\\s*(=)\\s*(.+))?$",
 			"captures": {
-				"2": { "name": "string.quoted.double.vars" }
+				"1": { "name": "keyword.control.vars" },
+				"2": { "name": "variable.other.env.vars" },
+				"3": { "name": "keyword.control.vars" },
+				"4": { "name": "punctuation.brackets.round.vars" },
+				"5": {
+					"patterns": [
+						{
+							"match": "[a-z][a-zA-Z0-9_]*",
+							"name": "variable.other.env.vars"
+						},
+						{
+							"match": ",",
+							"name": "punctuation.separator.comma.vars"
+						}
+					]
+				},
+				"6": { "name": "punctuation.brackets.round.vars" },
+				"7": { "name": "keyword.operator.assignment.vars" },
+				"8": { "name": "variable.other.env.vars" }
 			}
 		},
-		"variable": {
-			"match": "^([A-Z_][A-Z0-9_]*)\\s{2,}(z\\..*?)\\s*$",
+		"use-declaration": {
+			"begin": "^(use)\\s+",
+			"end": "$",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.vars" }
+			},
+			"patterns": [
+				{
+					"match": "\"([^\"]+)\"",
+					"captures": {
+						"0": { "name": "string.quoted.double.import.vars" }
+					}
+				},
+				{
+					"match": "\\{",
+					"name": "punctuation.brackets.curly.vars"
+				},
+				{
+					"match": "\\}",
+					"name": "punctuation.brackets.curly.vars"
+				},
+				{
+					"match": "\\b(pick|omit)\\b",
+					"name": "keyword.other.filter.vars"
+				},
+				{
+					"match": ":",
+					"name": "punctuation.separator.colon.vars"
+				},
+				{
+					"match": "\\[",
+					"name": "punctuation.brackets.square.vars"
+				},
+				{
+					"match": "\\]",
+					"name": "punctuation.brackets.square.vars"
+				},
+				{
+					"match": "[A-Z_][A-Z0-9_]*",
+					"name": "entity.name.variable.vars"
+				},
+				{
+					"match": ",",
+					"name": "punctuation.separator.comma.vars"
+				}
+			]
+		},
+		"check-block": {
+			"begin": "^(check)\\s+(\"[^\"]*\")\\s*(\\{)",
+			"end": "\\}",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.vars" },
+				"2": { "name": "string.quoted.double.vars" },
+				"3": { "name": "punctuation.brackets.curly.vars" }
+			},
+			"endCaptures": {
+				"0": { "name": "punctuation.brackets.curly.vars" }
+			},
+			"patterns": [
+				{ "include": "#comment" },
+				{ "include": "#builtin-functions" },
+				{ "include": "#logical-operators" },
+				{ "include": "#conditional" },
+				{ "include": "#comparison-operators" },
+				{ "include": "#arrow-operator" },
+				{ "include": "#variable-name" },
+				{ "include": "#string-value" },
+				{ "include": "#boolean-value" },
+				{ "include": "#numeric-value" }
+			]
+		},
+		"group-block": {
+			"begin": "^(group)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*(\\{)",
+			"end": "\\}",
+			"beginCaptures": {
+				"1": { "name": "keyword.control.vars" },
+				"2": { "name": "entity.name.type.group.vars" },
+				"3": { "name": "punctuation.brackets.curly.vars" }
+			},
+			"endCaptures": {
+				"0": { "name": "punctuation.brackets.curly.vars" }
+			},
+			"patterns": [
+				{ "include": "#comment" },
+				{ "include": "#variable-declaration" },
+				{ "include": "#env-block-entry" },
+				{ "include": "#metadata-block-entry" },
+				{ "include": "#conditional" }
+			]
+		},
+		"variable-declaration": {
+			"patterns": [
+				{
+					"comment": "Variable with env block: [public] NAME : schema { ... } [(metadata)]",
+					"begin": "^\\s*(public\\s+)?([A-Z_][A-Z0-9_]*)\\s*(?::\\s*(z\\.[^{=(]+?))?\\s*(\\{)",
+					"end": "\\}(\\s*\\(([^)]*)\\))?",
+					"beginCaptures": {
+						"1": { "name": "keyword.control.vars" },
+						"2": { "name": "entity.name.variable.vars" },
+						"3": {
+							"patterns": [{ "include": "#zod-schema" }]
+						},
+						"4": { "name": "punctuation.brackets.curly.vars" }
+					},
+					"endCaptures": {
+						"2": {
+							"patterns": [{ "include": "#metadata-inline" }]
+						}
+					},
+					"patterns": [
+						{ "include": "#comment" },
+						{ "include": "#env-block-entry" },
+						{ "include": "#conditional" }
+					]
+				},
+				{
+					"comment": "Variable with inline value: [public] NAME : schema = value [(metadata)]",
+					"match": "^\\s*(public\\s+)?([A-Z_][A-Z0-9_]*)\\s*(?::\\s*(z\\.[^=]+?))?\\s*(=)\\s*(enc:[^\\s(]+|\"\"\"[\\s\\S]*?\"\"\"|\"[^\"]*\"|true|false|[0-9][^\\s(]*)(?:\\s*(\\(([^)]*)\\)))?\\s*$",
+					"captures": {
+						"1": { "name": "keyword.control.vars" },
+						"2": { "name": "entity.name.variable.vars" },
+						"3": {
+							"patterns": [{ "include": "#zod-schema" }]
+						},
+						"4": { "name": "keyword.operator.assignment.vars" },
+						"5": {
+							"patterns": [
+								{ "include": "#encrypted-value" },
+								{ "include": "#triple-string" },
+								{ "include": "#string-value" },
+								{ "include": "#boolean-value" },
+								{ "include": "#numeric-value" }
+							]
+						},
+						"6": {
+							"patterns": [{ "include": "#metadata-inline" }]
+						}
+					}
+				},
+				{
+					"comment": "Variable schema-only (no value, no block)",
+					"match": "^\\s*(public\\s+)?([A-Z_][A-Z0-9_]*)\\s*:\\s*(z\\.[^={\\n]+?)\\s*$",
+					"captures": {
+						"1": { "name": "keyword.control.vars" },
+						"2": { "name": "entity.name.variable.vars" },
+						"3": {
+							"patterns": [{ "include": "#zod-schema" }]
+						}
+					}
+				}
+			]
+		},
+		"env-block-entry": {
+			"match": "^\\s+([a-z][a-zA-Z0-9_]*)\\s*(=)\\s*(enc:[^\\s]+|\"\"\"[\\s\\S]*?\"\"\"|\"[^\"]*\"|true|false|[0-9]\\S*)\\s*$",
 			"captures": {
-				"1": { "name": "variable.other.constant.vars" },
-				"2": {
-					"patterns": [{ "include": "#zod-schema" }]
+				"1": { "name": "variable.other.env.vars" },
+				"2": { "name": "keyword.operator.assignment.vars" },
+				"3": {
+					"patterns": [
+						{ "include": "#encrypted-value" },
+						{ "include": "#triple-string" },
+						{ "include": "#string-value" },
+						{ "include": "#boolean-value" },
+						{ "include": "#numeric-value" },
+						{ "include": "#unquoted-value" }
+					]
 				}
 			}
+		},
+		"metadata-block-entry": {
+			"match": "^\\s+(description|owner|expires|deprecated|tags)\\s*(=)\\s*(.+)\\s*$",
+			"captures": {
+				"1": { "name": "entity.other.attribute-name.vars" },
+				"2": { "name": "keyword.operator.assignment.vars" },
+				"3": {
+					"patterns": [
+						{ "include": "#string-value" },
+						{ "include": "#numeric-value" },
+						{ "include": "#boolean-value" },
+						{ "include": "#unquoted-value" }
+					]
+				}
+			}
+		},
+		"metadata-inline": {
+			"patterns": [
+				{
+					"match": "\\b(description|owner|expires|deprecated|tags)\\b",
+					"name": "entity.other.attribute-name.vars"
+				},
+				{
+					"match": "=",
+					"name": "keyword.operator.assignment.vars"
+				},
+				{ "include": "#string-value" },
+				{ "include": "#numeric-value" },
+				{ "include": "#boolean-value" },
+				{
+					"match": ",",
+					"name": "punctuation.separator.comma.vars"
+				}
+			]
+		},
+		"conditional": {
+			"patterns": [
+				{
+					"match": "^\\s*(when)\\s+([a-z][a-zA-Z0-9_]*)\\s*(==|!=|>=|<=|>|<|=)\\s*(\\S+)\\s*(=>)\\s*(.*)$",
+					"captures": {
+						"1": { "name": "keyword.control.vars" },
+						"2": { "name": "variable.other.env.vars" },
+						"3": { "name": "keyword.operator.comparison.vars" },
+						"4": {
+							"patterns": [
+								{ "include": "#string-value" },
+								{ "include": "#boolean-value" },
+								{ "include": "#numeric-value" },
+								{ "include": "#unquoted-value" }
+							]
+						},
+						"5": { "name": "keyword.operator.arrow.vars" },
+						"6": {
+							"patterns": [
+								{ "include": "#encrypted-value" },
+								{ "include": "#string-value" },
+								{ "include": "#boolean-value" },
+								{ "include": "#numeric-value" },
+								{ "include": "#unquoted-value" }
+							]
+						}
+					}
+				},
+				{
+					"match": "^\\s*(else)\\s*(=>)\\s*(.*)$",
+					"captures": {
+						"1": { "name": "keyword.control.vars" },
+						"2": { "name": "keyword.operator.arrow.vars" },
+						"3": {
+							"patterns": [
+								{ "include": "#encrypted-value" },
+								{ "include": "#string-value" },
+								{ "include": "#boolean-value" },
+								{ "include": "#numeric-value" },
+								{ "include": "#unquoted-value" }
+							]
+						}
+					}
+				}
+			]
+		},
+		"comparison-operators": {
+			"match": "==|!=|>=|<=|>|<",
+			"name": "keyword.operator.comparison.vars"
+		},
+		"arrow-operator": {
+			"match": "=>",
+			"name": "keyword.operator.arrow.vars"
+		},
+		"logical-operators": {
+			"match": "\\b(and|or|not)\\b",
+			"name": "keyword.operator.logical.vars"
+		},
+		"builtin-functions": {
+			"match": "\\b(defined|matches|one_of|length|starts_with)\\b",
+			"name": "support.function.vars"
+		},
+		"variable-name": {
+			"match": "\\b[A-Z_][A-Z0-9_]*\\b",
+			"name": "entity.name.variable.vars"
 		},
 		"zod-schema": {
 			"patterns": [
 				{
 					"match": "\\bz\\b",
-					"name": "support.class.vars"
+					"name": "support.type.schema.vars"
 				},
 				{
 					"match": "\\.(string|number|boolean|date|bigint|enum|nativeEnum|coerce|literal|union|optional|nullable|array|object|tuple|record|any|unknown|never|void|undefined|null)\\b",
-					"name": "entity.name.type.vars"
+					"name": "support.type.schema.vars"
 				},
 				{
 					"match": "\\.(min|max|email|url|uuid|regex|startsWith|endsWith|int|positive|negative|nonnegative|nonpositive|finite|safe|default|transform|refine|superRefine|pipe|brand|catch|describe|trim|toLowerCase|toUpperCase|length|nonempty|includes|datetime|ip|cuid|cuid2|ulid|nanoid|step|multipleOf|gte|lte|gt|lt)\\b",
-					"name": "entity.name.function.vars"
-				},
-				{
-					"match": "'[^']*'",
-					"name": "string.quoted.single.vars"
+					"name": "support.type.schema.vars"
 				},
 				{
 					"match": "\"[^\"]*\"",
@@ -101,15 +362,11 @@
 				},
 				{
 					"match": "\\b\\d+\\b",
-					"name": "constant.numeric.decimal.vars"
+					"name": "constant.numeric.vars"
 				},
 				{
 					"match": "[()]",
 					"name": "punctuation.brackets.round.vars"
-				},
-				{
-					"match": "[\\[\\]]",
-					"name": "punctuation.brackets.square.vars"
 				},
 				{
 					"match": ",",
@@ -121,100 +378,36 @@
 				}
 			]
 		},
-		"env-value": {
-			"match": "^(\\s+)(@[a-z]+)(\\s*=\\s*)(.*?)\\s*$",
-			"captures": {
-				"2": { "name": "entity.name.tag.vars" },
-				"3": { "name": "keyword.operator.assignment.vars" },
-				"4": {
-					"patterns": [
-						{ "include": "#encrypted-value" },
-						{ "include": "#plain-value" }
-					]
-				}
-			}
-		},
-		"directive": {
-			"patterns": [
-				{
-					"match": "^(\\s+)(@description)\\s+(\"[^\"]*\")",
-					"captures": {
-						"2": { "name": "entity.name.tag.vars" },
-						"3": { "name": "string.quoted.double.vars" }
-					}
-				},
-				{
-					"match": "^(\\s+)(@deprecated)\\s+(\"[^\"]*\")",
-					"captures": {
-						"2": { "name": "invalid.deprecated.vars" },
-						"3": { "name": "string.quoted.double.vars" }
-					}
-				},
-				{
-					"match": "^(\\s+)(@expires)\\s+(\\S+)",
-					"captures": {
-						"2": { "name": "entity.name.tag.vars" },
-						"3": { "name": "constant.numeric.date.vars" }
-					}
-				},
-				{
-					"match": "^(\\s+)(@owner)\\s+(\\S+)",
-					"captures": {
-						"2": { "name": "entity.name.tag.vars" },
-						"3": { "name": "constant.other.vars" }
-					}
-				},
-				{
-					"match": "^(\\s+)(@\\w+)(?:\\s|$)",
-					"captures": {
-						"2": { "name": "entity.name.tag.vars" }
-					}
-				}
-			]
-		},
 		"encrypted-value": {
-			"match": "(enc)(:)(v\\d+)(:)(aes256gcm)(:)([A-Za-z0-9+/=]+)(:)([A-Za-z0-9+/=]+)(:)([A-Za-z0-9+/=]+)",
-			"captures": {
-				"1": { "name": "keyword.other.vars" },
-				"2": { "name": "punctuation.separator.vars" },
-				"3": { "name": "constant.language.vars" },
-				"4": { "name": "punctuation.separator.vars" },
-				"5": { "name": "constant.language.vars" },
-				"6": { "name": "punctuation.separator.vars" },
-				"7": { "name": "string.other.encrypted.iv.vars" },
-				"8": { "name": "punctuation.separator.vars" },
-				"9": { "name": "string.other.encrypted.ciphertext.vars" },
-				"10": { "name": "punctuation.separator.vars" },
-				"11": { "name": "string.other.encrypted.tag.vars" }
-			}
+			"match": "enc:v\\d+:[a-zA-Z0-9_-]+(?::[A-Za-z0-9+/=_-]+)*",
+			"name": "string.encrypted.vars"
 		},
-		"plain-value": {
+		"triple-string": {
+			"name": "string.quoted.triple.vars",
+			"begin": "\"\"\"",
+			"end": "\"\"\"",
 			"patterns": [
 				{
-					"match": "\"[^\"]*\"",
-					"name": "string.quoted.double.vars"
-				},
-				{
-					"match": "'[^']*'",
-					"name": "string.quoted.single.vars"
-				},
-				{
-					"match": "\\btrue\\b|\\bfalse\\b",
-					"name": "constant.language.boolean.vars"
-				},
-				{
-					"match": "\\b\\d+(\\.\\d+)?\\b",
-					"name": "constant.numeric.decimal.vars"
-				},
-				{
-					"match": "(https?|postgres|redis|mongodb|mysql|amqp)://\\S+",
-					"name": "markup.underline.link.vars"
-				},
-				{
-					"match": "[^\\s#]+",
-					"name": "string.unquoted.value.vars"
+					"name": "constant.character.escape.vars",
+					"match": "\\\\."
 				}
 			]
+		},
+		"string-value": {
+			"match": "\"[^\"]*\"",
+			"name": "string.quoted.double.vars"
+		},
+		"boolean-value": {
+			"match": "\\b(true|false)\\b",
+			"name": "constant.language.boolean.vars"
+		},
+		"numeric-value": {
+			"match": "\\b\\d+(\\.\\d+)?\\b",
+			"name": "constant.numeric.vars"
+		},
+		"unquoted-value": {
+			"match": "[^\\s#,)\\]]+",
+			"name": "string.unquoted.value.vars"
 		}
 	}
 }
