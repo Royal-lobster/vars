@@ -6,3 +6,5 @@ export { evaluateSchema, validateValue } from "./validator.js";
 export type { ValidateResult } from "./validator.js";
 export { evaluateCheck } from "./check-evaluator.js";
 export { resolveValue, resolveAll, resolveInterpolation } from "./resolver.js";
+export { generateTypeScript } from "./codegen.js";
+export type { CodegenOptions } from "./codegen.js";
