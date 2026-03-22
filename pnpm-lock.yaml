@@ -118,12 +118,6 @@ importers:
 
   packages/core:
     dependencies:
-      argon2:
-        specifier: ^0.44.0
-        version: 0.44.0
-      keytar:
-        specifier: ^7.9.0
-        version: 7.9.0
       zod:
         specifier: ^3.24.0
         version: 3.25.76
@@ -155,6 +149,28 @@ importers:
       zod:
         specifier: ^3.24.0
         version: 3.25.76
+    devDependencies:
+      tsup:
+        specifier: ^8.3.0
+        version: 8.5.1(jiti@2.6.1)(postcss@8.5.8)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@25.5.0)(jiti@2.6.1)(lightningcss@1.32.0)(msw@2.12.14(@types/node@25.5.0)(typescript@5.9.3))
+
+  packages/node:
+    dependencies:
+      '@vars/core':
+        specifier: workspace:*
+        version: link:../core
+      argon2:
+        specifier: ^0.44.0
+        version: 0.44.0
+      keytar:
+        specifier: ^7.9.0
+        version: 7.9.0
     devDependencies:
       tsup:
         specifier: ^8.3.0
