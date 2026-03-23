@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { ResolvedVar, ResolvedVars } from "./types.js";
+import { isEncrypted } from "./crypto-constants.js";
 
 export interface CodegenOptions {
   platform?: "node" | "cloudflare" | "deno" | "static";
@@ -139,21 +140,48 @@ function generateVarsType(grouped: GroupedVars): string {
 function generateClientVarsType(grouped: GroupedVars): string {
   const publicTopLevel = grouped.topLevel.filter(v => v.public).map(v => `"${v.name}"`);
 
-  // For groups, check if any public vars exist in a group
-  const publicGroupKeys: string[] = [];
+  // Separate groups into fully-public and mixed (partial) groups
+  const fullyPublicGroupKeys: string[] = [];
+  const partialGroups = new Map<string, string[]>(); // groupName -> public var names
+
   for (const [groupName, vars] of grouped.groups) {
-    if (vars.some(v => v.public)) {
-      publicGroupKeys.push(`"${groupName}"`);
+    const publicVars = vars.filter(v => v.public);
+    if (publicVars.length === 0) continue;
+
+    if (publicVars.length === vars.length) {
+      // All vars in group are public — safe to pick the whole group
+      fullyPublicGroupKeys.push(`"${groupName}"`);
+    } else {
+      // Mixed group — only pick individual public vars
+      partialGroups.set(groupName, publicVars.map(v => `"${v.name}"`));
     }
   }
 
-  const allPublicKeys = [...publicTopLevel, ...publicGroupKeys];
+  const pickKeys = [...publicTopLevel, ...fullyPublicGroupKeys];
+  const hasPickKeys = pickKeys.length > 0;
+  const hasPartialGroups = partialGroups.size > 0;
 
-  if (allPublicKeys.length === 0) {
+  if (!hasPickKeys && !hasPartialGroups) {
     return "export type ClientVars = Record<string, never>;";
   }
 
-  return `export type ClientVars = Pick<Vars, ${allPublicKeys.join(" | ")}>;`;
+  const parts: string[] = [];
+
+  if (hasPickKeys) {
+    parts.push(`Pick<Vars, ${pickKeys.join(" | ")}>`);
+  }
+
+  if (hasPartialGroups) {
+    const lines: string[] = [];
+    lines.push("{");
+    for (const [groupName, varNames] of partialGroups) {
+      lines.push(`  ${groupName}: Pick<Vars["${groupName}"], ${varNames.join(" | ")}>;`);
+    }
+    lines.push("}");
+    parts.push(lines.join("\n"));
+  }
+
+  return `export type ClientVars = ${parts.join(" & ")};`;
 }
 
 // ── parseVars function ────────────────────────────
@@ -229,6 +257,18 @@ function generateParseVars(grouped: GroupedVars): string {
 // ── Static export block ───────────────────────────
 
 function generateStaticExport(grouped: GroupedVars): string {
+  // Detect encrypted values — static codegen requires decrypted values
+  const allVars = [...grouped.topLevel, ...Array.from(grouped.groups.values()).flat()];
+  for (const v of allVars) {
+    if (v.value && isEncrypted(v.value)) {
+      throw new Error(
+        "Static codegen requires decrypted values. " +
+        `Variable "${v.flatName}" contains an encrypted value. ` +
+        "Run `vars show` first or use a non-static platform.",
+      );
+    }
+  }
+
   const lines: string[] = [];
   lines.push("export const vars: Vars = {");
 
@@ -272,16 +312,21 @@ function generateStaticExport(grouped: GroupedVars): string {
 
 function generateClientVarsExport(grouped: GroupedVars): string {
   const publicTopLevel = grouped.topLevel.filter(v => v.public);
-  const publicGroups = new Map<string, ResolvedVar[]>();
+  const fullyPublicGroups: string[] = [];
+  const partialGroups = new Map<string, ResolvedVar[]>();
 
   for (const [groupName, vars] of grouped.groups) {
     const pub = vars.filter(v => v.public);
-    if (pub.length > 0) {
-      publicGroups.set(groupName, pub);
+    if (pub.length === 0) continue;
+
+    if (pub.length === vars.length) {
+      fullyPublicGroups.push(groupName);
+    } else {
+      partialGroups.set(groupName, pub);
     }
   }
 
-  if (publicTopLevel.length === 0 && publicGroups.size === 0) {
+  if (publicTopLevel.length === 0 && fullyPublicGroups.length === 0 && partialGroups.size === 0) {
     return "export const clientVars: ClientVars = {};";
   }
 
@@ -292,8 +337,16 @@ function generateClientVarsExport(grouped: GroupedVars): string {
     lines.push(`  ${v.name}: vars.${v.name},`);
   }
 
-  for (const [groupName] of publicGroups) {
+  for (const groupName of fullyPublicGroups) {
     lines.push(`  ${groupName}: vars.${groupName},`);
+  }
+
+  for (const [groupName, pubVars] of partialGroups) {
+    lines.push(`  ${groupName}: {`);
+    for (const v of pubVars) {
+      lines.push(`    ${v.name}: vars.${groupName}.${v.name},`);
+    }
+    lines.push(`  },`);
   }
 
   lines.push("};");
