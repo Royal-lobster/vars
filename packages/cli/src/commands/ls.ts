@@ -1,8 +1,8 @@
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
-import { readFileSync, statSync, existsSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { parse } from "@vars/core";
-import { resolveUseChain, isUnlockedPath, toUnlockedPath } from "@vars/node";
+import { resolveUseChain, isUnlockedPath } from "@vars/node";
 import { findAllVarsFiles, getProjectRoot } from "../utils/context.js";
 import pc from "picocolors";
 
@@ -52,12 +52,9 @@ function listFilesInDirectory(root: string): void {
     return;
   }
   console.log();
-  // Skip .unlocked.vars files — they're editor mirrors of the canonical .vars
-  const canonicalFiles = files.filter(f => !isUnlockedPath(f));
-  for (const f of canonicalFiles) {
+  for (const f of files) {
     const content = readFileSync(f, "utf8");
-    // File is unlocked if its .unlocked.vars counterpart exists
-    const isUnlocked = existsSync(toUnlockedPath(f));
+    const isUnlocked = isUnlockedPath(f);
     const result = parse(content, f);
     // Count: if file has imports, show resolved count
     let varCount: number;
@@ -83,7 +80,7 @@ function listFilesInDirectory(root: string): void {
     console.log(`  ${state}  ${relPath}  ${pc.dim(`${varCount} vars`)}${warnStr}`);
   }
 
-  const unlocked = canonicalFiles.filter(f => existsSync(toUnlockedPath(f)));
+  const unlocked = files.filter(f => isUnlockedPath(f));
   if (unlocked.length > 0) {
     console.log(pc.yellow(`\n  ${unlocked.length} file(s) unlocked — run \`vars hide\` before committing`));
   }

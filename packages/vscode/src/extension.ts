@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as cp from "node:child_process";
-import { type ExtensionContext, commands, window, workspace } from "vscode";
+import { type ExtensionContext, Uri, commands, window, workspace } from "vscode";
 import {
 	LanguageClient,
 	type LanguageClientOptions,
@@ -86,6 +86,27 @@ export function activate(context: ExtensionContext): void {
 			const cwd = path.dirname(uri.fsPath);
 			cp.execFile("vars", ["gen"], { cwd, timeout: 5000 }, () => {});
 		}, 500);
+	});
+
+	// --- Auto-switch editor tab on .vars ↔ .unlocked.vars rename ---
+	// When hide/show renames a file, open the new file and close the stale tab
+	watcher.onDidCreate(async (newUri) => {
+		const newPath = newUri.fsPath;
+		const isUnlocked = newPath.endsWith(".unlocked.vars");
+		const oldPath = isUnlocked
+			? newPath.replace(/\.unlocked\.vars$/, ".vars")
+			: newPath.replace(/\.vars$/, ".unlocked.vars");
+
+		// Only act if the old counterpart was open in an editor tab
+		const staleTab = window.tabGroups.all
+			.flatMap(g => g.tabs)
+			.find(t => (t.input as { uri?: Uri })?.uri?.fsPath === oldPath);
+		if (!staleTab) return;
+
+		const doc = await workspace.openTextDocument(newUri);
+		await window.showTextDocument(doc, { preview: false });
+		// Close the stale tab pointing to the now-deleted file
+		await window.tabGroups.close(staleTab);
 	});
 
 	context.subscriptions.push(watcher);

@@ -1,15 +1,17 @@
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, renameSync, existsSync } from "node:fs";
 import { parse, isEncrypted } from "@vars/core";
 import { encryptDeterministic, decrypt } from "./crypto.js";
 import { toUnlockedPath, toLockedPath, isUnlockedPath } from "./unlocked-path.js";
 
 export function showFile(filePath: string, key: Buffer): string {
   const unlockedPath = isUnlockedPath(filePath) ? filePath : toUnlockedPath(filePath);
-  const lockedPath = isUnlockedPath(filePath) ? toLockedPath(filePath) : filePath;
 
-  // Read from whichever file exists (prefer locked canonical copy)
-  const readFrom = existsSync(lockedPath) ? lockedPath : unlockedPath;
-  const content = readFileSync(readFrom, "utf8");
+  // Rename to .unlocked.vars if not already there
+  if (!isUnlockedPath(filePath) && existsSync(filePath)) {
+    renameSync(filePath, unlockedPath);
+  }
+
+  const content = readFileSync(unlockedPath, "utf8");
   const lines = content.split("\n");
   const result: string[] = [];
 
@@ -27,12 +29,7 @@ export function showFile(filePath: string, key: Buffer): string {
     result.push(line);
   }
 
-  // Write decrypted content to .unlocked.vars (editor file — always in-place)
   writeFileSync(unlockedPath, result.join("\n"));
-  // Remove the locked copy so only .unlocked.vars exists
-  if (existsSync(lockedPath) && lockedPath !== unlockedPath) {
-    unlinkSync(lockedPath);
-  }
   return unlockedPath;
 }
 
@@ -170,12 +167,10 @@ export function hideFile(filePath: string, key: Buffer): string {
     result.push(line);
   }
 
-  const encrypted = result.join("\n");
-  // Write encrypted content to .vars (for git)
-  writeFileSync(lockedPath, encrypted);
-  // Also update .unlocked.vars in-place so the editor tab sees encrypted content
+  // Write encrypted content, then rename to locked path
+  writeFileSync(readPath, result.join("\n"));
   if (isUnlockedPath(readPath) && readPath !== lockedPath) {
-    writeFileSync(readPath, encrypted);
+    renameSync(readPath, lockedPath);
   }
   return lockedPath;
 }
