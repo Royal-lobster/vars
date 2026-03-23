@@ -1,4 +1,5 @@
 import { ALL_PUBLIC_PREFIXES } from "./detect-framework.js";
+import { buildHeaderComment } from "./build-header-comment.js";
 
 /**
  * Parse a .env file into key-value entries, handling:
@@ -83,28 +84,49 @@ function parseDotenv(envContent: string): Map<string, { value: string; quoted: b
  * Variables matching the given public prefixes are annotated with `public`.
  */
 export function migrateFromEnv(envContent: string, publicPrefixes: string[] = ALL_PUBLIC_PREFIXES): string {
-  const output = ["# @vars-state unlocked", "env(dev, staging, prod)", ""];
+  const detectedPrefixes = new Set<string>();
+  const publicVarNames: string[] = [];
+  const varLines: string[] = [];
   const entries = parseDotenv(envContent);
 
   for (const [key, { value, quoted }] of entries) {
-    const isPublic = publicPrefixes.some(p => key.startsWith(p));
+    const matchedPrefix = publicPrefixes.find(p => key.startsWith(p));
+    const isPublic = !!matchedPrefix;
+    if (matchedPrefix) detectedPrefixes.add(matchedPrefix);
+    if (isPublic) publicVarNames.push(key);
+
     const pub = isPublic ? "public " : "";
 
     // Multiline values get triple-quoted
     if (value.includes("\n")) {
-      output.push(`${pub}${key} = """${value}"""`);
+      varLines.push(`${pub}${key} = """${value}"""`);
       continue;
     }
 
     // Infer type only for unquoted values
     if (!quoted && /^\d+$/.test(value)) {
-      output.push(`${pub}${key} : z.number() = ${value}`);
+      varLines.push(`${pub}${key} : z.number() = ${value}`);
     } else if (!quoted && (value === "true" || value === "false")) {
-      output.push(`${pub}${key} : z.boolean() = ${value}`);
+      varLines.push(`${pub}${key} : z.boolean() = ${value}`);
     } else {
-      output.push(`${pub}${key} = "${value}"`);
+      varLines.push(`${pub}${key} = "${value}"`);
     }
   }
 
-  return output.join("\n") + "\n";
+  const header = buildHeaderComment({
+    source: "env",
+    publicVarNames,
+    totalVarCount: varLines.length,
+    detectedPrefixes: [...detectedPrefixes],
+  });
+
+  const lines = [
+    "# @vars-state unlocked",
+    header,
+    "env(dev, staging, prod)",
+    "",
+    ...varLines,
+  ];
+
+  return lines.join("\n") + "\n";
 }

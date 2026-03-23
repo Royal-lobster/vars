@@ -7,6 +7,7 @@ import { resolveUseChain } from "@vars/node";
 import { getProjectRoot } from "../utils/context.js";
 import { detectFramework, ALL_PUBLIC_PREFIXES } from "../utils/detect-framework.js";
 import { migrateFromEnv } from "../utils/migrate-from-env.js";
+import { buildHeaderComment } from "../utils/build-header-comment.js";
 import * as prompts from "@clack/prompts";
 import pc from "picocolors";
 
@@ -70,12 +71,19 @@ export default defineCommand({
         content = migrateFromEnv(readFileSync(envFile, "utf8"), publicPrefixes);
         console.log(pc.dim("  Migrated from .env"));
       } else {
+        const header = buildHeaderComment({
+          source: "boilerplate",
+          publicVarNames: [],
+          totalVarCount: 0,
+          detectedPrefixes: [],
+        });
         content = `# @vars-state unlocked
+${header}
 env(dev, staging, prod)
 
-# Add your variables below
 public APP_NAME = "my-app"
 public PORT : z.number() = 3000
+DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 `;
       }
       writeFileSync(configPath, content);
