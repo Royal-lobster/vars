@@ -5,6 +5,8 @@ import { createMasterKey, encryptMasterKey } from "@vars/node";
 import { generateTypeScript } from "@vars/core";
 import { resolveUseChain } from "@vars/node";
 import { getProjectRoot } from "../utils/context.js";
+import { detectFramework, ALL_PUBLIC_PREFIXES } from "../utils/detect-framework.js";
+import { migrateFromEnv } from "../utils/migrate-from-env.js";
 import * as prompts from "@clack/prompts";
 import pc from "picocolors";
 
@@ -52,8 +54,19 @@ export default defineCommand({
       let content: string;
 
       if (existsSync(envFile)) {
+        // Detect framework to determine public var prefixes
+        const framework = detectFramework(root);
+        const publicPrefixes = framework
+          ? framework.publicPrefixes
+          : ALL_PUBLIC_PREFIXES;
+        if (framework) {
+          const prefixMsg = publicPrefixes.length
+            ? `using ${publicPrefixes.join(", ")} prefix${publicPrefixes.length > 1 ? "es" : ""}`
+            : "no public var prefixes";
+          console.log(pc.dim(`  Detected ${framework.name} — ${prefixMsg}`));
+        }
         // Migrate from .env
-        content = migrateFromEnv(readFileSync(envFile, "utf8"));
+        content = migrateFromEnv(readFileSync(envFile, "utf8"), publicPrefixes);
         console.log(pc.dim("  Migrated from .env"));
       } else {
         content = `# @vars-state unlocked
@@ -147,46 +160,3 @@ public PORT : z.number() = 3000
   },
 });
 
-function migrateFromEnv(envContent: string): string {
-  const PUBLIC_PREFIXES = ["NEXT_PUBLIC_", "VITE_", "REACT_APP_", "NUXT_PUBLIC_", "EXPO_PUBLIC_", "GATSBY_"];
-  const lines = ["# @vars-state unlocked", "env(dev, staging, prod)", ""];
-  for (const line of envContent.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eqIdx = trimmed.indexOf("=");
-    if (eqIdx === -1) continue;
-    const key = trimmed.slice(0, eqIdx).trim();
-    // Skip invalid identifiers
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
-      console.warn(pc.yellow(`  Skipping invalid variable name: ${key}`));
-      continue;
-    }
-    let value = trimmed.slice(eqIdx + 1).trim();
-    // Strip inline comments (space + #) from unquoted values
-    if (!value.startsWith('"') && !value.startsWith("'")) {
-      const commentIdx = value.indexOf(" #");
-      if (commentIdx !== -1) {
-        value = value.slice(0, commentIdx).trim();
-      }
-    }
-    // Strip surrounding quotes (double or single)
-    let wasQuoted = false;
-    if (value.length >= 2 &&
-        ((value.startsWith('"') && value.endsWith('"')) ||
-         (value.startsWith("'") && value.endsWith("'")))) {
-      value = value.slice(1, -1);
-      wasQuoted = true;
-    }
-    const isPublic = PUBLIC_PREFIXES.some(p => key.startsWith(p));
-    const pub = isPublic ? "public " : "";
-    // Infer type only for unquoted values
-    if (!wasQuoted && /^\d+$/.test(value)) {
-      lines.push(`${pub}${key} : z.number() = ${value}`);
-    } else if (!wasQuoted && (value === "true" || value === "false")) {
-      lines.push(`${pub}${key} : z.boolean() = ${value}`);
-    } else {
-      lines.push(`${pub}${key} = "${value}"`);
-    }
-  }
-  return lines.join("\n") + "\n";
-}

@@ -4,6 +4,7 @@ import { writeFileSync } from "node:fs";
 import { resolveUseChain } from "@vars/node";
 import { generateTypeScript } from "@vars/core";
 import { findVarsFile, findAllVarsFiles, getProjectRoot } from "../utils/context.js";
+import { toCanonicalPath } from "@vars/node";
 import pc from "picocolors";
 
 export default defineCommand({
@@ -41,7 +42,7 @@ function generateForFile(filePath: string, platform: string) {
   try {
     const resolved = resolveUseChain(filePath, { env: "dev" });
     const code = generateTypeScript(resolved, { platform: platform as any });
-    const outPath = filePath.replace(/\.vars$/, ".generated.ts");
+    const outPath = toCanonicalPath(filePath).replace(/\.vars$/, ".generated.ts");
     writeFileSync(outPath, code);
     console.log(pc.green(`  ✓ ${outPath}`));
   } catch (err: any) {

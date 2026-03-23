@@ -1,9 +1,21 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+/** All known public-var prefixes across supported frameworks. Used as fallback when no framework is detected. */
+export const ALL_PUBLIC_PREFIXES = [
+  "NEXT_PUBLIC_",
+  "VITE_",
+  "NUXT_PUBLIC_",
+  "PUBLIC_",
+  "EXPO_PUBLIC_",
+  "GATSBY_",
+  "REACT_APP_",
+];
+
 export interface FrameworkInfo {
   name: string;
   devCommand: string;
+  publicPrefixes: string[];
 }
 
 function readPackageJsonDeps(cwd: string): Record<string, string> {
@@ -28,28 +40,31 @@ export function detectFramework(cwd: string): FrameworkInfo | null {
       return {
         name: "Next.js",
         devCommand: "next dev",
+        publicPrefixes: ["NEXT_PUBLIC_"],
       };
     }
   }
 
-  // Vite
-  const viteConfigs = ["vite.config.js", "vite.config.ts"];
-  for (const file of viteConfigs) {
+  // SvelteKit — check BEFORE generic Vite since SvelteKit projects also have vite.config.*
+  const svelteConfigs = ["svelte.config.js", "svelte.config.ts"];
+  for (const file of svelteConfigs) {
     if (existsSync(resolve(cwd, file))) {
       return {
-        name: "Vite",
-        devCommand: "vite",
+        name: "SvelteKit",
+        devCommand: "vite dev",
+        publicPrefixes: ["PUBLIC_"],
       };
     }
   }
 
-  // Astro
+  // Astro — check BEFORE generic Vite since Astro projects also have vite under the hood
   const astroConfigs = ["astro.config.mjs", "astro.config.ts"];
   for (const file of astroConfigs) {
     if (existsSync(resolve(cwd, file))) {
       return {
         name: "Astro",
         devCommand: "astro dev",
+        publicPrefixes: ["PUBLIC_"],
       };
     }
   }
@@ -59,10 +74,23 @@ export function detectFramework(cwd: string): FrameworkInfo | null {
     return {
       name: "Nuxt",
       devCommand: "nuxt dev",
+      publicPrefixes: ["NUXT_PUBLIC_"],
     };
   }
 
-  // NestJS and SvelteKit require package.json inspection — read once
+  // Vite (generic) — after framework-specific checks that also use Vite
+  const viteConfigs = ["vite.config.js", "vite.config.ts"];
+  for (const file of viteConfigs) {
+    if (existsSync(resolve(cwd, file))) {
+      return {
+        name: "Vite",
+        devCommand: "vite",
+        publicPrefixes: ["VITE_"],
+      };
+    }
+  }
+
+  // NestJS and remaining frameworks require package.json inspection — read once
   const deps = readPackageJsonDeps(cwd);
 
   // NestJS (config file takes priority over package.json dep)
@@ -70,14 +98,34 @@ export function detectFramework(cwd: string): FrameworkInfo | null {
     return {
       name: "NestJS",
       devCommand: "nest start --watch",
+      publicPrefixes: [],
     };
   }
 
-  // SvelteKit
+  // SvelteKit (fallback for projects without svelte.config.* but with @sveltejs/kit dep)
   if ("@sveltejs/kit" in deps) {
     return {
       name: "SvelteKit",
       devCommand: "vite dev",
+      publicPrefixes: ["PUBLIC_"],
+    };
+  }
+
+  // Expo (React Native)
+  if ("expo" in deps) {
+    return {
+      name: "Expo",
+      devCommand: "expo start",
+      publicPrefixes: ["EXPO_PUBLIC_"],
+    };
+  }
+
+  // Gatsby
+  if ("gatsby" in deps) {
+    return {
+      name: "Gatsby",
+      devCommand: "gatsby develop",
+      publicPrefixes: ["GATSBY_"],
     };
   }
 
