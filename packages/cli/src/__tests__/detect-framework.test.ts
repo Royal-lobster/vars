@@ -56,7 +56,18 @@ describe("detectFramework", () => {
     expect(fw!.publicPrefixes).toEqual(["PUBLIC_"]);
   });
 
-  it("detects SvelteKit via package.json dep", () => {
+  it("detects SvelteKit via svelte.config.js (even with vite.config.ts present)", () => {
+    writeFileSync(join(tmp, "svelte.config.js"), "export default {}");
+    writeFileSync(join(tmp, "vite.config.ts"), "export default {}");
+    writeFileSync(join(tmp, "package.json"), JSON.stringify({
+      dependencies: { "@sveltejs/kit": "^2.0.0" },
+    }));
+    const fw = detectFramework(tmp);
+    expect(fw!.name).toBe("SvelteKit");
+    expect(fw!.publicPrefixes).toEqual(["PUBLIC_"]);
+  });
+
+  it("detects SvelteKit via package.json dep (fallback without svelte.config)", () => {
     writeFileSync(join(tmp, "package.json"), JSON.stringify({
       dependencies: { "@sveltejs/kit": "^2.0.0" },
     }));

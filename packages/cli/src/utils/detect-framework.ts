@@ -45,19 +45,19 @@ export function detectFramework(cwd: string): FrameworkInfo | null {
     }
   }
 
-  // Vite
-  const viteConfigs = ["vite.config.js", "vite.config.ts"];
-  for (const file of viteConfigs) {
+  // SvelteKit — check BEFORE generic Vite since SvelteKit projects also have vite.config.*
+  const svelteConfigs = ["svelte.config.js", "svelte.config.ts"];
+  for (const file of svelteConfigs) {
     if (existsSync(resolve(cwd, file))) {
       return {
-        name: "Vite",
-        devCommand: "vite",
-        publicPrefixes: ["VITE_"],
+        name: "SvelteKit",
+        devCommand: "vite dev",
+        publicPrefixes: ["PUBLIC_"],
       };
     }
   }
 
-  // Astro
+  // Astro — check BEFORE generic Vite since Astro projects also have vite under the hood
   const astroConfigs = ["astro.config.mjs", "astro.config.ts"];
   for (const file of astroConfigs) {
     if (existsSync(resolve(cwd, file))) {
@@ -78,7 +78,19 @@ export function detectFramework(cwd: string): FrameworkInfo | null {
     };
   }
 
-  // NestJS and SvelteKit require package.json inspection — read once
+  // Vite (generic) — after framework-specific checks that also use Vite
+  const viteConfigs = ["vite.config.js", "vite.config.ts"];
+  for (const file of viteConfigs) {
+    if (existsSync(resolve(cwd, file))) {
+      return {
+        name: "Vite",
+        devCommand: "vite",
+        publicPrefixes: ["VITE_"],
+      };
+    }
+  }
+
+  // NestJS and remaining frameworks require package.json inspection — read once
   const deps = readPackageJsonDeps(cwd);
 
   // NestJS (config file takes priority over package.json dep)
@@ -90,7 +102,7 @@ export function detectFramework(cwd: string): FrameworkInfo | null {
     };
   }
 
-  // SvelteKit
+  // SvelteKit (fallback for projects without svelte.config.* but with @sveltejs/kit dep)
   if ("@sveltejs/kit" in deps) {
     return {
       name: "SvelteKit",
