@@ -60,12 +60,14 @@ env(dev, staging, prod)
 
 public VITE_APP_TITLE = "My App"
 public VITE_API_URL : z.string().url() {
-  dev  = "http://localhost:3000/api"
-  prod = "https://api.example.com"
+  dev     = "http://localhost:3000/api"
+  staging = "https://staging-api.example.com"
+  prod    = "https://api.example.com"
 }
 
 DATABASE_URL : z.string().url() {
-  dev  = "postgres://localhost/myapp"
-  prod = "postgres://prod.db/myapp"
+  dev     = "postgres://localhost/myapp"
+  staging = "postgres://staging.db/myapp"
+  prod    = "postgres://prod.db/myapp"
 }
 ```

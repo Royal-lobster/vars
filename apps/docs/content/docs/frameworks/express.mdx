@@ -53,7 +53,8 @@ DATABASE_URL : z.string().url() {
 }
 
 JWT_SECRET : z.string().min(32) {
-  dev  = "dev-jwt-secret-placeholder-32-chars!!"
-  prod = "prod-jwt-secret-very-long-and-secure"
+  dev     = "dev-jwt-secret-placeholder-32-chars!!"
+  staging = "stg-jwt-secret-placeholder-32-chars!!"
+  prod    = "prod-jwt-secret-very-long-and-secure"
 } (owner = "auth-team", expires = 2026-12-31)
 ```
