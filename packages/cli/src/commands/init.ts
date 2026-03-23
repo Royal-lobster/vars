@@ -56,11 +56,14 @@ export default defineCommand({
       if (existsSync(envFile)) {
         // Detect framework to determine public var prefixes
         const framework = detectFramework(root);
-        const publicPrefixes = framework?.publicPrefixes?.length
+        const publicPrefixes = framework
           ? framework.publicPrefixes
           : ALL_PUBLIC_PREFIXES;
         if (framework) {
-          console.log(pc.dim(`  Detected ${framework.name} — using ${publicPrefixes.join(", ")} prefix${publicPrefixes.length > 1 ? "es" : ""}`));
+          const prefixMsg = publicPrefixes.length
+            ? `using ${publicPrefixes.join(", ")} prefix${publicPrefixes.length > 1 ? "es" : ""}`
+            : "no public var prefixes";
+          console.log(pc.dim(`  Detected ${framework.name} — ${prefixMsg}`));
         }
         // Migrate from .env
         content = migrateFromEnv(readFileSync(envFile, "utf8"), publicPrefixes);
