@@ -333,4 +333,71 @@ check "JWT secret is long enough in prod" {
     expect(result).toContain("dev-secret");
     expect(result).toContain("prod-secret");
   });
+
+  it("hide encrypts default values on schema-annotated lines", () => {
+    const content = `# @vars-state unlocked
+env(dev, prod)
+
+JWT_SECRET : z.string().min(16) = "super-secret-default-key"
+DATABASE_URL : z.string().url() = "postgres://user:pass@localhost/db"
+public APP_NAME : z.string() = "my-app"
+PORT : z.coerce.number() = 3000`;
+    const f = join(dir, "config.unlocked.vars");
+    writeFileSync(f, content);
+    const locked = hideFile(f, key);
+    const result = readFileSync(locked, "utf8");
+
+    // Private schema-default values must be encrypted
+    expect(result).not.toContain("super-secret-default-key");
+    expect(result).not.toContain("postgres://user:pass@localhost/db");
+    expect(result).toContain("enc:v2:");
+    // Public schema-default values stay plaintext
+    expect(result).toContain('"my-app"');
+    // Non-string defaults (numbers, booleans) stay as-is
+    expect(result).toContain("= 3000");
+  });
+
+  it("hide encrypts schema defaults inside groups", () => {
+    const content = `# @vars-state unlocked
+env(dev, prod)
+
+group db {
+  HOST : z.string() = "localhost"
+  PORT : z.coerce.number() = 5432
+  PASSWORD : z.string() = "secret-pass"
+  URL : z.string().url() = "postgres://admin:secret-pass@localhost:5432/mydb"
+}`;
+    const f = join(dir, "config.unlocked.vars");
+    writeFileSync(f, content);
+    const locked = hideFile(f, key);
+    const result = readFileSync(locked, "utf8");
+
+    // Secret string defaults in groups must be encrypted
+    expect(result).not.toContain('"localhost"');
+    expect(result).not.toContain('"secret-pass"');
+    expect(result).not.toContain("postgres://admin:secret-pass");
+    // Number defaults stay as-is
+    expect(result).toContain("= 5432");
+  });
+
+  it("show decrypts schema-default values back to plaintext", () => {
+    const content = `# @vars-state unlocked
+env(dev, prod)
+
+JWT_SECRET : z.string().min(16) = "my-jwt-secret-value"
+public APP_URL : z.string().url() = "https://example.com"`;
+    const f = join(dir, "config.unlocked.vars");
+    writeFileSync(f, content);
+
+    // Hide then show round-trip
+    const locked = hideFile(f, key);
+    const hiddenContent = readFileSync(locked, "utf8");
+    expect(hiddenContent).not.toContain("my-jwt-secret-value");
+    expect(hiddenContent).toContain("enc:v2:");
+
+    const unlocked = showFile(locked, key);
+    const result = readFileSync(unlocked, "utf8");
+    expect(result).toContain('"my-jwt-secret-value"');
+    expect(result).toContain('"https://example.com"');
+  });
 });
