@@ -1,5 +1,5 @@
 import { ALL_PUBLIC_PREFIXES } from "./detect-framework.js";
-import { buildHeaderComment } from "../commands/init.js";
+import { buildHeaderComment } from "./build-header-comment.js";
 
 /**
  * Parse a .env file into key-value entries, handling:

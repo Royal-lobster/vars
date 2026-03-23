@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildHeaderComment } from "../commands/init.js";
+import { buildHeaderComment } from "../utils/build-header-comment.js";
 import { migrateFromEnv } from "../utils/migrate-from-env.js";
 
 describe("buildHeaderComment", () => {
