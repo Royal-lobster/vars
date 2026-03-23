@@ -168,25 +168,25 @@ function generateParseVars(grouped: GroupedVars): string {
   for (const v of grouped.topLevel) {
     const inf = inferType(v);
     if (inf.base === "number") {
-      lines.push(`  raw["${v.name}"] = source["${v.flatName}"] !== undefined ? Number(source["${v.flatName}"]) : undefined;`);
+      lines.push(`  raw.${v.name} = source.${v.flatName} !== undefined ? Number(source.${v.flatName}) : undefined;`);
     } else if (inf.base === "boolean") {
-      lines.push(`  raw["${v.name}"] = source["${v.flatName}"] !== undefined ? (source["${v.flatName}"] === "true" || source["${v.flatName}"] === "1") : undefined;`);
+      lines.push(`  raw.${v.name} = source.${v.flatName} !== undefined ? (source.${v.flatName} === "true" || source.${v.flatName} === "1") : undefined;`);
     } else {
-      lines.push(`  raw["${v.name}"] = source["${v.flatName}"];`);
+      lines.push(`  raw.${v.name} = source.${v.flatName};`);
     }
   }
 
   // Groups
   for (const [groupName, vars] of grouped.groups) {
-    lines.push(`  raw["${groupName}"] = {`);
+    lines.push(`  raw.${groupName} = {`);
     for (const v of vars) {
       const inf = inferType(v);
       if (inf.base === "number") {
-        lines.push(`    "${v.name}": source["${v.flatName}"] !== undefined ? Number(source["${v.flatName}"]) : undefined,`);
+        lines.push(`    ${v.name}: source.${v.flatName} !== undefined ? Number(source.${v.flatName}) : undefined,`);
       } else if (inf.base === "boolean") {
-        lines.push(`    "${v.name}": source["${v.flatName}"] !== undefined ? (source["${v.flatName}"] === "true" || source["${v.flatName}"] === "1") : undefined,`);
+        lines.push(`    ${v.name}: source.${v.flatName} !== undefined ? (source.${v.flatName} === "true" || source.${v.flatName} === "1") : undefined,`);
       } else {
-        lines.push(`    "${v.name}": source["${v.flatName}"],`);
+        lines.push(`    ${v.name}: source.${v.flatName},`);
       }
     }
     lines.push(`  };`);
@@ -211,10 +211,11 @@ function generateParseVars(grouped: GroupedVars): string {
     lines.push(`    ${groupName}: {`);
     for (const v of vars) {
       const inf = inferType(v);
+      const accessor = `(parsed.${groupName} as Record<string, unknown>)`;
       if (inf.needsRedacted) {
-        lines.push(`      ${v.name}: new Redacted((parsed.${groupName} as Record<string, string>)["${v.name}"]),`);
+        lines.push(`      ${v.name}: new Redacted(${accessor}.${v.name} as string),`);
       } else {
-        lines.push(`      ${v.name}: (parsed.${groupName} as Record<string, unknown>)["${v.name}"] as ${inf.base},`);
+        lines.push(`      ${v.name}: ${accessor}.${v.name} as ${inf.base},`);
       }
     }
     lines.push(`    },`);
