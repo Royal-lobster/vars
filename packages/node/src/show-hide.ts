@@ -61,10 +61,28 @@ export function hideFile(filePath: string, key: Buffer): string {
   let currentVar: string | null = null;
   let currentIsPublic = false;
   let currentGroup: string | null = null;
+  let checkDepth = 0; // tracks brace depth inside check blocks (>0 means inside a check)
 
   for (const line of lines) {
     if (line.trim() === STATE_UNLOCKED) {
       result.push(STATE_LOCKED);
+      continue;
+    }
+
+    // Detect check block starts: `check "..." {`
+    if (line.match(/^\s*check\s+/)) {
+      if (line.includes("{")) checkDepth = 1;
+      result.push(line);
+      continue;
+    }
+
+    // Track brace depth inside check blocks — skip all content
+    if (checkDepth > 0) {
+      for (const ch of line) {
+        if (ch === "{") checkDepth++;
+        else if (ch === "}") checkDepth--;
+      }
+      result.push(line);
       continue;
     }
 

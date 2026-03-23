@@ -251,4 +251,86 @@ SECRET : z.string() {
     expect(result).toContain("enc:v2:aes256gcm-det:");
     expect(result).not.toContain("stale content");
   });
+
+  it("hide does not encrypt values inside check blocks", () => {
+    const content = `# @vars-state unlocked
+env(dev, prod)
+
+SECRET : z.string() {
+  dev = "dev-secret"
+  prod = "prod-secret"
+}
+
+check "JWT secret is long enough in prod" {
+  env == "prod" => length(SECRET) >= 64
+}
+
+check "Secret is defined" {
+  defined(SECRET)
+}`;
+    const f = join(dir, "config.vars");
+    writeFileSync(f, content);
+    hideFile(f, key);
+    const result = readFileSync(f, "utf8");
+
+    // Secret values should be encrypted
+    expect(result).not.toContain("dev-secret");
+    expect(result).not.toContain("prod-secret");
+    expect(result).toContain("enc:v2:aes256gcm-det:");
+
+    // Check block content must be preserved verbatim
+    expect(result).toContain('env == "prod" => length(SECRET) >= 64');
+    expect(result).toContain("defined(SECRET)");
+    expect(result).toContain('check "JWT secret is long enough in prod"');
+    expect(result).toContain('check "Secret is defined"');
+  });
+
+  it("hide preserves check blocks with various comparison operators", () => {
+    const content = `# @vars-state unlocked
+env(dev, prod)
+
+SECRET = "my-secret"
+
+check "comparisons" {
+  env == "prod" => length(SECRET) >= 64
+  env != "dev" => defined(SECRET)
+  length(SECRET) <= 128
+  length(SECRET) > 0
+  length(SECRET) < 256
+}`;
+    const f = join(dir, "config.vars");
+    writeFileSync(f, content);
+    hideFile(f, key);
+    const result = readFileSync(f, "utf8");
+
+    // All comparison operators inside check blocks must be preserved
+    expect(result).toContain('env == "prod" => length(SECRET) >= 64');
+    expect(result).toContain('env != "dev" => defined(SECRET)');
+    expect(result).toContain("length(SECRET) <= 128");
+    expect(result).toContain("length(SECRET) > 0");
+    expect(result).toContain("length(SECRET) < 256");
+  });
+
+  it("hide→show round-trip preserves check blocks exactly", () => {
+    const content = `# @vars-state unlocked
+env(dev, prod)
+
+SECRET : z.string() {
+  dev = "dev-secret"
+  prod = "prod-secret"
+}
+
+check "JWT secret is long enough in prod" {
+  env == "prod" => length(SECRET) >= 64
+}`;
+    const f = join(dir, "config.vars");
+    writeFileSync(f, content);
+    hideFile(f, key);
+    const unlocked = showFile(f, key);
+    const result = readFileSync(unlocked, "utf8");
+
+    expect(result).toContain('env == "prod" => length(SECRET) >= 64');
+    expect(result).toContain("dev-secret");
+    expect(result).toContain("prod-secret");
+  });
 });
