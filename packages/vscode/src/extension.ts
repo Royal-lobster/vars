@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as cp from "node:child_process";
-import { type ExtensionContext, commands, window, workspace } from "vscode";
+import { type ExtensionContext, Uri, commands, window, workspace } from "vscode";
 import {
 	LanguageClient,
 	type LanguageClientOptions,
@@ -88,12 +88,37 @@ export function activate(context: ExtensionContext): void {
 		}, 500);
 	});
 
+	// --- Auto-switch editor tab on .vars ↔ .unlocked.vars rename ---
+	// When hide/show renames a file, close the stale tab first, then open the new file
+	watcher.onDidCreate(async (newUri) => {
+		const newPath = newUri.fsPath;
+		const isUnlocked = newPath.endsWith(".unlocked.vars");
+		const oldPath = isUnlocked
+			? newPath.replace(/\.unlocked\.vars$/, ".vars")
+			: newPath.replace(/\.vars$/, ".unlocked.vars");
+
+		// Only act if the old counterpart was open in an editor tab
+		const staleTab = window.tabGroups.all
+			.flatMap(g => g.tabs)
+			.find(t => (t.input as { uri?: Uri })?.uri?.fsPath === oldPath);
+		if (!staleTab) return;
+
+		// Close stale tab first to avoid two tabs being visible
+		await window.tabGroups.close(staleTab);
+		// Open the new file but don't steal focus from the terminal
+		const doc = await workspace.openTextDocument(newUri);
+		await window.showTextDocument(doc, { preview: false, preserveFocus: true });
+	});
+
 	context.subscriptions.push(watcher);
 }
 
 function runVarsWithPin(subcommand: string, pin: string, cwd: string): Promise<void> {
 	return new Promise((resolve, reject) => {
-		const child = cp.spawn("vars", [subcommand], { cwd });
+		const child = cp.spawn("vars", [subcommand], {
+			cwd,
+			env: { ...process.env, VARS_PIN: pin },
+		});
 
 		let stderr = "";
 		child.stderr.on("data", (data) => { stderr += data.toString(); });
@@ -109,9 +134,6 @@ function runVarsWithPin(subcommand: string, pin: string, cwd: string): Promise<v
 		child.on("error", (err) => {
 			reject(new Error(`Failed to run vars: ${err.message}`));
 		});
-
-		child.stdin.write(pin + "\n");
-		child.stdin.end();
 	});
 }
 

@@ -1,9 +1,8 @@
 import { defineCommand } from "citty";
 import { existsSync, readFileSync, writeFileSync, mkdirSync, appendFileSync, chmodSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { createMasterKey, encryptMasterKey } from "@vars/node";
+import { createMasterKey, encryptMasterKey, resolveUseChain, toUnlockedPath } from "@vars/node";
 import { generateTypeScript } from "@vars/core";
-import { resolveUseChain } from "@vars/node";
 import { getProjectRoot } from "../utils/context.js";
 import { detectFramework, ALL_PUBLIC_PREFIXES } from "../utils/detect-framework.js";
 import { migrateFromEnv } from "../utils/migrate-from-env.js";
@@ -48,9 +47,10 @@ export default defineCommand({
     const encryptedKey = await encryptMasterKey(masterKey, pin as string);
     writeFileSync(keyPath, encryptedKey + "\n");
 
-    // 3. Create starter config.vars
-    const configPath = join(root, "config.vars");
-    if (!existsSync(configPath)) {
+    // 3. Create starter config.unlocked.vars (unlocked state for editing)
+    const canonicalPath = join(root, "config.vars");
+    const configPath = toUnlockedPath(canonicalPath);
+    if (!existsSync(canonicalPath) && !existsSync(configPath)) {
       const envCandidates = [".env", ".env.local", ".env.example", ".env.sample"];
       const envFile = envCandidates.map(f => join(root, f)).find(f => existsSync(f));
       let content: string;
@@ -77,8 +77,7 @@ export default defineCommand({
           totalVarCount: 0,
           detectedPrefixes: [],
         });
-        content = `# @vars-state unlocked
-${header}
+        content = `${header}
 env(dev, staging, prod)
 
 public APP_NAME = "my-app"
@@ -161,11 +160,11 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
     try {
       const resolved = resolveUseChain(configPath, { env: "dev" });
       const code = generateTypeScript(resolved);
-      writeFileSync(configPath.replace(/\.vars$/, ".generated.ts"), code);
+      writeFileSync(canonicalPath.replace(/\.vars$/, ".generated.ts"), code);
       console.log(pc.dim("  Generated config.generated.ts"));
     } catch { /* non-fatal */ }
 
-    prompts.outro(pc.green("vars initialized! Run `vars show` to start editing."));
+    prompts.outro(pc.green("vars initialized! Edit config.unlocked.vars, then run `vars hide` to encrypt."));
   },
 });
 

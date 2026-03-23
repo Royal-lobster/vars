@@ -3,7 +3,6 @@
 	"name": "vars",
 	"scopeName": "source.vars",
 	"patterns": [
-		{ "include": "#state-header" },
 		{ "include": "#comment" },
 		{ "include": "#env-declaration" },
 		{ "include": "#param-declaration" },
@@ -16,14 +15,6 @@
 		{ "include": "#conditional" }
 	],
 	"repository": {
-		"state-header": {
-			"match": "^(#)\\s+(@vars-state)\\s+(locked|unlocked)\\s*$",
-			"captures": {
-				"1": { "name": "comment.line.number-sign.vars" },
-				"2": { "name": "comment.line.state.vars" },
-				"3": { "name": "comment.line.state.vars" }
-			}
-		},
 		"comment": {
 			"match": "^\\s*#.*$",
 			"name": "comment.line.number-sign.vars"

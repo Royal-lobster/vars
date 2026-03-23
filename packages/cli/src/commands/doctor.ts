@@ -1,7 +1,9 @@
 import { defineCommand } from "citty";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { isUnlockedPath } from "@vars/node";
 import { findKeyFile, findAllVarsFiles, getProjectRoot } from "../utils/context.js";
+import { HOOK_MARKER } from "./hook.js";
 import pc from "picocolors";
 
 export default defineCommand({
@@ -40,12 +42,18 @@ export default defineCommand({
       join(root, ".husky", "pre-commit"),
       join(root, ".git", "hooks", "pre-commit"),
     ];
-    const hookInstalled = hookPaths.some(p => {
-      if (!existsSync(p)) return false;
-      return readFileSync(p, "utf8").includes("@vars-state");
-    });
-    if (hookInstalled) {
+    const OLD_HOOK_MARKER = "@vars-state";
+    let hookStatus: "current" | "outdated" | "missing" = "missing";
+    for (const p of hookPaths) {
+      if (!existsSync(p)) continue;
+      const content = readFileSync(p, "utf8");
+      if (content.includes(HOOK_MARKER)) { hookStatus = "current"; break; }
+      if (content.includes(OLD_HOOK_MARKER)) { hookStatus = "outdated"; break; }
+    }
+    if (hookStatus === "current") {
       console.log(pc.green("  ✓ Pre-commit hook installed"));
+    } else if (hookStatus === "outdated") {
+      console.log(pc.yellow("  ⚠ Pre-commit hook outdated — run `vars hook` to update"));
     } else {
       console.log(pc.yellow("  ⚠ No pre-commit hook. Run `vars hook`"));
     }
@@ -55,9 +63,7 @@ export default defineCommand({
     console.log(pc.dim(`  ${files.length} .vars file(s) found`));
 
     // Check for unlocked files
-    const unlocked = files.filter(f => {
-      try { return readFileSync(f, "utf8").includes("# @vars-state unlocked"); } catch { return false; }
-    });
+    const unlocked = files.filter(f => isUnlockedPath(f));
     if (unlocked.length > 0) {
       console.log(pc.yellow(`  ⚠ ${unlocked.length} file(s) unlocked`));
     }

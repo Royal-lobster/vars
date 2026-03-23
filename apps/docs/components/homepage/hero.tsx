@@ -4,8 +4,7 @@ import { VarsDynamicCodeBlock } from './vars-codeblock';
 import { CopyCommand } from './copy-command';
 import { HeroCodeToggle } from './hero-code-toggle';
 
-const UNLOCKED_CODE = `# @vars-state unlocked
-env(dev, staging, prod)
+const UNLOCKED_CODE = `env(dev, staging, prod)
 
 public PORT : z.number().min(1024).max(65535) = 3000
 
@@ -21,8 +20,7 @@ API_KEY : z.string().min(32) {
   prod    = "prod_key_x9y8w7v6u5t4s3r2q1p0o9n8m7"
 } (description = "Primary API key", expires = 2026-09-01)`;
 
-const VAULT_CODE = `# @vars-state locked
-env(dev, staging, prod)
+const VAULT_CODE = `env(dev, staging, prod)
 
 public PORT : z.number().min(1024).max(65535) = 3000
 

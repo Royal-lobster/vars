@@ -4,18 +4,16 @@ import { join } from "node:path";
 import { getProjectRoot } from "../utils/context.js";
 import pc from "picocolors";
 
-const HOOK_MARKER = "# vars: check for unlocked files";
+export const HOOK_MARKER = "# vars: check for unlocked files";
 const HOOK_SCRIPT = `
 ${HOOK_MARKER}
-for f in $(git diff --cached --name-only 2>/dev/null | grep '\\.vars$'); do
-  if head -1 "$f" 2>/dev/null | grep -q '@vars-state unlocked'; then
-    echo ""
-    echo "vars: $f contains decrypted secrets."
-    echo "  Run 'vars hide' to encrypt before committing."
-    echo ""
-    exit 1
-  fi
-done
+if git diff --cached --name-only 2>/dev/null | grep -q '\\.unlocked\\.vars$'; then
+  echo ""
+  echo "vars: Unlocked .vars files cannot be committed."
+  echo "  Run 'vars hide' to encrypt before committing."
+  echo ""
+  exit 1
+fi
 `;
 
 export default defineCommand({

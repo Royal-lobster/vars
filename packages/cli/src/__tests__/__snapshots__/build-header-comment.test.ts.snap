@@ -1,8 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`full output snapshots > snapshot: all-private migration 1`] = `
-"# @vars-state unlocked
-#
+"#
 # Migrated from .env — all variables will be encrypted.
 #
 # Docs: https://vars-docs.vercel.app/docs/file-format
@@ -30,8 +29,7 @@ exports[`full output snapshots > snapshot: boilerplate 1`] = `
 `;
 
 exports[`full output snapshots > snapshot: large Next.js + Vite migration 1`] = `
-"# @vars-state unlocked
-#
+"#
 # Migrated from .env — check that public/encrypted classification is correct.
 # Variables with NEXT_PUBLIC_, VITE_ prefixes were marked public.
 #
@@ -54,8 +52,7 @@ SMTP_HOST = "smtp.example.com"
 `;
 
 exports[`full output snapshots > snapshot: small Expo migration 1`] = `
-"# @vars-state unlocked
-#
+"#
 # \`public\` = plaintext (not encrypted). Remove it to encrypt a var.
 #
 # Docs: https://vars-docs.vercel.app/docs/file-format

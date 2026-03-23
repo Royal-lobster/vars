@@ -140,13 +140,13 @@ describe("tokenizer", () => {
   // ── 6. comments ───────────────────────────────────────────────────────────
 
   it("captures comments as COMMENT tokens", () => {
-    const tokens = tok("# @vars-state locked").filter(
+    const tokens = tok("# This is a comment").filter(
       (t) => t.type !== TokenType.NEWLINE && t.type !== TokenType.EOF,
     );
 
     expect(tokens[0]).toMatchObject({
       type: TokenType.COMMENT,
-      value: "# @vars-state locked",
+      value: "# This is a comment",
     });
   });
 

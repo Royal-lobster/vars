@@ -12,10 +12,9 @@ Your `.vars` file is safe to commit. That's the whole point. Here's how it works
 
 vars uses a single-file model: there is no separate vault file and no unlocked copy to manage. Secret values are encrypted **inline** — the file structure (variable names, schemas, metadata, comments, `use` directives, `check` blocks) is always plaintext, and only the values are encrypted.
 
-**Committed (locked) state:**
+**Committed state (`config.vars`):**
 
 ```vars
-# @vars-state locked
 env(dev, staging, prod)
 
 public APP_NAME = "my-app"
@@ -26,10 +25,9 @@ STRIPE_KEY : z.string() {
 }
 ```
 
-**Working (unlocked) state after `vars show`:**
+**Working state after `vars show` (`config.unlocked.vars`):**
 
 ```vars
-# @vars-state unlocked
 env(dev, staging, prod)
 
 public APP_NAME = "my-app"
@@ -40,7 +38,7 @@ STRIPE_KEY : z.string() {
 }
 ```
 
-`vars show` decrypts secret values in-place. `vars hide` encrypts them back. The file is the same file — there is no sync step.
+`vars show` decrypts and renames `config.vars` → `config.unlocked.vars`. `vars hide` encrypts and renames back. The file extension is the primary indicator of lock state.
 
 ---
 
@@ -120,20 +118,6 @@ VARS_KEY=<base64-master-key> vars run --env prod -- node server.js
 
 ---
 
-## `@vars-state` header
-
-The first line of every `.vars` file is a machine-readable state header:
-
-- `# @vars-state locked` — committed state, secrets are encrypted blobs.
-- `# @vars-state unlocked` — working state, secrets are plaintext.
-
-This header is used by:
-
-- **The pre-commit hook** — scans staged `.vars` files for `# @vars-state unlocked` and blocks the commit with: _"run `vars hide` first"_. The hook does not auto-encrypt. A human must type their PIN to lock the file.
-- **`vars ls`** — shows lock state for all `.vars` files in the repo.
-
----
-
 ## `vars show` / `vars hide` workflow
 
 ```bash
@@ -149,11 +133,11 @@ git add config.vars
 git commit -m "update prod API key"
 ```
 
-`vars show` decrypts only the target file on disk. `use`-imported dependency files remain locked — they are resolved in-memory during commands like `vars run` and `vars gen`.
+`vars show` decrypts the target file and renames it to `.unlocked.vars`. `use`-imported dependency files remain locked — they are resolved in-memory during commands like `vars run` and `vars gen`.
 
-`vars hide` encrypts all unlocked files in the repo (it scans from the git root for any file with `# @vars-state unlocked`).
+`vars hide` encrypts all `*.unlocked.vars` files in the repo and renames them back to `.vars`.
 
-`vars toggle` switches based on the current state — locked becomes unlocked, unlocked becomes locked.
+`vars toggle` switches based on the file extension — `.vars` becomes `.unlocked.vars`, `.unlocked.vars` becomes `.vars`.
 
 ---
 
@@ -180,7 +164,7 @@ The `public` keyword is per-variable. It cannot be applied to a group as a whole
 error: .vars file is unlocked — run `vars hide` first
 ```
 
-The hook is content-based: it checks for `# @vars-state unlocked` in the staged content. It does not auto-encrypt — encryption requires the PIN, which requires a human. This is intentional: the PIN is the gatekeeper between AI tools and your secrets.
+The hook is filename-based: it checks if any staged files end with `.unlocked.vars`. It does not auto-encrypt — encryption requires the PIN, which requires a human. This is intentional: the PIN is the gatekeeper between AI tools and your secrets.
 
 If you need to reinstall the hook manually:
 

@@ -121,7 +121,6 @@ export function migrateFromEnv(envContent: string, publicPrefixes: string[] = AL
   });
 
   const lines = [
-    "# @vars-state unlocked",
     header,
     "env(dev, staging, prod)",
     "",

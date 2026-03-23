@@ -44,8 +44,7 @@ describe("full pipeline integration", () => {
     const dir = mkdtempSync(join(tmpdir(), "vars-int-"));
     const key = await createMasterKey();
 
-    const content = `# @vars-state unlocked
-env(dev, prod)
+    const content = `env(dev, prod)
 
 public APP_NAME = "test-app"
 SECRET : z.string() {
@@ -59,7 +58,6 @@ SECRET : z.string() {
     // Hide (encrypt)
     hideFile(filePath, key);
     const encrypted = readFileSync(filePath, "utf8");
-    expect(encrypted).toContain("# @vars-state locked");
     expect(encrypted).not.toContain("dev-secret-value");
     expect(encrypted).not.toContain("prod-secret-value");
     expect(encrypted).toContain('APP_NAME = "test-app"'); // public unchanged
@@ -67,7 +65,6 @@ SECRET : z.string() {
     // Show (decrypt) — now renames to .unlocked.vars
     const unlockedPath = showFile(filePath, key);
     const decrypted = readFileSync(unlockedPath, "utf8");
-    expect(decrypted).toContain("# @vars-state unlocked");
     expect(decrypted).toContain("dev-secret-value");
     expect(decrypted).toContain("prod-secret-value");
 
@@ -78,8 +75,7 @@ SECRET : z.string() {
     const dir = mkdtempSync(join(tmpdir(), "vars-det-"));
     const key = await createMasterKey();
 
-    const content = `# @vars-state unlocked
-env(dev)
+    const content = `env(dev)
 
 SECRET : z.string() {
   dev = "stable-value"
