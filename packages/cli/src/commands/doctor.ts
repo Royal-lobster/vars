@@ -1,6 +1,7 @@
 import { defineCommand } from "citty";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { isUnlockedPath } from "@vars/node";
 import { findKeyFile, findAllVarsFiles, getProjectRoot } from "../utils/context.js";
 import pc from "picocolors";
 
@@ -42,7 +43,7 @@ export default defineCommand({
     ];
     const hookInstalled = hookPaths.some(p => {
       if (!existsSync(p)) return false;
-      return readFileSync(p, "utf8").includes("@vars-state");
+      return readFileSync(p, "utf8").includes("vars: check for unlocked files");
     });
     if (hookInstalled) {
       console.log(pc.green("  ✓ Pre-commit hook installed"));
@@ -55,9 +56,7 @@ export default defineCommand({
     console.log(pc.dim(`  ${files.length} .vars file(s) found`));
 
     // Check for unlocked files
-    const unlocked = files.filter(f => {
-      try { return readFileSync(f, "utf8").includes("# @vars-state unlocked"); } catch { return false; }
-    });
+    const unlocked = files.filter(f => isUnlockedPath(f));
     if (unlocked.length > 0) {
       console.log(pc.yellow(`  ⚠ ${unlocked.length} file(s) unlocked`));
     }

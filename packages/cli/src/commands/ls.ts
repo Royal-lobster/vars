@@ -2,7 +2,7 @@ import { defineCommand } from "citty";
 import { resolve } from "node:path";
 import { readFileSync, statSync } from "node:fs";
 import { parse } from "@vars/core";
-import { resolveUseChain } from "@vars/node";
+import { resolveUseChain, isUnlockedPath } from "@vars/node";
 import { findAllVarsFiles, getProjectRoot } from "../utils/context.js";
 import pc from "picocolors";
 
@@ -54,7 +54,7 @@ function listFilesInDirectory(root: string): void {
   console.log();
   for (const f of files) {
     const content = readFileSync(f, "utf8");
-    const isUnlocked = content.includes("# @vars-state unlocked");
+    const isUnlocked = isUnlockedPath(f);
     const result = parse(content, f);
     // Count: if file has imports, show resolved count
     let varCount: number;
@@ -80,7 +80,7 @@ function listFilesInDirectory(root: string): void {
     console.log(`  ${state}  ${relPath}  ${pc.dim(`${varCount} vars`)}${warnStr}`);
   }
 
-  const unlocked = files.filter(f => readFileSync(f, "utf8").includes("# @vars-state unlocked"));
+  const unlocked = files.filter(f => isUnlockedPath(f));
   if (unlocked.length > 0) {
     console.log(pc.yellow(`\n  ${unlocked.length} file(s) unlocked — run \`vars hide\` before committing`));
   }

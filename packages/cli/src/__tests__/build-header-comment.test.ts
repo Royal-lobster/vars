@@ -180,7 +180,7 @@ LOG_LEVEL=debug`;
     expect(result).toContain("Docs: https://vars-docs.vercel.app/docs/file-format");
     expect(result).toContain('public NEXT_PUBLIC_API_URL = "https://api.example.com"');
     expect(result).toContain('DATABASE_URL = "postgres://localhost/mydb"');
-    expect(result.startsWith("# @vars-state unlocked\n")).toBe(true);
+    expect(result.startsWith("#\n")).toBe(true);
   });
 
   it("uses short-form for small .env", () => {
@@ -212,6 +212,6 @@ KEY_2=z`;
 
     expect(result).toContain("No variables found in .env");
     expect(result).toContain("Docs:");
-    expect(result.startsWith("# @vars-state unlocked\n")).toBe(true);
+    expect(result.startsWith("#\n")).toBe(true);
   });
 });

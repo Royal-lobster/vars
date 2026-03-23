@@ -3,9 +3,6 @@ import { parse, isEncrypted } from "@vars/core";
 import { encryptDeterministic, decrypt } from "./crypto.js";
 import { toUnlockedPath, toLockedPath, isUnlockedPath } from "./unlocked-path.js";
 
-const STATE_LOCKED = "# @vars-state locked";
-const STATE_UNLOCKED = "# @vars-state unlocked";
-
 export function showFile(filePath: string, key: Buffer): string {
   const unlockedPath = isUnlockedPath(filePath) ? filePath : toUnlockedPath(filePath);
 
@@ -19,10 +16,6 @@ export function showFile(filePath: string, key: Buffer): string {
   const result: string[] = [];
 
   for (const line of lines) {
-    if (line.trim() === STATE_LOCKED) {
-      result.push(STATE_UNLOCKED);
-      continue;
-    }
     // Match encrypted values in both plain assignments and schema-with-default lines:
     //   `  dev = enc:v2:...` or `SECRET = enc:v2:...` or `SECRET : z.string() = enc:v2:...`
     const match = line.match(/^(.*=\s*)(enc:v2:\S+)(.*)$/);
@@ -66,11 +59,6 @@ export function hideFile(filePath: string, key: Buffer): string {
   let checkDepth = 0; // tracks brace depth inside check blocks (>0 means inside a check)
 
   for (const line of lines) {
-    if (line.trim() === STATE_UNLOCKED) {
-      result.push(STATE_LOCKED);
-      continue;
-    }
-
     // Detect check block starts: `check "..." {`
     if (line.match(/^\s*check\s+/)) {
       if (line.includes("{")) checkDepth = 1;

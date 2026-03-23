@@ -14,7 +14,6 @@
 ## The `.vars` Format
 
 ```
-# @vars-state unlocked
 env(dev, staging, prod)
 param region : enum(us, eu) = us
 

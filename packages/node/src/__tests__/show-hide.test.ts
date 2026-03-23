@@ -17,8 +17,7 @@ describe("show-hide", () => {
   afterEach(() => rmSync(dir, { recursive: true }));
 
   it("hide encrypts secret values, keeps public unchanged", () => {
-    const content = `# @vars-state unlocked
-env(dev, prod)
+    const content = `env(dev, prod)
 
 public APP_NAME = "my-app"
 SECRET : z.string() {
@@ -28,15 +27,13 @@ SECRET : z.string() {
     writeFileSync(f, content);
     hideFile(f, key);
     const result = readFileSync(f, "utf8");
-    expect(result).toContain("# @vars-state locked");
     expect(result).toContain('APP_NAME = "my-app"');
     expect(result).toContain("enc:v2:aes256gcm-det:");
     expect(result).not.toContain("dev-secret");
   });
 
   it("show decrypts encrypted values", () => {
-    const content = `# @vars-state unlocked
-env(dev)
+    const content = `env(dev)
 
 SECRET : z.string() {
   dev = "my-secret"
@@ -47,13 +44,11 @@ SECRET : z.string() {
     // hideFile on a .vars file (not .unlocked.vars) keeps it at .vars
     const unlocked = showFile(f, key);
     const result = readFileSync(unlocked, "utf8");
-    expect(result).toContain("# @vars-state unlocked");
     expect(result).toContain("my-secret");
   });
 
   it("hide is deterministic — same output on repeated hide", () => {
-    const content = `# @vars-state unlocked
-env(dev)
+    const content = `env(dev)
 
 SECRET : z.string() {
   dev = "same-value"
@@ -69,8 +64,7 @@ SECRET : z.string() {
   });
 
   it("encrypts grouped variables correctly", async () => {
-    const content = `# @vars-state unlocked
-env(dev)
+    const content = `env(dev)
 
 group stripe {
   SECRET_KEY : z.string() {
@@ -90,8 +84,7 @@ group stripe {
   });
 
   it("show renames .vars to .unlocked.vars and decrypts", () => {
-    const content = `# @vars-state locked
-env(dev)
+    const content = `env(dev)
 
 SECRET : z.string() {
   dev = "my-secret"
@@ -105,13 +98,11 @@ SECRET : z.string() {
     expect(existsSync(locked)).toBe(false);
     expect(existsSync(unlocked)).toBe(true);
     const result = readFileSync(unlocked, "utf8");
-    expect(result).toContain("# @vars-state unlocked");
     expect(result).toContain("my-secret");
   });
 
   it("show is idempotent — re-running on .unlocked.vars re-decrypts", () => {
-    const content = `# @vars-state locked
-env(dev)
+    const content = `env(dev)
 
 SECRET : z.string() {
   dev = "my-secret"
@@ -125,13 +116,11 @@ SECRET : z.string() {
     // Re-run show — should detect .unlocked.vars and re-decrypt
     showFile(unlocked, key);
     const result = readFileSync(unlocked, "utf8");
-    expect(result).toContain("# @vars-state unlocked");
     expect(result).toContain("my-secret");
   });
 
   it("hide renames .unlocked.vars back to .vars after encrypting", () => {
-    const content = `# @vars-state unlocked
-env(dev)
+    const content = `env(dev)
 
 SECRET : z.string() {
   dev = "my-secret"
@@ -144,14 +133,12 @@ SECRET : z.string() {
     expect(existsSync(unlocked)).toBe(false);
     expect(existsSync(locked)).toBe(true);
     const result = readFileSync(locked, "utf8");
-    expect(result).toContain("# @vars-state locked");
     expect(result).toContain("enc:v2:aes256gcm-det:");
     expect(result).not.toContain("my-secret");
   });
 
   it("hide is idempotent — already-encrypted values are not double-encrypted", () => {
-    const content = `# @vars-state unlocked
-env(dev)
+    const content = `env(dev)
 
 SECRET : z.string() {
   dev = "my-secret"
@@ -171,8 +158,7 @@ SECRET : z.string() {
 
   it("handles flat (non-env-block) encrypted values in show", async () => {
     // First create a file with a flat encrypted value
-    const content = `# @vars-state unlocked
-env(dev)
+    const content = `env(dev)
 
 SECRET = "flat-secret"`;
     const f = join(dir, "flat.vars");
@@ -189,8 +175,7 @@ SECRET = "flat-secret"`;
   });
 
   it("full cycle: hide → show → edit → hide produces correct output", () => {
-    const content = `# @vars-state unlocked
-env(dev, prod)
+    const content = `env(dev, prod)
 
 public APP_NAME = "my-app"
 SECRET : z.string() {
@@ -203,7 +188,6 @@ SECRET : z.string() {
     // Hide: encrypts and stays at .vars (since input is .vars)
     hideFile(locked, key);
     expect(existsSync(locked)).toBe(true);
-    expect(readFileSync(locked, "utf8")).toContain("# @vars-state locked");
 
     // Show: renames to .unlocked.vars and decrypts
     const unlocked = showFile(locked, key);
@@ -222,7 +206,6 @@ SECRET : z.string() {
     expect(existsSync(unlocked)).toBe(false);
     expect(existsSync(locked)).toBe(true);
     const final = readFileSync(locked, "utf8");
-    expect(final).toContain("# @vars-state locked");
     expect(final).not.toContain("new-dev-secret");
     expect(final).toContain("enc:v2:aes256gcm-det:");
 
@@ -232,8 +215,7 @@ SECRET : z.string() {
   });
 
   it("hide overwrites stale .vars when .unlocked.vars is the source of truth", () => {
-    const content = `# @vars-state unlocked
-env(dev)
+    const content = `env(dev)
 
 SECRET : z.string() {
   dev = "latest-secret"
@@ -253,8 +235,7 @@ SECRET : z.string() {
   });
 
   it("hide does not encrypt values inside check blocks", () => {
-    const content = `# @vars-state unlocked
-env(dev, prod)
+    const content = `env(dev, prod)
 
 SECRET : z.string() {
   dev = "dev-secret"
@@ -286,8 +267,7 @@ check "Secret is defined" {
   });
 
   it("hide preserves check blocks with various comparison operators", () => {
-    const content = `# @vars-state unlocked
-env(dev, prod)
+    const content = `env(dev, prod)
 
 SECRET = "my-secret"
 
@@ -312,8 +292,7 @@ check "comparisons" {
   });
 
   it("hide→show round-trip preserves check blocks exactly", () => {
-    const content = `# @vars-state unlocked
-env(dev, prod)
+    const content = `env(dev, prod)
 
 SECRET : z.string() {
   dev = "dev-secret"
@@ -335,8 +314,7 @@ check "JWT secret is long enough in prod" {
   });
 
   it("hide encrypts default values on schema-annotated lines", () => {
-    const content = `# @vars-state unlocked
-env(dev, prod)
+    const content = `env(dev, prod)
 
 JWT_SECRET : z.string().min(16) = "super-secret-default-key"
 DATABASE_URL : z.string().url() = "postgres://user:pass@localhost/db"
@@ -358,8 +336,7 @@ PORT : z.coerce.number() = 3000`;
   });
 
   it("hide encrypts schema defaults inside groups", () => {
-    const content = `# @vars-state unlocked
-env(dev, prod)
+    const content = `env(dev, prod)
 
 group db {
   HOST : z.string() = "localhost"
@@ -381,8 +358,7 @@ group db {
   });
 
   it("show decrypts schema-default values back to plaintext", () => {
-    const content = `# @vars-state unlocked
-env(dev, prod)
+    const content = `env(dev, prod)
 
 JWT_SECRET : z.string().min(16) = "my-jwt-secret-value"
 public APP_URL : z.string().url() = "https://example.com"`;

@@ -123,7 +123,7 @@ Run it in CI to catch drift before it bites you in prod.
 npx vars hook
 ```
 
-Installs a pre-commit hook that blocks commits when any `config.vars` file has `@vars-state unlocked` in its header. This prevents accidentally committing decrypted secrets.
+Installs a pre-commit hook that blocks commits when any `*.unlocked.vars` file is staged. This prevents accidentally committing decrypted secrets.
 
 Run it once after cloning — `vars init` does this automatically for new projects.
 

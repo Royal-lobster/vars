@@ -9,7 +9,6 @@ Here's a `.vars` file using every feature. Read this first, then use the section
 > **Note:** Examples below show values as they appear after `vars show` (unlocked state). In the committed file, all secret values are encrypted inline. See [Encrypted values](#encrypted-values) for details.
 
 ```vars
-# @vars-state locked
 env(dev, staging, prod)
 param region : enum(us, eu) = us
 
@@ -77,17 +76,6 @@ check "Webhook secret required in prod" {
 ## File header
 
 Every `.vars` file starts with a state header, environment declaration, and optional params.
-
-### State header
-
-```vars
-# @vars-state locked
-```
-
-The first line of every committed `.vars` file. Machine-readable — used by the pre-commit hook and `vars ls`. Two states:
-
-- `# @vars-state locked` — committed state, secret values are encrypted blobs.
-- `# @vars-state unlocked` — working state after `vars show`, secret values are plaintext.
 
 ### `env()` declaration
 
@@ -466,7 +454,6 @@ Inside a quoted string, `#` is part of the value and is not stripped.
 
 | Syntax | Effect |
 |---|---|
-| `# @vars-state locked` | State header (machine-readable) |
 | `env(dev, staging, prod)` | Declare valid environment names |
 | `param name : enum(a, b) = a` | Declare a parameterized dimension |
 | `use "path"` | Import variables from another file |
