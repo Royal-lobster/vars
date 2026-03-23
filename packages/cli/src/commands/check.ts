@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { resolveUseChain, decrypt, getKeyFromEnv } from "@vars/node";
 import { validateValue, evaluateCheck, isEncrypted } from "@vars/core";
 import { findVarsFile, findKeyFile, requireKey } from "../utils/context.js";
+import { checkExpiry, formatExpiryMessage } from "../utils/expiry.js";
 import pc from "picocolors";
 
 export default defineCommand({
@@ -10,6 +11,7 @@ export default defineCommand({
   args: {
     file: { type: "string", alias: "f", description: ".vars file to check" },
     env: { type: "string", description: "Specific environment to check" },
+    failOnExpiring: { type: "string", description: "Exit non-zero if any secret expires within N days (CI-friendly)" },
   },
   async run({ args }) {
     const file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
@@ -87,11 +89,24 @@ export default defineCommand({
       }
     }
 
-    // Metadata warnings
+    // Metadata warnings — expiry and deprecation
+    const failOnExpiringDays = args.failOnExpiring !== undefined ? parseInt(String(args.failOnExpiring), 10) : NaN;
     for (const v of preliminary.vars) {
-      if (v.metadata?.expires && new Date(v.metadata.expires) < new Date()) {
-        console.warn(pc.yellow(`  ⚠ ${v.flatName}: expired on ${v.metadata.expires}`));
-        warnings++;
+      if (v.metadata?.expires) {
+        const status = checkExpiry(v.metadata.expires);
+        if (status.expired) {
+          console.warn(pc.red(`  ✗ ${formatExpiryMessage(v.flatName, status, v.metadata.expires)}`));
+          warnings++;
+          if (!isNaN(failOnExpiringDays)) errors++;
+        } else if (status.expiringSoon) {
+          console.warn(pc.yellow(`  ⚠ ${formatExpiryMessage(v.flatName, status, v.metadata.expires)}`));
+          warnings++;
+          if (!isNaN(failOnExpiringDays) && status.daysUntil <= failOnExpiringDays) errors++;
+        } else if (!isNaN(failOnExpiringDays) && status.daysUntil <= failOnExpiringDays) {
+          console.warn(pc.yellow(`  ⚠ ${formatExpiryMessage(v.flatName, status, v.metadata.expires)}`));
+          warnings++;
+          errors++;
+        }
       }
       if (v.metadata?.deprecated) {
         console.warn(pc.yellow(`  ⚠ ${v.flatName}: deprecated — ${v.metadata.deprecated}`));
