@@ -134,9 +134,24 @@ export function resolveAll(
 ): ResolvedVars {
   const resolvedVars: ResolvedVar[] = [];
 
+  // Collect names of all vars that belong to a group so we can
+  // deduplicate top-level "ghost" entries that share the same name.
+  const groupedVarNames = new Set<string>();
+  for (const decl of declarations) {
+    if (decl.kind === "group") {
+      for (const varDecl of decl.declarations) {
+        groupedVarNames.add(varDecl.name);
+      }
+    }
+  }
+
   // First pass: resolve all values (without interpolation)
   for (const decl of declarations) {
     if (decl.kind === "variable") {
+      // Skip top-level vars that also exist inside a group — the group
+      // version is authoritative (has the correct schema, group tag, etc.).
+      if (groupedVarNames.has(decl.name)) continue;
+
       resolvedVars.push({
         name: decl.name,
         flatName: decl.name,
@@ -146,10 +161,18 @@ export function resolveAll(
         metadata: decl.metadata,
       });
     } else if (decl.kind === "group") {
+      const groupPrefix = decl.name.toUpperCase() + "_";
       for (const varDecl of decl.declarations) {
+        // Avoid stuttered flatName: if the var name already starts with
+        // the group prefix (case-insensitive), use the var name as-is.
+        const alreadyPrefixed = varDecl.name.toUpperCase().startsWith(groupPrefix);
+        const flatName = alreadyPrefixed
+          ? varDecl.name
+          : `${groupPrefix}${varDecl.name}`;
+
         resolvedVars.push({
           name: varDecl.name,
-          flatName: `${decl.name.toUpperCase()}_${varDecl.name}`,
+          flatName,
           public: varDecl.public,
           schema: varDecl.schema ?? "z.string()",
           value: resolveValue(varDecl, env, params),

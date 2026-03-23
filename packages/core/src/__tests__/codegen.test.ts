@@ -150,4 +150,97 @@ describe("codegen", () => {
     // Should not reference a non-existent vars constant
     expect(code).not.toMatch(/const clientVars.*=.*\bvars\./);
   });
+
+  it("uses correct non-stuttered flatName in parseVars for grouped vars", () => {
+    const code = generateTypeScript(makeResolved([
+      { name: "RATE_LIMIT_RPM", flatName: "RATE_LIMIT_RPM", schema: "z.coerce.number()", value: "100", group: "rate_limit" },
+      { name: "RATE_LIMIT_BURST", flatName: "RATE_LIMIT_BURST", schema: "z.coerce.number()", value: "50", group: "rate_limit" },
+    ]));
+    // The parseVars function should reference source.RATE_LIMIT_RPM, NOT source.RATE_LIMIT_RATE_LIMIT_RPM
+    expect(code).toContain("source.RATE_LIMIT_RPM");
+    expect(code).toContain("source.RATE_LIMIT_BURST");
+    expect(code).not.toContain("RATE_LIMIT_RATE_LIMIT_RPM");
+    expect(code).not.toContain("RATE_LIMIT_RATE_LIMIT_BURST");
+  });
+
+  it("does not emit duplicate schema keys for grouped vars", () => {
+    const code = generateTypeScript(makeResolved([
+      { name: "APP", flatName: "APP", public: true, schema: "z.string()", value: "my-app" },
+      { name: "RATE_LIMIT_RPM", flatName: "RATE_LIMIT_RPM", schema: "z.coerce.number()", value: "100", group: "rate_limit" },
+    ]));
+    // RATE_LIMIT_RPM should only appear inside the rate_limit group, not top-level
+    const schemaBlock = code.slice(code.indexOf("const schema"), code.indexOf("});") + 3);
+    const topLevelRpmCount = (schemaBlock.match(/^\s{2}RATE_LIMIT_RPM:/gm) || []).length;
+    expect(topLevelRpmCount).toBe(0); // should not appear at top level of schema
+  });
+
+  // ── Static codegen must reject encrypted values ──
+
+  it("static codegen throws on encrypted top-level value", () => {
+    expect(() =>
+      generateTypeScript(makeResolved([
+        { name: "API_KEY", public: false, schema: "z.string()", value: "enc:v2:aes256gcm-det:wS7oaqOtXYZ" },
+      ]), { platform: "static" }),
+    ).toThrow(/Static codegen requires decrypted values/);
+  });
+
+  it("static codegen throws on encrypted group value", () => {
+    expect(() =>
+      generateTypeScript(makeResolved([
+        { name: "SECRET_KEY", flatName: "STRIPE_SECRET_KEY", public: false, schema: "z.string()", value: "enc:v2:aes256gcm-det:abc123", group: "stripe" },
+        { name: "PUB_KEY", flatName: "STRIPE_PUB_KEY", public: true, schema: "z.string()", value: "pk_live_xyz", group: "stripe" },
+      ]), { platform: "static" }),
+    ).toThrow(/STRIPE_SECRET_KEY/);
+  });
+
+  it("static codegen succeeds with plaintext values", () => {
+    const code = generateTypeScript(makeResolved([
+      { name: "APP", public: true, schema: "z.string()", value: "my-app" },
+      { name: "SECRET", public: false, schema: "z.string()", value: "plaintext-secret" },
+    ]), { platform: "static" });
+    expect(code).toContain('"my-app"');
+    expect(code).toContain("new Redacted");
+  });
+
+  // ── ClientVars must not expose private vars in mixed groups ──
+
+  it("ClientVars picks only public vars from mixed groups", () => {
+    const code = generateTypeScript(makeResolved([
+      { name: "SECRET_KEY", flatName: "STRIPE_SECRET_KEY", public: false, schema: "z.string()", value: "sk", group: "stripe" },
+      { name: "PUB_KEY", flatName: "STRIPE_PUB_KEY", public: true, schema: "z.string()", value: "pk", group: "stripe" },
+    ]));
+    // Should NOT pick the whole group
+    expect(code).not.toMatch(/Pick<Vars,\s*"stripe">/);
+    // Should pick individual public vars within the group
+    expect(code).toMatch(/Pick<Vars\["stripe"\],\s*"PUB_KEY">/);
+  });
+
+  it("ClientVars picks whole group when all vars are public", () => {
+    const code = generateTypeScript(makeResolved([
+      { name: "REGION", flatName: "AWS_REGION", public: true, schema: "z.string()", value: "us-east-1", group: "aws" },
+      { name: "BUCKET", flatName: "AWS_BUCKET", public: true, schema: "z.string()", value: "my-bucket", group: "aws" },
+    ]));
+    expect(code).toMatch(/Pick<Vars,\s*"aws">/);
+  });
+
+  it("clientVars export only includes public vars from mixed groups", () => {
+    const code = generateTypeScript(makeResolved([
+      { name: "SECRET_KEY", flatName: "STRIPE_SECRET_KEY", public: false, schema: "z.string()", value: "sk", group: "stripe" },
+      { name: "PUB_KEY", flatName: "STRIPE_PUB_KEY", public: true, schema: "z.string()", value: "pk", group: "stripe" },
+    ]));
+    // Should pick individual vars, not spread the whole group
+    expect(code).toContain("stripe: {");
+    expect(code).toContain("PUB_KEY: vars.stripe.PUB_KEY");
+    expect(code).not.toMatch(/stripe: vars\.stripe,/);
+  });
+
+  it("ClientVars handles mix of top-level public and mixed groups", () => {
+    const code = generateTypeScript(makeResolved([
+      { name: "APP_NAME", public: true, schema: "z.string()", value: "app" },
+      { name: "SECRET_KEY", flatName: "STRIPE_SECRET_KEY", public: false, schema: "z.string()", value: "sk", group: "stripe" },
+      { name: "PUB_KEY", flatName: "STRIPE_PUB_KEY", public: true, schema: "z.string()", value: "pk", group: "stripe" },
+    ]));
+    expect(code).toMatch(/Pick<Vars,\s*"APP_NAME">/);
+    expect(code).toMatch(/Pick<Vars\["stripe"\],\s*"PUB_KEY">/)
+  });
 });
