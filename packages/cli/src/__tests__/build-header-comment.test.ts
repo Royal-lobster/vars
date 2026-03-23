@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildHeaderComment } from "../commands/init.js";
+import { buildHeaderComment, migrateFromEnv } from "../commands/init.js";
 
 describe("buildHeaderComment", () => {
   it("generates boilerplate comment with docs link", () => {
@@ -108,5 +108,49 @@ describe("buildHeaderComment", () => {
 
     expect(buildHeaderComment(shortCtx)).not.toContain("Migrated from .env");
     expect(buildHeaderComment(longCtx)).toContain("Migrated from .env");
+  });
+});
+
+describe("migrateFromEnv", () => {
+  it("includes header comment in migration output", () => {
+    const env = `NEXT_PUBLIC_API_URL=https://api.example.com
+NEXT_PUBLIC_APP_NAME=my-app
+DATABASE_URL=postgres://localhost/mydb
+SECRET_KEY=abc123
+REDIS_URL=redis://localhost
+LOG_LEVEL=debug`;
+
+    const result = migrateFromEnv(env);
+
+    expect(result).toContain("Migrated from .env");
+    expect(result).toContain("NEXT_PUBLIC_ prefixes were marked public");
+    expect(result).toContain("Docs: https://vars-docs.vercel.app/docs/file-format");
+    expect(result).toContain('public NEXT_PUBLIC_API_URL = "https://api.example.com"');
+    expect(result).toContain('DATABASE_URL = "postgres://localhost/mydb"');
+    expect(result.startsWith("# @vars-state unlocked\n")).toBe(true);
+  });
+
+  it("uses short-form for small .env", () => {
+    const env = `API_URL=https://api.example.com
+SECRET=abc`;
+
+    const result = migrateFromEnv(env);
+
+    expect(result).not.toContain("Migrated from .env");
+    expect(result).toContain("`public` = plaintext");
+    expect(result).toContain("Docs:");
+  });
+
+  it("detects multiple prefixes", () => {
+    const env = `NEXT_PUBLIC_A=1
+NEXT_PUBLIC_B=2
+VITE_C=3
+DB_URL=x
+KEY_1=y
+KEY_2=z`;
+
+    const result = migrateFromEnv(env);
+
+    expect(result).toContain("NEXT_PUBLIC_, VITE_");
   });
 });

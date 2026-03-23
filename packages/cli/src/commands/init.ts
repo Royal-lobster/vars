@@ -108,12 +108,19 @@ export default defineCommand({
         content = migrateFromEnv(readFileSync(envFile, "utf8"));
         console.log(pc.dim("  Migrated from .env"));
       } else {
+        const header = buildHeaderComment({
+          source: "boilerplate",
+          publicVarNames: [],
+          totalVarCount: 0,
+          detectedPrefixes: [],
+        });
         content = `# @vars-state unlocked
+${header}
 env(dev, staging, prod)
 
-# Add your variables below
 public APP_NAME = "my-app"
 public PORT : z.number() = 3000
+DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 `;
       }
       writeFileSync(configPath, content);
@@ -199,29 +206,28 @@ public PORT : z.number() = 3000
   },
 });
 
-function migrateFromEnv(envContent: string): string {
-  const PUBLIC_PREFIXES = ["NEXT_PUBLIC_", "VITE_", "REACT_APP_", "NUXT_PUBLIC_", "EXPO_PUBLIC_", "GATSBY_"];
-  const lines = ["# @vars-state unlocked", "env(dev, staging, prod)", ""];
+const PUBLIC_PREFIXES = ["NEXT_PUBLIC_", "VITE_", "REACT_APP_", "NUXT_PUBLIC_", "EXPO_PUBLIC_", "GATSBY_"];
+
+export function migrateFromEnv(envContent: string): string {
+  const detectedPrefixes = new Set<string>();
+  const publicVarNames: string[] = [];
+  const varLines: string[] = [];
+
   for (const line of envContent.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
     const eqIdx = trimmed.indexOf("=");
     if (eqIdx === -1) continue;
     const key = trimmed.slice(0, eqIdx).trim();
-    // Skip invalid identifiers
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
       console.warn(pc.yellow(`  Skipping invalid variable name: ${key}`));
       continue;
     }
     let value = trimmed.slice(eqIdx + 1).trim();
-    // Strip inline comments (space + #) from unquoted values
     if (!value.startsWith('"') && !value.startsWith("'")) {
       const commentIdx = value.indexOf(" #");
-      if (commentIdx !== -1) {
-        value = value.slice(0, commentIdx).trim();
-      }
+      if (commentIdx !== -1) value = value.slice(0, commentIdx).trim();
     }
-    // Strip surrounding quotes (double or single)
     let wasQuoted = false;
     if (value.length >= 2 &&
         ((value.startsWith('"') && value.endsWith('"')) ||
@@ -229,16 +235,36 @@ function migrateFromEnv(envContent: string): string {
       value = value.slice(1, -1);
       wasQuoted = true;
     }
-    const isPublic = PUBLIC_PREFIXES.some(p => key.startsWith(p));
+
+    const matchedPrefix = PUBLIC_PREFIXES.find(p => key.startsWith(p));
+    const isPublic = !!matchedPrefix;
+    if (matchedPrefix) detectedPrefixes.add(matchedPrefix);
+    if (isPublic) publicVarNames.push(key);
+
     const pub = isPublic ? "public " : "";
-    // Infer type only for unquoted values
     if (!wasQuoted && /^\d+$/.test(value)) {
-      lines.push(`${pub}${key} : z.number() = ${value}`);
+      varLines.push(`${pub}${key} : z.number() = ${value}`);
     } else if (!wasQuoted && (value === "true" || value === "false")) {
-      lines.push(`${pub}${key} : z.boolean() = ${value}`);
+      varLines.push(`${pub}${key} : z.boolean() = ${value}`);
     } else {
-      lines.push(`${pub}${key} = "${value}"`);
+      varLines.push(`${pub}${key} = "${value}"`);
     }
   }
+
+  const header = buildHeaderComment({
+    source: "env",
+    publicVarNames,
+    totalVarCount: varLines.length,
+    detectedPrefixes: [...detectedPrefixes],
+  });
+
+  const lines = [
+    "# @vars-state unlocked",
+    header,
+    "env(dev, staging, prod)",
+    "",
+    ...varLines,
+  ];
+
   return lines.join("\n") + "\n";
 }
