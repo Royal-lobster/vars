@@ -101,6 +101,14 @@ export async function requireKey(keyFilePath: string | null): Promise<Buffer> {
     throw new Error("No encryption key found. Run `vars key init` first.");
   }
 
+  const encoded = readFileSync(keyFilePath, "utf8").trim();
+
+  // VARS_PIN env var — used by the VS Code extension (non-TTY)
+  const envPin = process.env.VARS_PIN;
+  if (envPin) {
+    return decryptMasterKey(encoded, envPin);
+  }
+
   // Check if stdin is a TTY — if not, can't prompt
   if (!process.stdin.isTTY) {
     throw new Error(
@@ -110,7 +118,6 @@ export async function requireKey(keyFilePath: string | null): Promise<Buffer> {
     );
   }
 
-  const encoded = readFileSync(keyFilePath, "utf8").trim();
   const pin = await prompts.password({ message: "Enter PIN:" });
   if (prompts.isCancel(pin)) process.exit(0);
   return decryptMasterKey(encoded, pin as string);

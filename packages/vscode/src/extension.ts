@@ -114,7 +114,10 @@ export function activate(context: ExtensionContext): void {
 
 function runVarsWithPin(subcommand: string, pin: string, cwd: string): Promise<void> {
 	return new Promise((resolve, reject) => {
-		const child = cp.spawn("vars", [subcommand], { cwd });
+		const child = cp.spawn("vars", [subcommand], {
+			cwd,
+			env: { ...process.env, VARS_PIN: pin },
+		});
 
 		let stderr = "";
 		child.stderr.on("data", (data) => { stderr += data.toString(); });
@@ -130,9 +133,6 @@ function runVarsWithPin(subcommand: string, pin: string, cwd: string): Promise<v
 		child.on("error", (err) => {
 			reject(new Error(`Failed to run vars: ${err.message}`));
 		});
-
-		child.stdin.write(pin + "\n");
-		child.stdin.end();
 	});
 }
 
