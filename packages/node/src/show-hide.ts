@@ -167,10 +167,10 @@ export function hideFile(filePath: string, key: Buffer): string {
     result.push(line);
   }
 
-  // Write encrypted content, then rename to locked path
-  writeFileSync(readPath, result.join("\n"));
+  // Rename first so editors follow the inode, then write encrypted content
   if (isUnlockedPath(readPath) && readPath !== lockedPath) {
     renameSync(readPath, lockedPath);
   }
+  writeFileSync(lockedPath, result.join("\n"));
   return lockedPath;
 }
