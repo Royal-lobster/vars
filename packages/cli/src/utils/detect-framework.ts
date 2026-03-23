@@ -1,9 +1,21 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+/** All known public-var prefixes across supported frameworks. Used as fallback when no framework is detected. */
+export const ALL_PUBLIC_PREFIXES = [
+  "NEXT_PUBLIC_",
+  "VITE_",
+  "NUXT_PUBLIC_",
+  "PUBLIC_",
+  "EXPO_PUBLIC_",
+  "GATSBY_",
+  "REACT_APP_",
+];
+
 export interface FrameworkInfo {
   name: string;
   devCommand: string;
+  publicPrefixes: string[];
 }
 
 function readPackageJsonDeps(cwd: string): Record<string, string> {
@@ -28,6 +40,7 @@ export function detectFramework(cwd: string): FrameworkInfo | null {
       return {
         name: "Next.js",
         devCommand: "next dev",
+        publicPrefixes: ["NEXT_PUBLIC_"],
       };
     }
   }
@@ -39,6 +52,7 @@ export function detectFramework(cwd: string): FrameworkInfo | null {
       return {
         name: "Vite",
         devCommand: "vite",
+        publicPrefixes: ["VITE_"],
       };
     }
   }
@@ -50,6 +64,7 @@ export function detectFramework(cwd: string): FrameworkInfo | null {
       return {
         name: "Astro",
         devCommand: "astro dev",
+        publicPrefixes: ["PUBLIC_"],
       };
     }
   }
@@ -59,6 +74,7 @@ export function detectFramework(cwd: string): FrameworkInfo | null {
     return {
       name: "Nuxt",
       devCommand: "nuxt dev",
+      publicPrefixes: ["NUXT_PUBLIC_"],
     };
   }
 
@@ -70,6 +86,7 @@ export function detectFramework(cwd: string): FrameworkInfo | null {
     return {
       name: "NestJS",
       devCommand: "nest start --watch",
+      publicPrefixes: [],
     };
   }
 
@@ -78,6 +95,25 @@ export function detectFramework(cwd: string): FrameworkInfo | null {
     return {
       name: "SvelteKit",
       devCommand: "vite dev",
+      publicPrefixes: ["PUBLIC_"],
+    };
+  }
+
+  // Expo (React Native)
+  if ("expo" in deps) {
+    return {
+      name: "Expo",
+      devCommand: "expo start",
+      publicPrefixes: ["EXPO_PUBLIC_"],
+    };
+  }
+
+  // Gatsby
+  if ("gatsby" in deps) {
+    return {
+      name: "Gatsby",
+      devCommand: "gatsby develop",
+      publicPrefixes: ["GATSBY_"],
     };
   }
 
