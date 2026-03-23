@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildHeaderComment, migrateFromEnv } from "../commands/init.js";
+import { buildHeaderComment } from "../commands/init.js";
+import { migrateFromEnv } from "../utils/migrate-from-env.js";
 
 describe("buildHeaderComment", () => {
   it("generates boilerplate comment with docs link", () => {

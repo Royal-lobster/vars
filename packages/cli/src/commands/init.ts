@@ -5,10 +5,10 @@ import { createMasterKey, encryptMasterKey } from "@vars/node";
 import { generateTypeScript } from "@vars/core";
 import { resolveUseChain } from "@vars/node";
 import { getProjectRoot } from "../utils/context.js";
+import { detectFramework, ALL_PUBLIC_PREFIXES } from "../utils/detect-framework.js";
+import { migrateFromEnv } from "../utils/migrate-from-env.js";
 import * as prompts from "@clack/prompts";
 import pc from "picocolors";
-
-export const PUBLIC_PREFIXES = ["NEXT_PUBLIC_", "VITE_", "REACT_APP_", "NUXT_PUBLIC_", "EXPO_PUBLIC_", "GATSBY_"];
 
 export interface HeaderCommentContext {
   source: "env" | "boilerplate";
@@ -101,12 +101,24 @@ export default defineCommand({
     // 3. Create starter config.vars
     const configPath = join(root, "config.vars");
     if (!existsSync(configPath)) {
-      const envFile = join(root, ".env");
+      const envCandidates = [".env", ".env.local", ".env.example", ".env.sample"];
+      const envFile = envCandidates.map(f => join(root, f)).find(f => existsSync(f));
       let content: string;
 
-      if (existsSync(envFile)) {
+      if (envFile) {
+        // Detect framework to determine public var prefixes
+        const framework = detectFramework(root);
+        const publicPrefixes = framework
+          ? framework.publicPrefixes
+          : ALL_PUBLIC_PREFIXES;
+        if (framework) {
+          const prefixMsg = publicPrefixes.length
+            ? `using ${publicPrefixes.join(", ")} prefix${publicPrefixes.length > 1 ? "es" : ""}`
+            : "no public var prefixes";
+          console.log(pc.dim(`  Detected ${framework.name} — ${prefixMsg}`));
+        }
         // Migrate from .env
-        content = migrateFromEnv(readFileSync(envFile, "utf8"));
+        content = migrateFromEnv(readFileSync(envFile, "utf8"), publicPrefixes);
         console.log(pc.dim("  Migrated from .env"));
       } else {
         const header = buildHeaderComment({
@@ -207,63 +219,3 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
   },
 });
 
-export function migrateFromEnv(envContent: string): string {
-  const detectedPrefixes = new Set<string>();
-  const publicVarNames: string[] = [];
-  const varLines: string[] = [];
-
-  for (const line of envContent.split("\n")) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eqIdx = trimmed.indexOf("=");
-    if (eqIdx === -1) continue;
-    const key = trimmed.slice(0, eqIdx).trim();
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
-      console.warn(pc.yellow(`  Skipping invalid variable name: ${key}`));
-      continue;
-    }
-    let value = trimmed.slice(eqIdx + 1).trim();
-    if (!value.startsWith('"') && !value.startsWith("'")) {
-      const commentIdx = value.indexOf(" #");
-      if (commentIdx !== -1) value = value.slice(0, commentIdx).trim();
-    }
-    let wasQuoted = false;
-    if (value.length >= 2 &&
-        ((value.startsWith('"') && value.endsWith('"')) ||
-         (value.startsWith("'") && value.endsWith("'")))) {
-      value = value.slice(1, -1);
-      wasQuoted = true;
-    }
-
-    const matchedPrefix = PUBLIC_PREFIXES.find(p => key.startsWith(p));
-    const isPublic = !!matchedPrefix;
-    if (matchedPrefix) detectedPrefixes.add(matchedPrefix);
-    if (isPublic) publicVarNames.push(key);
-
-    const pub = isPublic ? "public " : "";
-    if (!wasQuoted && /^\d+$/.test(value)) {
-      varLines.push(`${pub}${key} : z.number() = ${value}`);
-    } else if (!wasQuoted && (value === "true" || value === "false")) {
-      varLines.push(`${pub}${key} : z.boolean() = ${value}`);
-    } else {
-      varLines.push(`${pub}${key} = "${value}"`);
-    }
-  }
-
-  const header = buildHeaderComment({
-    source: "env",
-    publicVarNames,
-    totalVarCount: varLines.length,
-    detectedPrefixes: [...detectedPrefixes],
-  });
-
-  const lines = [
-    "# @vars-state unlocked",
-    header,
-    "env(dev, staging, prod)",
-    "",
-    ...varLines,
-  ];
-
-  return lines.join("\n") + "\n";
-}

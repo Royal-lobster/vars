@@ -125,5 +125,76 @@ URL = "jdbc:\${CONN}/db"`;
       const url = resolved.vars.find(v => v.name === "URL");
       expect(url?.value).toBe("jdbc:host=localhost/db");
     });
+
+    it("does not stutter flatName when var name already has group prefix", () => {
+      const src = `env(dev)
+group rate_limit {
+  RATE_LIMIT_RPM : z.coerce.number() = 100
+  RATE_LIMIT_BURST : z.coerce.number() = 50
+}`;
+      const result = parse(src);
+      const resolved = resolveAll(result.ast.declarations, "dev", {}, result.ast.envs, result.ast.params);
+
+      const rpm = resolved.vars.find(v => v.name === "RATE_LIMIT_RPM");
+      expect(rpm?.flatName).toBe("RATE_LIMIT_RPM");
+      expect(rpm?.group).toBe("rate_limit");
+
+      const burst = resolved.vars.find(v => v.name === "RATE_LIMIT_BURST");
+      expect(burst?.flatName).toBe("RATE_LIMIT_BURST");
+      expect(burst?.group).toBe("rate_limit");
+    });
+
+    it("still prefixes flatName when var name does not have group prefix", () => {
+      const src = `env(dev)
+group db {
+  HOST : z.string() = "localhost"
+  PORT : z.number() = 5432
+}`;
+      const result = parse(src);
+      const resolved = resolveAll(result.ast.declarations, "dev", {}, result.ast.envs, result.ast.params);
+
+      const host = resolved.vars.find(v => v.name === "HOST");
+      expect(host?.flatName).toBe("DB_HOST");
+
+      const port = resolved.vars.find(v => v.name === "PORT");
+      expect(port?.flatName).toBe("DB_PORT");
+    });
+
+    it("deduplicates top-level vars that also exist in a group", () => {
+      const src = `env(dev)
+RATE_LIMIT_BURST : z.string() = "ghost"
+group rate_limit {
+  RATE_LIMIT_BURST : z.coerce.number() = 50
+}`;
+      const result = parse(src);
+      const resolved = resolveAll(result.ast.declarations, "dev", {}, result.ast.envs, result.ast.params);
+
+      // Should only appear once — the grouped version
+      const matches = resolved.vars.filter(v => v.name === "RATE_LIMIT_BURST");
+      expect(matches).toHaveLength(1);
+      expect(matches[0]?.group).toBe("rate_limit");
+      expect(matches[0]?.schema).toBe("z.coerce.number()");
+      expect(matches[0]?.value).toBe("50");
+    });
+
+    it("does not emit duplicate vars when multiple top-level ghosts exist", () => {
+      const src = `env(dev)
+UPSTREAM_TIMEOUT_MS : z.string() = "ghost1"
+UPSTREAM_TIMEOUT_MS : z.string() = "ghost2"
+group upstream {
+  UPSTREAM_TIMEOUT_MS : z.coerce.number() = 3000
+  UPSTREAM_PRIMARY_URL : z.string() = "https://example.com"
+}`;
+      const result = parse(src);
+      const resolved = resolveAll(result.ast.declarations, "dev", {}, result.ast.envs, result.ast.params);
+
+      const timeoutMatches = resolved.vars.filter(v => v.name === "UPSTREAM_TIMEOUT_MS");
+      expect(timeoutMatches).toHaveLength(1);
+      expect(timeoutMatches[0]?.group).toBe("upstream");
+
+      const urlVar = resolved.vars.find(v => v.name === "UPSTREAM_PRIMARY_URL");
+      expect(urlVar?.flatName).toBe("UPSTREAM_PRIMARY_URL");
+      expect(urlVar?.group).toBe("upstream");
+    });
   });
 });
