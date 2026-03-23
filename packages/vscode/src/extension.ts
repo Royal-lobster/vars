@@ -89,7 +89,7 @@ export function activate(context: ExtensionContext): void {
 	});
 
 	// --- Auto-switch editor tab on .vars ↔ .unlocked.vars rename ---
-	// When hide/show renames a file, open the new file and close the stale tab
+	// When hide/show renames a file, close the stale tab first, then open the new file
 	watcher.onDidCreate(async (newUri) => {
 		const newPath = newUri.fsPath;
 		const isUnlocked = newPath.endsWith(".unlocked.vars");
@@ -103,10 +103,11 @@ export function activate(context: ExtensionContext): void {
 			.find(t => (t.input as { uri?: Uri })?.uri?.fsPath === oldPath);
 		if (!staleTab) return;
 
-		const doc = await workspace.openTextDocument(newUri);
-		await window.showTextDocument(doc, { preview: false });
-		// Close the stale tab pointing to the now-deleted file
+		// Close stale tab first to avoid two tabs being visible
 		await window.tabGroups.close(staleTab);
+		// Open the new file but don't steal focus from the terminal
+		const doc = await workspace.openTextDocument(newUri);
+		await window.showTextDocument(doc, { preview: false, preserveFocus: true });
 	});
 
 	context.subscriptions.push(watcher);
