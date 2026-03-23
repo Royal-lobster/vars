@@ -93,21 +93,21 @@ vars.DATABASE_URL.unwrap() // actual value (explicit opt-in)
 
 ### ✨ Features
 
-🔐 **Encryption** — Secrets encrypted in-file with AES-256-GCM, locked behind a PIN. Safe to commit to git
-🤖 **AI-safe** — Variable names & schemas visible, secret values hidden from coding agents
-🧩 **Schema-first** — Zod expressions as type annotations, validated at runtime
-🔒 **Type safety** — Generated TypeScript types, secrets wrapped in `Redacted<string>` (explicit `.unwrap()`)
-🌍 **Multi-environment** — Define `dev`, `staging`, `prod` values in one file with per-env overrides
-📁 **Single file** — One `.vars` file replaces scattered `.env.*` files
-🔌 **Framework agnostic** — Works with Next.js, Vite, Express, Hono, anything that reads `process.env`
-📦 **File composition** — [Import and compose](https://vars-docs.vercel.app/docs/file-format#imports) across services and monorepos
-🏷️ **Groups & conditionals** — [Organize vars into groups](https://vars-docs.vercel.app/docs/file-format#groups), use [conditionals](https://vars-docs.vercel.app/docs/file-format#conditionals) for multi-region setups
-✅ **Check blocks** — [Cross-variable validation](https://vars-docs.vercel.app/docs/file-format#check-blocks) rules
-☁️ **Platform targets** — [Cloudflare, Deno, static builds](https://vars-docs.vercel.app/docs/cli/running-apps)
-🔄 **Show/Hide toggle** — Decrypt to edit, encrypt when done
-🚀 **CLI runner** — `vars run --env dev -- npm start` injects env vars
-📊 **Diff & export** — Compare environments, export as dotenv/JSON/k8s-secret
-🧠 **VS Code extension** — Syntax highlighting + LSP support
+- 🔐 **Encryption** — Secrets encrypted in-file with AES-256-GCM, locked behind a PIN. Safe to commit to git
+- 🤖 **AI-safe** — Variable names & schemas visible, secret values hidden from coding agents
+- 🧩 **Schema-first** — Zod expressions as type annotations, validated at runtime
+- 🔒 **Type safety** — Generated TypeScript types, secrets wrapped in `Redacted<string>` (explicit `.unwrap()`)
+- 🌍 **Multi-environment** — Define `dev`, `staging`, `prod` values in one file with per-env overrides
+- 📁 **Single file** — One `.vars` file replaces scattered `.env.*` files
+- 🔌 **Framework agnostic** — Works with Next.js, Vite, Express, Hono, anything that reads `process.env`
+- 📦 **File composition** — [Import and compose](https://vars-docs.vercel.app/docs/file-format#imports) across services and monorepos
+- 🏷️ **Groups & conditionals** — [Organize vars into groups](https://vars-docs.vercel.app/docs/file-format#groups), use [conditionals](https://vars-docs.vercel.app/docs/file-format#conditionals) for multi-region setups
+- ✅ **Check blocks** — [Cross-variable validation](https://vars-docs.vercel.app/docs/file-format#check-blocks) rules
+- ☁️ **Platform targets** — [Cloudflare, Deno, static builds](https://vars-docs.vercel.app/docs/cli/running-apps)
+- 🔄 **Show/Hide toggle** — Decrypt to edit, encrypt when done
+- 🚀 **CLI runner** — `vars run --env dev -- npm start` injects env vars
+- 📊 **Diff & export** — Compare environments, export as dotenv/JSON/k8s-secret
+- 🧠 **VS Code extension** — Syntax highlighting + LSP support
 
 **[Read the docs →](https://vars-docs.vercel.app)**
 
