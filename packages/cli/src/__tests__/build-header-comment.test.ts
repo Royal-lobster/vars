@@ -205,4 +205,12 @@ KEY_2=z`;
 
     expect(result).toContain("NEXT_PUBLIC_, VITE_");
   });
+
+  it("handles empty .env string", () => {
+    const result = migrateFromEnv("");
+
+    expect(result).toContain("No variables found in .env");
+    expect(result).toContain("Docs:");
+    expect(result.startsWith("# @vars-state unlocked\n")).toBe(true);
+  });
 });

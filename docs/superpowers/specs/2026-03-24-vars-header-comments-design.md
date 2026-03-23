@@ -61,7 +61,7 @@ export function buildHeaderComment(ctx: HeaderCommentContext): string;
 | `source === "boilerplate"` | `Replace the example variables below with your own.` + `` `public` = plaintext (not encrypted). Remove it to encrypt a var. `` |
 | `detectedPrefixes.length > 0` (long form) | `Variables with <PREFIX_1>, <PREFIX_2> prefixes were marked public.` |
 | `publicVarNames.length > 0` and no prefix rule explains them | Names the specific manually-marked public vars. |
-| `totalVarCount > 0` and `publicVarNames.length === 0` | `All variables will be encrypted before commit.` |
+| `totalVarCount > 0` and `publicVarNames.length === 0` (long-form) | Migration line becomes `Migrated from .env — all variables will be encrypted.` (no separate encryption line needed) |
 | Always | `Docs: https://vars-docs.vercel.app/docs/file-format` |
 
 ### Short-Form vs Long-Form
@@ -132,8 +132,7 @@ Note: the boilerplate template itself gains a secret variable example (`DATABASE
 ```
 # @vars-state unlocked
 #
-# Migrated from .env — check that public/encrypted classification is correct.
-# All variables will be encrypted before commit.
+# Migrated from .env — all variables will be encrypted.
 #
 # Docs: https://vars-docs.vercel.app/docs/file-format
 #

@@ -8,6 +8,8 @@ import { getProjectRoot } from "../utils/context.js";
 import * as prompts from "@clack/prompts";
 import pc from "picocolors";
 
+export const PUBLIC_PREFIXES = ["NEXT_PUBLIC_", "VITE_", "REACT_APP_", "NUXT_PUBLIC_", "EXPO_PUBLIC_", "GATSBY_"];
+
 export interface HeaderCommentContext {
   source: "env" | "boilerplate";
   publicVarNames: string[];
@@ -17,6 +19,7 @@ export interface HeaderCommentContext {
 
 export function buildHeaderComment(ctx: HeaderCommentContext): string {
   const lines: string[] = ["#"];
+  // Short-form for small files: avoids comment-to-content ratio > 1:1
   const isShortForm = ctx.source === "env" && ctx.totalVarCount > 0 && ctx.totalVarCount <= 5;
 
   if (ctx.source === "boilerplate") {
@@ -203,8 +206,6 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
     prompts.outro(pc.green("vars initialized! Run `vars show` to start editing."));
   },
 });
-
-const PUBLIC_PREFIXES = ["NEXT_PUBLIC_", "VITE_", "REACT_APP_", "NUXT_PUBLIC_", "EXPO_PUBLIC_", "GATSBY_"];
 
 export function migrateFromEnv(envContent: string): string {
   const detectedPrefixes = new Set<string>();
