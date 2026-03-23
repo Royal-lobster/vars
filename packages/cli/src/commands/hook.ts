@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { getProjectRoot } from "../utils/context.js";
 import pc from "picocolors";
 
-const HOOK_MARKER = "# vars: check for unlocked files";
+export const HOOK_MARKER = "# vars: check for unlocked files";
 const HOOK_SCRIPT = `
 ${HOOK_MARKER}
 if git diff --cached --name-only 2>/dev/null | grep -q '\\.unlocked\\.vars$'; then
