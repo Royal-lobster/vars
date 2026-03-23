@@ -1,48 +1,110 @@
 import { ALL_PUBLIC_PREFIXES } from "./detect-framework.js";
 
 /**
- * Convert a .env file's content into .vars format.
- * Variables matching the given public prefixes are annotated with `public`.
+ * Parse a .env file into key-value entries, handling:
+ * - `export` prefix stripping
+ * - Multiline quoted values
+ * - Inline comments on unquoted values
+ * - Last-wins semantics for duplicate keys
  */
-export function migrateFromEnv(envContent: string, publicPrefixes: string[] = ALL_PUBLIC_PREFIXES): string {
-  const lines = ["# @vars-state unlocked", "env(dev, staging, prod)", ""];
-  for (const line of envContent.split("\n")) {
-    const trimmed = line.trim();
+function parseDotenv(envContent: string): Map<string, { value: string; quoted: boolean }> {
+  const entries = new Map<string, { value: string; quoted: boolean }>();
+  const lines = envContent.split("\n");
+  let i = 0;
+
+  while (i < lines.length) {
+    const raw = lines[i];
+    const trimmed = raw.trim();
+    i++;
+
     if (!trimmed || trimmed.startsWith("#")) continue;
-    const eqIdx = trimmed.indexOf("=");
+
+    // Strip leading `export `
+    const stripped = trimmed.startsWith("export ")
+      ? trimmed.slice(7).trim()
+      : trimmed;
+
+    const eqIdx = stripped.indexOf("=");
     if (eqIdx === -1) continue;
-    const key = trimmed.slice(0, eqIdx).trim();
-    // Skip invalid identifiers
+
+    const key = stripped.slice(0, eqIdx).trim();
     if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key)) {
       console.warn(`  Skipping invalid variable name: ${key}`);
       continue;
     }
-    let value = trimmed.slice(eqIdx + 1).trim();
-    // Strip inline comments (space + #) from unquoted values
-    if (!value.startsWith('"') && !value.startsWith("'")) {
+
+    let value = stripped.slice(eqIdx + 1).trim();
+
+    // Handle multiline quoted values (double quotes only)
+    if (value.startsWith('"') && !value.endsWith('"')) {
+      // Opening quote without closing — accumulate lines until closing quote
+      const parts = [value.slice(1)]; // strip opening quote
+      while (i < lines.length) {
+        const next = lines[i];
+        i++;
+        if (next.includes('"')) {
+          // Found the closing quote
+          const closeIdx = next.indexOf('"');
+          parts.push(next.slice(0, closeIdx));
+          break;
+        }
+        parts.push(next);
+      }
+      entries.set(key, { value: parts.join("\n"), quoted: true });
+      continue;
+    }
+
+    // Handle single-line quoted values
+    let quoted = false;
+    if (value.length >= 2 &&
+        ((value.startsWith('"') && value.endsWith('"')) ||
+         (value.startsWith("'") && value.endsWith("'")))) {
+      value = value.slice(1, -1);
+      quoted = true;
+    }
+
+    // Strip inline comments from unquoted values
+    if (!quoted) {
       const commentIdx = value.indexOf(" #");
       if (commentIdx !== -1) {
         value = value.slice(0, commentIdx).trim();
       }
     }
-    // Strip surrounding quotes (double or single)
-    let wasQuoted = false;
-    if (value.length >= 2 &&
-        ((value.startsWith('"') && value.endsWith('"')) ||
-         (value.startsWith("'") && value.endsWith("'")))) {
-      value = value.slice(1, -1);
-      wasQuoted = true;
-    }
+
+    // Last-wins: Map.set overwrites previous entries with the same key
+    entries.set(key, { value, quoted });
+  }
+
+  return entries;
+}
+
+/**
+ * Convert a .env file's content into .vars format.
+ * Variables matching the given public prefixes are annotated with `public`.
+ */
+export function migrateFromEnv(envContent: string, publicPrefixes: string[] = ALL_PUBLIC_PREFIXES): string {
+  const output = ["# @vars-state unlocked", "env(dev, staging, prod)", ""];
+  const entries = parseDotenv(envContent);
+
+  for (const [key, { value, quoted }] of entries) {
     const isPublic = publicPrefixes.some(p => key.startsWith(p));
     const pub = isPublic ? "public " : "";
+
+    // Multiline values get triple-quoted
+    if (value.includes("\n")) {
+      output.push(`${pub}${key} = """${value}"""`);
+      continue;
+    }
+
     // Infer type only for unquoted values
-    if (!wasQuoted && /^\d+$/.test(value)) {
-      lines.push(`${pub}${key} : z.number() = ${value}`);
-    } else if (!wasQuoted && (value === "true" || value === "false")) {
-      lines.push(`${pub}${key} : z.boolean() = ${value}`);
+    if (!quoted && /^\d+$/.test(value)) {
+      output.push(`${pub}${key} : z.number() = ${value}`);
+    } else if (!quoted && (value === "true" || value === "false")) {
+      output.push(`${pub}${key} : z.boolean() = ${value}`);
     } else {
-      lines.push(`${pub}${key} = "${value}"`);
+      output.push(`${pub}${key} = "${value}"`);
     }
   }
-  return lines.join("\n") + "\n";
+
+  return output.join("\n") + "\n";
 }

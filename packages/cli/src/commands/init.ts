@@ -50,10 +50,11 @@ export default defineCommand({
     // 3. Create starter config.vars
     const configPath = join(root, "config.vars");
     if (!existsSync(configPath)) {
-      const envFile = join(root, ".env");
+      const envCandidates = [".env", ".env.local", ".env.example", ".env.sample"];
+      const envFile = envCandidates.map(f => join(root, f)).find(f => existsSync(f));
       let content: string;
 
-      if (existsSync(envFile)) {
+      if (envFile) {
         // Detect framework to determine public var prefixes
         const framework = detectFramework(root);
         const publicPrefixes = framework

@@ -74,4 +74,71 @@ describe("migrateFromEnv", () => {
     const result = migrateFromEnv(env);
     expect(result).toContain("public NEXT_PUBLIC_PORT : z.number() = 8080");
   });
+
+  // ── export prefix stripping ──
+
+  it("strips leading export keyword from variable lines", () => {
+    const env = `export DATABASE_URL=postgres://localhost/db\nexport PORT=3000\n`;
+    const result = migrateFromEnv(env);
+    expect(result).toContain('DATABASE_URL = "postgres://localhost/db"');
+    expect(result).toContain("PORT : z.number() = 3000");
+    expect(result).not.toContain("export");
+  });
+
+  it("handles export with public prefix detection", () => {
+    const env = `export NEXT_PUBLIC_URL=https://example.com\nexport SECRET=abc\n`;
+    const result = migrateFromEnv(env);
+    expect(result).toContain('public NEXT_PUBLIC_URL = "https://example.com"');
+    expect(result).not.toContain("public SECRET");
+  });
+
+  // ── multiline values ──
+
+  it("handles multiline double-quoted values", () => {
+    const env = `PRIVATE_KEY="-----BEGIN RSA-----\nMIIEpAIBAAKCAQEA\n-----END RSA-----"\nNORMAL=hello\n`;
+    const result = migrateFromEnv(env);
+    expect(result).toContain('PRIVATE_KEY = """-----BEGIN RSA-----\nMIIEpAIBAAKCAQEA\n-----END RSA-----"""');
+    expect(result).toContain('NORMAL = "hello"');
+  });
+
+  it("handles multiline value followed by more vars", () => {
+    const env = `CERT="line1\nline2\nline3"\nPORT=3000\n`;
+    const result = migrateFromEnv(env);
+    expect(result).toContain('CERT = """line1\nline2\nline3"""');
+    expect(result).toContain("PORT : z.number() = 3000");
+  });
+
+  // ── duplicate keys (last-wins) ──
+
+  it("uses last-wins for duplicate keys", () => {
+    const env = `DATABASE_URL=postgres://old\nPORT=3000\nDATABASE_URL=postgres://new\n`;
+    const result = migrateFromEnv(env);
+    expect(result).toContain('DATABASE_URL = "postgres://new"');
+    expect(result).not.toContain("postgres://old");
+    // Should appear exactly once
+    const count = (result.match(/DATABASE_URL/g) || []).length;
+    expect(count).toBe(1);
+  });
+
+  // ── edge cases ──
+
+  it("handles empty values", () => {
+    const env = `EMPTY=\n`;
+    const result = migrateFromEnv(env);
+    expect(result).toContain('EMPTY = ""');
+  });
+
+  it("handles values with spaces around =", () => {
+    const env = `KEY = value\n`;
+    const result = migrateFromEnv(env);
+    expect(result).toContain('KEY = "value"');
+  });
+
+  it("skips lines without = sign", () => {
+    const env = `VALID=yes\nINVALID_LINE\nALSO_VALID=ok\n`;
+    const result = migrateFromEnv(env);
+    expect(result).toContain('VALID = "yes"');
+    expect(result).toContain('ALSO_VALID = "ok"');
+    expect(result).not.toContain("INVALID_LINE");
+  });
 });
