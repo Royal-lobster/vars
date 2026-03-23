@@ -227,6 +227,12 @@
 					"description": "Traces the communication between VS Code and the vars language server."
 				}
 			}
+		},
+		"[vars]": {
+			"editor.quickSuggestions": {
+				"strings": true
+			},
+			"cSpell.enabled": false
 		}
 	},
 	"scripts": {
