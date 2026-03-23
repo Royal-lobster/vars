@@ -150,4 +150,27 @@ describe("codegen", () => {
     // Should not reference a non-existent vars constant
     expect(code).not.toMatch(/const clientVars.*=.*\bvars\./);
   });
+
+  it("uses correct non-stuttered flatName in parseVars for grouped vars", () => {
+    const code = generateTypeScript(makeResolved([
+      { name: "RATE_LIMIT_RPM", flatName: "RATE_LIMIT_RPM", schema: "z.coerce.number()", value: "100", group: "rate_limit" },
+      { name: "RATE_LIMIT_BURST", flatName: "RATE_LIMIT_BURST", schema: "z.coerce.number()", value: "50", group: "rate_limit" },
+    ]));
+    // The parseVars function should reference source["RATE_LIMIT_RPM"], NOT source["RATE_LIMIT_RATE_LIMIT_RPM"]
+    expect(code).toContain('source["RATE_LIMIT_RPM"]');
+    expect(code).toContain('source["RATE_LIMIT_BURST"]');
+    expect(code).not.toContain("RATE_LIMIT_RATE_LIMIT_RPM");
+    expect(code).not.toContain("RATE_LIMIT_RATE_LIMIT_BURST");
+  });
+
+  it("does not emit duplicate schema keys for grouped vars", () => {
+    const code = generateTypeScript(makeResolved([
+      { name: "APP", flatName: "APP", public: true, schema: "z.string()", value: "my-app" },
+      { name: "RATE_LIMIT_RPM", flatName: "RATE_LIMIT_RPM", schema: "z.coerce.number()", value: "100", group: "rate_limit" },
+    ]));
+    // RATE_LIMIT_RPM should only appear inside the rate_limit group, not top-level
+    const schemaBlock = code.slice(code.indexOf("const schema"), code.indexOf("});") + 3);
+    const topLevelRpmCount = (schemaBlock.match(/^\s{2}RATE_LIMIT_RPM:/gm) || []).length;
+    expect(topLevelRpmCount).toBe(0); // should not appear at top level of schema
+  });
 });
