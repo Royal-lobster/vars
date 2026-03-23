@@ -54,19 +54,22 @@ env(dev, staging, prod)
 
 # Server-only secrets
 DATABASE_URL : z.string().url() {
-  dev  = "postgres://localhost:5432/myapp"
-  prod = "postgres://prod.db:5432/myapp"
+  dev     = "postgres://localhost:5432/myapp"
+  staging = "postgres://staging.db:5432/myapp"
+  prod    = "postgres://prod.db:5432/myapp"
 }
 
 NEXTAUTH_SECRET : z.string().min(32) {
-  dev  = "dev-secret-at-least-32-characters-long!"
-  prod = "prod-secret-very-secure-value-here-64ch"
+  dev     = "dev-secret-at-least-32-characters-long!"
+  staging = "stg-secret-at-least-32-characters-long!"
+  prod    = "prod-secret-very-secure-value-here-64ch"
 }
 
 # Client-safe (inlined into browser bundle by Next.js)
 public NEXT_PUBLIC_API_URL : z.string().url() {
-  dev  = "http://localhost:3000/api"
-  prod = "https://api.example.com"
+  dev     = "http://localhost:3000/api"
+  staging = "https://staging-api.example.com"
+  prod    = "https://api.example.com"
 }
 ```
 

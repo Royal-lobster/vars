@@ -20,8 +20,9 @@ env(dev, staging, prod)
 
 public APP_NAME = "my-app"
 STRIPE_KEY : z.string() {
-  dev  = "sk_example_placeholder"
-  prod = enc:v2:aes256gcm-det:abc...:def...:ghi...
+  dev     = "sk_example_placeholder"
+  staging = enc:v2:aes256gcm-det:jkl...:mno...:pqr...
+  prod    = enc:v2:aes256gcm-det:abc...:def...:ghi...
 }
 ```
 
@@ -33,8 +34,9 @@ env(dev, staging, prod)
 
 public APP_NAME = "my-app"
 STRIPE_KEY : z.string() {
-  dev  = "sk_example_placeholder"
-  prod = "sk_live_aBcDeFgHiJkLmNoPqRsTuVwX"
+  dev     = "sk_example_placeholder"
+  staging = "sk_test_sTgKyExAmPlE32ChArAcTeRs"
+  prod    = "sk_live_aBcDeFgHiJkLmNoPqRsTuVwX"
 }
 ```
 

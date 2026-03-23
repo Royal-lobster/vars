@@ -39,13 +39,13 @@ public PORT : z.number().min(1024) = 3000
 
 DATABASE_URL : z.string().url() {
   dev  = enc:v2:aes256gcm-det:a3b4c5:d6e7f8:g9h0i1
-  stg  = enc:v2:aes256gcm-det:j2k3l4:m5n6o7:p8q9r0
+  staging  = enc:v2:aes256gcm-det:j2k3l4:m5n6o7:p8q9r0
   prod = enc:v2:aes256gcm-det:e8d1f0:s1t2u3:v4w5x6
 }
 
 API_KEY : z.string().min(20) {
   dev  = enc:v2:aes256gcm-det:y7z8a9:b0c1d2:e3f4g5
-  stg  = enc:v2:aes256gcm-det:f6g7h8:i9j0k1:l2m3n4
+  staging  = enc:v2:aes256gcm-det:f6g7h8:i9j0k1:l2m3n4
   prod = enc:v2:aes256gcm-det:9c2b4f:o5p6q7:r8s9t0
 }`;
 
