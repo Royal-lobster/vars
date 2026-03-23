@@ -23,7 +23,9 @@ export function showFile(filePath: string, key: Buffer): string {
       result.push(STATE_UNLOCKED);
       continue;
     }
-    const match = line.match(/^(\s*\w[\w-]*\s*=\s*)(enc:v2:\S+)(.*)$/);
+    // Match encrypted values in both plain assignments and schema-with-default lines:
+    //   `  dev = enc:v2:...` or `SECRET = enc:v2:...` or `SECRET : z.string() = enc:v2:...`
+    const match = line.match(/^(.*=\s*)(enc:v2:\S+)(.*)$/);
     if (match) {
       const [, prefix, encrypted, suffix] = match;
       const decrypted = decrypt(encrypted, key);
@@ -105,14 +107,44 @@ export function hideFile(filePath: string, key: Buffer): string {
       currentIsPublic = line.trimStart().startsWith("public") || publicVars.has(currentVar);
     }
 
+    // Match schema-with-default lines: `NAME : z.schema() = "value"`
+    // Must be checked BEFORE the plain assignment regex since both could match
+    const schemaDefaultMatch = line.match(
+      /^(\s*(?:public\s+)?[A-Z][A-Z0-9_]*\s*:\s*[^=]+=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/,
+    );
+    if (schemaDefaultMatch && !currentIsPublic) {
+      const [, prefix, rawValue, suffix] = schemaDefaultMatch;
+
+      // Only encrypt quoted string values — bare numbers/booleans are not secrets
+      if (!rawValue.startsWith('"') && !rawValue.startsWith("'")) {
+        result.push(line);
+        continue;
+      }
+
+      const value = rawValue.slice(1, -1);
+
+      if (isEncrypted(value)) {
+        result.push(line);
+        continue;
+      }
+
+      const context = currentGroup
+        ? `${currentGroup.toUpperCase()}_${currentVar}@default`
+        : `${currentVar}@default`;
+      const encrypted = encryptDeterministic(value, key, context);
+      result.push(`${prefix}${encrypted}${suffix}`);
+      continue;
+    }
+
     // Match value assignment lines (indented env-block values or flat top-level assignments):
     //   `  dev = "value"` or `SECRET = "value"`
     const envMatch = line.match(/^(\s*\w[\w-]*\s*=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/);
     if (envMatch && !currentIsPublic) {
       const [, prefix, rawValue, suffix] = envMatch;
 
-      // Skip lines that are variable declarations without a value (e.g. `SECRET : z.string() {`)
-      if (line.match(/^\s*(?:public\s+)?[A-Z][A-Z0-9_]*\s*[:{]/)) {
+      // Skip lines that are variable declarations (no schema default — block opener or simple name = value)
+      // e.g. `SECRET : z.string() {` or `SECRET : z.string().url() {`
+      if (line.match(/^\s*(?:public\s+)?[A-Z][A-Z0-9_]*\s*:.*\{\s*$/)) {
         result.push(line);
         continue;
       }
