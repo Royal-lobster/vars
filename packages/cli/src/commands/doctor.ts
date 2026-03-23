@@ -1,7 +1,7 @@
 import { defineCommand } from "citty";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isUnlockedPath } from "@vars/node";
+import { isUnlockedPath, toUnlockedPath } from "@vars/node";
 import { findKeyFile, findAllVarsFiles, getProjectRoot } from "../utils/context.js";
 import { HOOK_MARKER } from "./hook.js";
 import pc from "picocolors";
@@ -63,7 +63,7 @@ export default defineCommand({
     console.log(pc.dim(`  ${files.length} .vars file(s) found`));
 
     // Check for unlocked files
-    const unlocked = files.filter(f => isUnlockedPath(f));
+    const unlocked = files.filter(f => !isUnlockedPath(f) && existsSync(toUnlockedPath(f)));
     if (unlocked.length > 0) {
       console.log(pc.yellow(`  ⚠ ${unlocked.length} file(s) unlocked`));
     }

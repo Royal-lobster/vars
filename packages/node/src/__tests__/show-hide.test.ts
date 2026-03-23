@@ -119,7 +119,7 @@ SECRET : z.string() {
     expect(result).toContain("my-secret");
   });
 
-  it("hide renames .unlocked.vars back to .vars after encrypting", () => {
+  it("hide writes encrypted .vars and mirrors to .unlocked.vars", () => {
     const content = `env(dev)
 
 SECRET : z.string() {
@@ -130,7 +130,7 @@ SECRET : z.string() {
     writeFileSync(unlocked, content);
     hideFile(unlocked, key);
 
-    expect(existsSync(unlocked)).toBe(false);
+    expect(existsSync(unlocked)).toBe(true);
     expect(existsSync(locked)).toBe(true);
     const result = readFileSync(locked, "utf8");
     expect(result).toContain("enc:v2:aes256gcm-det:");
@@ -203,7 +203,7 @@ SECRET : z.string() {
     // Hide: encrypts and renames back to .vars
     const finalLocked = hideFile(unlocked, key);
     expect(finalLocked).toBe(locked);
-    expect(existsSync(unlocked)).toBe(false);
+    expect(existsSync(unlocked)).toBe(true);
     expect(existsSync(locked)).toBe(true);
     const final = readFileSync(locked, "utf8");
     expect(final).not.toContain("new-dev-secret");
@@ -227,7 +227,7 @@ SECRET : z.string() {
     writeFileSync(locked, "# stale content");
     hideFile(unlocked, key);
 
-    expect(existsSync(unlocked)).toBe(false);
+    expect(existsSync(unlocked)).toBe(true);
     expect(existsSync(locked)).toBe(true);
     const result = readFileSync(locked, "utf8");
     expect(result).toContain("enc:v2:aes256gcm-det:");
