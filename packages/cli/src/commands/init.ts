@@ -48,8 +48,6 @@ export function buildHeaderComment(ctx: HeaderCommentContext): string {
       lines.push("#");
       lines.push(`# Public variables (${names}) are plaintext and will not be encrypted.`);
       lines.push("# If any of these should be secret, remove the `public` keyword to enable encryption.");
-    } else {
-      lines.push("# All variables will be encrypted before commit.");
     }
   }
 

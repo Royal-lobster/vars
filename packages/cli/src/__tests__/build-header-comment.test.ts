@@ -54,8 +54,7 @@ describe("buildHeaderComment", () => {
       detectedPrefixes: [],
     });
 
-    expect(result).toContain("Migrated from .env");
-    expect(result).toContain("All variables will be encrypted before commit.");
+    expect(result).toContain("Migrated from .env — all variables will be encrypted.");
     expect(result).not.toContain("public");
   });
 
@@ -108,6 +107,59 @@ describe("buildHeaderComment", () => {
 
     expect(buildHeaderComment(shortCtx)).not.toContain("Migrated from .env");
     expect(buildHeaderComment(longCtx)).toContain("Migrated from .env");
+  });
+});
+
+describe("full output snapshots", () => {
+  it("snapshot: large Next.js + Vite migration", () => {
+    const env = [
+      "NEXT_PUBLIC_API_URL=https://api.example.com",
+      "NEXT_PUBLIC_APP_NAME=my-app",
+      "NEXT_PUBLIC_SENTRY_DSN=https://sentry.io/123",
+      "VITE_ADMIN_URL=https://admin.example.com",
+      "DATABASE_URL=postgres://localhost/mydb",
+      "SECRET_KEY=abc123",
+      "REDIS_URL=redis://localhost",
+      "SMTP_HOST=smtp.example.com",
+    ].join("\n");
+
+    expect(migrateFromEnv(env)).toMatchSnapshot();
+  });
+
+  it("snapshot: small Expo migration", () => {
+    const env = [
+      "EXPO_PUBLIC_API_URL=https://api.example.com",
+      "EXPO_PUBLIC_SENTRY_DSN=https://sentry.io/123",
+      "API_SECRET=abc",
+    ].join("\n");
+
+    expect(migrateFromEnv(env)).toMatchSnapshot();
+  });
+
+  it("snapshot: all-private migration", () => {
+    const env = [
+      "DATABASE_URL=postgres://localhost/mydb",
+      "SECRET_KEY=abc123",
+      "REDIS_URL=redis://localhost",
+      "SMTP_HOST=smtp.example.com",
+      "SMTP_USER=user",
+      "SMTP_PASS=pass",
+      "AWS_KEY=key",
+      "AWS_SECRET=secret",
+    ].join("\n");
+
+    expect(migrateFromEnv(env)).toMatchSnapshot();
+  });
+
+  it("snapshot: boilerplate", () => {
+    const header = buildHeaderComment({
+      source: "boilerplate",
+      publicVarNames: [],
+      totalVarCount: 0,
+      detectedPrefixes: [],
+    });
+
+    expect(header).toMatchSnapshot();
   });
 });
 
