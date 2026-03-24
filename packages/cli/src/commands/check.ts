@@ -90,11 +90,21 @@ export default defineCommand({
     }
 
     // Metadata warnings — expiry and deprecation
-    const failOnExpiringDays = args.failOnExpiring !== undefined ? parseInt(String(args.failOnExpiring), 10) : NaN;
+    let failOnExpiringDays = NaN;
+    if (args.failOnExpiring !== undefined) {
+      failOnExpiringDays = parseInt(String(args.failOnExpiring), 10);
+      if (isNaN(failOnExpiringDays) || failOnExpiringDays < 0) {
+        console.error(pc.red(`  ✗ --failOnExpiring must be a non-negative number, got "${args.failOnExpiring}"`));
+        process.exit(1);
+      }
+    }
     for (const v of preliminary.vars) {
       if (v.metadata?.expires) {
         const status = checkExpiry(v.metadata.expires);
-        if (status.expired) {
+        if (status.invalid) {
+          console.warn(pc.red(`  ✗ ${formatExpiryMessage(v.flatName, status, v.metadata.expires)}`));
+          errors++;
+        } else if (status.expired) {
           console.warn(pc.red(`  ✗ ${formatExpiryMessage(v.flatName, status, v.metadata.expires)}`));
           warnings++;
           if (!isNaN(failOnExpiringDays)) errors++;

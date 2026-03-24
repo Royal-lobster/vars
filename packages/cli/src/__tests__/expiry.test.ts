@@ -12,13 +12,22 @@ describe("checkExpiry", () => {
     const status = checkExpiry(daysFromNow(-5));
     expect(status.expired).toBe(true);
     expect(status.expiringSoon).toBe(false);
+    expect(status.invalid).toBe(false);
     expect(status.daysUntil).toBeLessThan(0);
+  });
+
+  it("returns expired=true for today (daysUntil === 0)", () => {
+    const status = checkExpiry(daysFromNow(0));
+    expect(status.expired).toBe(true);
+    expect(status.expiringSoon).toBe(false);
+    expect(status.invalid).toBe(false);
   });
 
   it("returns expiringSoon=true for a date within 30 days", () => {
     const status = checkExpiry(daysFromNow(15));
     expect(status.expired).toBe(false);
     expect(status.expiringSoon).toBe(true);
+    expect(status.invalid).toBe(false);
     expect(status.daysUntil).toBeGreaterThan(0);
     expect(status.daysUntil).toBeLessThanOrEqual(30);
   });
@@ -34,6 +43,19 @@ describe("checkExpiry", () => {
     expect(status.expired).toBe(false);
     expect(status.expiringSoon).toBe(false);
     expect(status.daysUntil).toBeGreaterThan(30);
+  });
+
+  it("returns invalid=true for malformed date strings", () => {
+    const status = checkExpiry("not-a-date");
+    expect(status.invalid).toBe(true);
+    expect(status.expired).toBe(false);
+    expect(status.expiringSoon).toBe(false);
+    expect(isNaN(status.daysUntil)).toBe(true);
+  });
+
+  it("returns invalid=true for empty string", () => {
+    const status = checkExpiry("");
+    expect(status.invalid).toBe(true);
   });
 });
 
@@ -54,5 +76,13 @@ describe("formatExpiryMessage", () => {
     expect(msg).toMatch(/expires in \d+ day\(s\)/);
     expect(msg).toContain("DB_PASSWORD");
     expect(msg).toContain(dateStr);
+  });
+
+  it("formats an invalid date message", () => {
+    const status = checkExpiry("bad-date");
+    const msg = formatExpiryMessage("SECRET", status, "bad-date");
+    expect(msg).toContain("invalid expiry date");
+    expect(msg).toContain("SECRET");
+    expect(msg).toContain("bad-date");
   });
 });
