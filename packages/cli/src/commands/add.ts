@@ -19,11 +19,13 @@ function buildVariableBlock(
   if (Object.keys(values).length === 0) {
     lines.push(`${prefix}${name}${schemaStr}`);
   } else if (Object.keys(values).length === 1 && values["default"]) {
-    lines.push(`${prefix}${name}${schemaStr} = "${values["default"]}"`);
+    const escaped = values["default"].replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    lines.push(`${prefix}${name}${schemaStr} = "${escaped}"`);
   } else {
     lines.push(`${prefix}${name}${schemaStr} {`);
     for (const [env, val] of Object.entries(values)) {
-      lines.push(`  ${env} = "${val}"`);
+      const escaped = val.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      lines.push(`  ${env} = "${escaped}"`);
     }
     lines.push("}");
   }

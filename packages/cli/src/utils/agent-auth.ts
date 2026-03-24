@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { platform } from "node:os";
 
 /**
@@ -26,28 +26,29 @@ export function requestAgentApproval(command: string): string | null {
 }
 
 function requestApprovalMacOS(command: string): string | null {
-  // Use osascript to show a native macOS dialog with:
-  // - The command being requested (so human can review)
-  // - A masked password field for the PIN
-  const script = `
-    set dialogResult to display dialog ¬
-      "An AI agent is requesting access to encrypted vars." & return & return & ¬
-      "Command:" & return & "  ${escapeAppleScript(command)}" & return & return & ¬
-      "Enter your PIN to approve this single operation:" ¬
-      with title "vars — approve command" ¬
-      default answer "" ¬
-      with hidden answer ¬
-      buttons {"Deny", "Approve"} ¬
-      default button "Approve" ¬
-      cancel button "Deny" ¬
-      with icon caution
-    return text returned of dialogResult
-  `;
+  // AppleScript has no backslash escape for double quotes inside string literals.
+  // Use concatenation with the `quote` constant to safely embed arbitrary strings.
+  const safeCommand = command.replace(/\\/g, "\\\\").split('"').join('" & quote & "');
+
+  const script = [
+    'set dialogResult to display dialog',
+    '"An AI agent is requesting access to encrypted vars." & return & return &',
+    `"Command:" & return & "  ${safeCommand}" & return & return &`,
+    '"Enter your PIN to approve this single operation:"',
+    'with title "vars — approve command"',
+    'default answer ""',
+    'with hidden answer',
+    'buttons {"Deny", "Approve"}',
+    'default button "Approve"',
+    'cancel button "Deny"',
+    'with icon caution',
+    'return text returned of dialogResult',
+  ].join(' ¬\n');
 
   try {
-    const result = execSync(`osascript -e '${script.replace(/'/g, "'\\''")}'`, {
+    const result = execFileSync("osascript", ["-e", script], {
       encoding: "utf8",
-      timeout: 120_000, // 2 minute timeout
+      timeout: 120_000,
       stdio: ["pipe", "pipe", "pipe"],
     });
     const pin = result.trim();
@@ -59,25 +60,26 @@ function requestApprovalMacOS(command: string): string | null {
 }
 
 function requestApprovalLinux(command: string): string | null {
-  // Try zenity (GTK) first, then kdialog (KDE)
   const message = `An AI agent is requesting access to encrypted vars.\n\nCommand:\n  ${command}\n\nEnter your PIN to approve:`;
 
-  // Try zenity
+  // Try zenity (GTK)
   try {
-    const result = execSync(
-      `zenity --password --title="vars — approve command" 2>/dev/null`,
-      { encoding: "utf8", timeout: 120_000, stdio: ["pipe", "pipe", "pipe"] },
+    const result = execFileSync(
+      "zenity",
+      ["--password", "--title=vars — approve command", `--text=${message}`],
+      { encoding: "utf8", timeout: 120_000 },
     );
     return result.trim() || null;
   } catch {
     // zenity not available or cancelled
   }
 
-  // Try kdialog
+  // Try kdialog (KDE)
   try {
-    const result = execSync(
-      `kdialog --password "${message.replace(/"/g, '\\"')}" --title "vars — approve command" 2>/dev/null`,
-      { encoding: "utf8", timeout: 120_000, stdio: ["pipe", "pipe", "pipe"] },
+    const result = execFileSync(
+      "kdialog",
+      ["--password", message, "--title", "vars — approve command"],
+      { encoding: "utf8", timeout: 120_000 },
     );
     return result.trim() || null;
   } catch {
@@ -85,8 +87,4 @@ function requestApprovalLinux(command: string): string | null {
   }
 
   return null;
-}
-
-function escapeAppleScript(str: string): string {
-  return str.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }

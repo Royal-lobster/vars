@@ -2,7 +2,7 @@ import { defineCommand } from "citty";
 import { resolve } from "node:path";
 import { readFileSync, writeFileSync } from "node:fs";
 import { parse } from "@vars/core";
-import type { Declaration, VariableDecl, Value } from "@vars/core";
+import type { Declaration, VariableDecl } from "@vars/core";
 import { findVarsFile } from "../utils/context.js";
 import pc from "picocolors";
 
@@ -37,10 +37,14 @@ function findBlockEnd(lines: string[], startLine: number): number {
     }
   }
 
-  // Check for trailing metadata block: ( ... )
-  const nextNonEmpty = lines[end + 1]?.trim();
+  // Check for trailing metadata block: ( ... ), skipping blank lines
+  let metaSearchIdx = end + 1;
+  while (metaSearchIdx < lines.length && lines[metaSearchIdx].trim() === "") {
+    metaSearchIdx++;
+  }
+  const nextNonEmpty = lines[metaSearchIdx]?.trim();
   if (nextNonEmpty?.startsWith("(")) {
-    for (let i = end + 1; i < lines.length; i++) {
+    for (let i = metaSearchIdx; i < lines.length; i++) {
       if (lines[i].includes(")")) { end = i; break; }
     }
   }
@@ -54,7 +58,7 @@ function quoteValue(val: string): string {
   if (/^\d+(\.\d+)?$/.test(val)) return val;
   if (val.startsWith("[") || val.startsWith("{")) return val;
   if (val.startsWith('"') && val.endsWith('"')) return val;
-  return `"${val}"`;
+  return `"${val.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
 
 function buildUpdatedBlock(
@@ -62,18 +66,20 @@ function buildUpdatedBlock(
   envUpdates: Record<string, string>,
   envs: string[],
   lines: string[],
+  indent: string,
 ): string[] {
   const prefix = variable.public ? "public " : "";
   const schemaStr = variable.schema ? ` : ${variable.schema}` : "";
   const value = variable.value;
 
+  let result: string[];
+
   // Case 1: Setting a single value on a flat variable with no envs
   if (envUpdates["default"] && Object.keys(envUpdates).length === 1 && envs.length <= 1) {
-    return [`${prefix}${variable.name}${schemaStr} = ${quoteValue(envUpdates["default"])}`];
-  }
+    result = [`${prefix}${variable.name}${schemaStr} = ${quoteValue(envUpdates["default"])}`];
 
   // Case 2: Variable currently has an env block — update specific entries
-  if (value?.kind === "env_block") {
+  } else if (value?.kind === "env_block") {
     const existingEntries = new Map<string, string>();
     const defaultEntry = value.entries.find((e) => e.env === "*");
 
@@ -91,7 +97,7 @@ function buildUpdatedBlock(
     }
 
     // Rebuild the block
-    const result: string[] = [];
+    result = [];
     const defaultVal = envUpdates["default"];
     if (defaultVal) {
       result.push(`${prefix}${variable.name}${schemaStr} = ${quoteValue(defaultVal)} {`);
@@ -113,12 +119,9 @@ function buildUpdatedBlock(
     }
     result.push("}");
 
-    return result;
-  }
-
   // Case 3: Variable is flat but we're setting env-specific values — convert to env block
-  if (Object.keys(envUpdates).some((k) => k !== "default")) {
-    const result: string[] = [];
+  } else if (Object.keys(envUpdates).some((k) => k !== "default")) {
+    result = [];
     const defaultVal = envUpdates["default"];
 
     // Preserve existing flat value as default if no new default given
@@ -136,11 +139,13 @@ function buildUpdatedBlock(
     }
     result.push("}");
 
-    return result;
+  // Case 4: Simple flat value update
+  } else {
+    result = [`${prefix}${variable.name}${schemaStr} = ${quoteValue(envUpdates["default"])}`];
   }
 
-  // Case 4: Simple flat value update
-  return [`${prefix}${variable.name}${schemaStr} = ${quoteValue(envUpdates["default"])}`];
+  // Apply indentation (for variables inside groups)
+  return result.map((line) => indent + line);
 }
 
 export default defineCommand({
@@ -177,12 +182,7 @@ export default defineCommand({
     const envUpdates: Record<string, string> = {};
 
     if (args.value) {
-      if (envs.length <= 1 || (!args.dev && !args.staging && !args.prod)) {
-        envUpdates["default"] = args.value as string;
-      } else {
-        // --value with env-specific flags: use as default
-        envUpdates["default"] = args.value as string;
-      }
+      envUpdates["default"] = args.value as string;
     }
 
     for (const env of envs) {
@@ -197,14 +197,17 @@ export default defineCommand({
     }
 
     const lines = content.split("\n");
-    const { variable } = match;
+    const { variable, group } = match;
+
+    // Detect indentation from the original declaration line
+    const indent = group ? lines[variable.line - 1].match(/^(\s*)/)?.[1] ?? "" : "";
 
     // Find the range of lines to replace (declaration line through end of block/metadata)
     const startIdx = variable.line - 1;
     const endIdx = findBlockEnd(lines, startIdx);
 
     // Build replacement lines, preserving metadata if present
-    const updatedLines = buildUpdatedBlock(variable, envUpdates, envs, lines);
+    const updatedLines = buildUpdatedBlock(variable, envUpdates, envs, lines, indent);
 
     // Check if there's trailing metadata we need to preserve
     if (variable.metadata) {
