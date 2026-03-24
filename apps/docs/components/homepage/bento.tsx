@@ -1,177 +1,200 @@
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
-import { VarsDynamicCodeBlock } from './vars-codeblock';
+import {
+  Shield,
+  Layers,
+  Terminal,
+  MonitorSmartphone,
+  Code,
+  GitBranch,
+  FileSearch,
+  RefreshCw,
+  FileOutput,
+  Stethoscope,
+  CheckSquare,
+  Braces,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-interface BentoItem {
-  label: string;
-  title: string;
-  description: string;
-  image: string;
-  span: 'wide' | 'narrow' | 'full';
-  code?: string;
-  lang?: string;
+const codeBlockStyle =
+  '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11px] [&_pre]:!leading-[1.7]';
+
+const cardBase =
+  'group relative overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)]';
+
+function CardHeader({ icon: Icon, title, description }: { icon: LucideIcon; title: string; description: string }) {
+  return (
+    <div className="relative z-10 p-5">
+      <Icon size={16} className="text-green-500" />
+      <h3 className="mt-3 text-sm font-semibold">{title}</h3>
+      <p className="mt-1 text-[12px] leading-relaxed text-white/40">{description}</p>
+    </div>
+  );
 }
 
-const ITEMS: BentoItem[] = [
-  {
-    label: 'Schema-first',
-    title: 'Your schema is native Zod',
-    description:
-      'No proprietary DSL. Write the same Zod expressions you already use. Type errors at build time, not in production at 3am.',
-    image: '/images/topographic.webp',
-    span: 'wide',
-    lang: 'ts',
-    code: `z.string().url().startsWith("postgres://")
-z.coerce.number().int().min(1024).max(65535)
-z.enum(["development", "staging", "production"])`,
-  },
-  {
-    label: 'Multi-env',
-    title: 'One file, all environments',
-    description:
-      'dev, staging, prod in one .vars file. No more .env.local, .env.production, .env.staging sprawl.',
-    image: '/images/fireflies.webp',
-    span: 'narrow',
-    lang: 'vars',
-    code: `public PORT : z.number().min(1024) = 3000
-
-DATABASE_URL : z.string().url() {
-  dev  = "postgres://localhost/myapp"
-  prod = "postgres://prod.db.internal/myapp"
-}`,
-  },
-  {
-    label: 'CLI',
-    title: 'Powerful tooling',
-    description:
-      'Everything from the command line. Scriptable and CI-friendly.',
-    image: '/images/aurora.webp',
-    span: 'wide',
-    lang: 'bash',
-    code: `$ vars show     # decrypt, edit
-$ vars hide     # re-encrypt
-$ vars run      # inject & run
-$ vars gen      # typed exports`,
-  },
-  {
-    label: 'Editor Intelligence',
-    title: 'LSP + VS Code extension',
-    description:
-      'Autocomplete, inline validation, hover docs — your .vars file gets first-class editor support through a dedicated language server.',
-    image: '/images/neural-mesh.webp',
-    span: 'narrow',
-  },
-  {
-    label: 'Team Sharing',
-    title: 'Commit your secrets',
-    description:
-      'The vault is encrypted, so it goes straight into git. New teammate? Clone and enter the PIN. No Slack DMs. No 1Password vaults. No Doppler.',
-    image: '/images/crystal.webp',
-    span: 'narrow',
-  },
-  {
-    label: 'Platform Sync',
-    title: 'Push and pull from your hosting',
-    description:
-      'Sync secrets with Vercel, Netlify, Railway, and Fly.io. Push from your vault to the platform, or pull existing vars back into your encrypted file.',
-    image: '/images/fireflies.webp',
-    span: 'wide',
-    lang: 'bash',
-    code: `$ vars push --env prod --vercel   # config → Vercel
-$ vars pull --netlify             # Netlify → config
-$ vars export --env prod > .env  # generate .env`,
-  },
-];
-
-const REFINE_CODE = `# Cross-variable constraint
-refine(env.LOG_LEVEL !== "debug" || env.DEBUG === true,
-  "DEBUG must be true when LOG_LEVEL is debug")`;
-
-function spanClass(span: BentoItem['span']) {
-  switch (span) {
-    case 'wide':
-      return 'md:col-span-8';
-    case 'narrow':
-      return 'md:col-span-4';
-    case 'full':
-      return 'md:col-span-12';
-  }
+function CardImage({ src }: { src: string }) {
+  return (
+    <>
+      <img
+        src={src}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover opacity-[0.07] transition-opacity duration-500 group-hover:opacity-[0.12]"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent" />
+    </>
+  );
 }
-
-const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11.5px] [&_pre]:!leading-[1.8]';
 
 export function Bento() {
   return (
-    <section className="mx-auto max-w-[1120px] px-5 pb-20 md:px-10">
+    <section className="mx-auto max-w-[1120px] px-5 pb-20 pt-24 md:px-10">
       <div className="mb-12 text-center">
         <h2 className="text-[clamp(28px,4vw,38px)] font-bold tracking-[-1.5px]">
-          Built for teams that{' '}
-          <em className="font-serif italic text-green-500 font-normal">ship.</em>
+          And that&apos;s not{' '}
+          <em className="font-serif italic text-green-500 font-normal">even half of it.</em>
         </h2>
+        <p className="mt-3 text-[15px] text-white/50">
+          Everything you need. Nothing you don&apos;t.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
-        {ITEMS.map((item) => (
-          <div
-            key={item.label}
-            className={`group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)] ${spanClass(item.span)}`}
-          >
-            <div className="relative h-[200px] overflow-hidden">
-              <img
-                src={item.image}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            </div>
-            <div className="p-6">
-              <span className="font-mono text-[10px] uppercase tracking-[2px] text-green-500">
-                {item.label}
-              </span>
-              <h3 className="mt-2.5 text-lg font-semibold tracking-[-0.5px]">
-                {item.title}
-              </h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-white/50">
-                {item.description}
-              </p>
-              {item.code && (
-                <div className={`mt-4 ${codeBlockStyle}`}>
-                  <DynamicCodeBlock
-                    lang={item.lang ?? 'text'}
-                    code={item.code}
-                    codeblock={{ keepBackground: false, allowCopy: false }}
-                  />
-                </div>
-              )}
-            </div>
+        {/* Row 1: Zod (wide with code) | Multi-env + CLI (stacked) */}
+        <div className={`md:col-span-7 ${cardBase}`}>
+          <CardImage src="/images/topographic.webp" />
+          <CardHeader
+            icon={Shield}
+            title="Zod-native schemas"
+            description="No proprietary DSL. Write the same Zod expressions you already use. Validated at build time."
+          />
+          <div className={`relative z-10 px-5 pb-5 ${codeBlockStyle}`}>
+            <DynamicCodeBlock
+              lang="ts"
+              code={`DATABASE_URL : z.string().url().startsWith("postgres://")
+PORT        : z.coerce.number().int().min(1024).max(65535)
+NODE_ENV    : z.enum(["development", "staging", "production"])`}
+              codeblock={{ keepBackground: false, allowCopy: false }}
+            />
           </div>
-        ))}
+        </div>
+        <div className="flex flex-col gap-3 md:col-span-5">
+          <div className={`flex-1 ${cardBase}`}>
+            <CardImage src="/images/aurora.webp" />
+            <CardHeader
+              icon={Layers}
+              title="Multi-environment"
+              description="dev, staging, prod in one file. Side by side. They can never drift apart."
+            />
+          </div>
+          <div className={`flex-1 ${cardBase}`}>
+            <CardImage src="/images/neural-mesh.webp" />
+            <CardHeader
+              icon={Terminal}
+              title="Full CLI"
+              description="17 commands: show, hide, run, gen, check, export, rotate, diff, doctor, and more."
+            />
+          </div>
+        </div>
 
-        {/* Full-width refinements card */}
-        <div className="group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 md:col-span-12">
-          <div className="grid md:grid-cols-2">
-            <div className="relative min-h-[240px] overflow-hidden">
-              <img
-                src="/images/crystal.webp"
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            </div>
-            <div className="flex flex-col justify-center p-8">
-              <span className="font-mono text-[10px] uppercase tracking-[2px] text-green-500">
-                Refinements
-              </span>
-              <h3 className="mt-2.5 text-lg font-semibold tracking-[-0.5px]">
-                Cross-variable constraints
-              </h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-white/50">
-                Express relationships between variables. If LOG_LEVEL is &quot;debug&quot;,
-                enforce that DEBUG is true. Validated at build time.
-              </p>
-              <VarsDynamicCodeBlock
-                code={REFINE_CODE}
-                className={`mt-4 ${codeBlockStyle}`}
-              />
-            </div>
+        {/* Row 2: VS Code + Check blocks (stacked) | TypeScript codegen (wide with code) */}
+        <div className="flex flex-col gap-3 md:col-span-5">
+          <div className={`flex-1 ${cardBase}`}>
+            <CardImage src="/images/crystal.webp" />
+            <CardHeader
+              icon={MonitorSmartphone}
+              title="VS Code extension"
+              description="Autocomplete, inline validation, hover docs, go-to-definition. Full LSP."
+            />
           </div>
+          <div className={`flex-1 ${cardBase}`}>
+            <CardImage src="/images/fireflies.webp" />
+            <CardHeader
+              icon={CheckSquare}
+              title="Check blocks"
+              description='Cross-variable constraints validated at build time. "If prod, no debug logging."'
+            />
+          </div>
+        </div>
+        <div className={`md:col-span-7 ${cardBase}`}>
+          <CardImage src="/images/fluid-green.webp" />
+          <CardHeader
+            icon={Code}
+            title="TypeScript codegen"
+            description="Generated types with Redacted<T>. Typos become compile errors, not 3am incidents."
+          />
+          <div className={`relative z-10 px-5 pb-5 ${codeBlockStyle}`}>
+            <DynamicCodeBlock
+              lang="ts"
+              code={`import { vars } from "#vars"
+
+// Public values are plain types
+const port: number = vars.PORT
+
+// Secrets require explicit unwrap — can't accidentally log them
+const db: string = vars.DATABASE_URL.unwrap()
+//                 ^^^^^^^^^^^^^^^^^^^^^^^^^ Redacted<string>`}
+              codeblock={{ keepBackground: false, allowCopy: false }}
+            />
+          </div>
+        </div>
+
+        {/* Row 3: Interpolation | PIN rotation | Export (wide with code) */}
+        <div className={`md:col-span-3 ${cardBase}`}>
+          <CardImage src="/images/aurora.webp" />
+          <CardHeader
+            icon={Braces}
+            title="Interpolation"
+            description="${} variable references with per-environment resolution."
+          />
+        </div>
+        <div className={`md:col-span-3 ${cardBase}`}>
+          <CardImage src="/images/crystal.webp" />
+          <CardHeader
+            icon={RefreshCw}
+            title="PIN rotation"
+            description="vars rotate re-encrypts everything with a new PIN. One command."
+          />
+        </div>
+        <div className={`md:col-span-6 ${cardBase}`}>
+          <CardImage src="/images/topographic.webp" />
+          <CardHeader
+            icon={FileOutput}
+            title="Export anywhere"
+            description="Export resolved values to .env, JSON, or Kubernetes secret format."
+          />
+          <div className={`relative z-10 px-5 pb-5 ${codeBlockStyle}`}>
+            <DynamicCodeBlock
+              lang="bash"
+              code={`$ vars export --env prod > .env         # dotenv format
+$ vars export --env prod --format json  # JSON format`}
+              codeblock={{ keepBackground: false, allowCopy: false }}
+            />
+          </div>
+        </div>
+
+        {/* Row 4: Pre-commit | Diff & coverage | vars doctor */}
+        <div className={`md:col-span-4 ${cardBase}`}>
+          <CardImage src="/images/fireflies.webp" />
+          <CardHeader
+            icon={GitBranch}
+            title="Pre-commit hooks"
+            description="Auto-installed during init. Blocks you from committing decrypted secrets to git."
+          />
+        </div>
+        <div className={`md:col-span-4 ${cardBase}`}>
+          <CardImage src="/images/neural-mesh.webp" />
+          <CardHeader
+            icon={FileSearch}
+            title="Diff & coverage"
+            description="Compare values across environments. See which envs are missing values at a glance."
+          />
+        </div>
+        <div className={`md:col-span-4 ${cardBase}`}>
+          <CardImage src="/images/fluid-green.webp" />
+          <CardHeader
+            icon={Stethoscope}
+            title="vars doctor"
+            description="Diagnose your setup — key health, .gitignore, hooks, expiring secrets, schema errors."
+          />
         </div>
       </div>
     </section>

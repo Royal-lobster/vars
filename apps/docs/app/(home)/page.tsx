@@ -1,9 +1,9 @@
 import { Hero } from '@/components/homepage/hero';
 import { Ticker } from '@/components/homepage/ticker';
 import { Comparison } from '@/components/homepage/comparison';
+import { Differentiators } from '@/components/homepage/differentiators';
 import { Workflow } from '@/components/homepage/workflow';
 import { Bento } from '@/components/homepage/bento';
-import { Frameworks } from '@/components/homepage/frameworks';
 import { CTA } from '@/components/homepage/cta';
 import { Footer } from '@/components/homepage/footer';
 
@@ -13,9 +13,9 @@ export default function HomePage() {
       <Hero />
       <Ticker />
       <Comparison />
+      <Differentiators />
       <Workflow />
       <Bento />
-      <Frameworks />
       <CTA />
       <Footer />
     </main>

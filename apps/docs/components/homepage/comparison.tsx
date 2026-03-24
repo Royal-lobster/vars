@@ -1,21 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 import { VarsDynamicCodeBlock } from './vars-codeblock';
-import {
-  FileWarning,
-  FolderSync,
-  FileQuestion,
-  MessageSquare,
-  ClipboardCopy,
-  ShieldAlert,
-  Lock,
-  FileStack,
-  ShieldCheck,
-  KeyRound,
-  LockKeyhole,
-  FileCode,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 
 const ENV_CODE = `# .env.development
 DATABASE_URL=postgres://localhost:5432/myapp
@@ -51,6 +36,15 @@ API_KEY : z.string().min(20) {
 
 const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-xs [&_pre]:!leading-[1.9]';
 
+const COMPARISONS: [string, string][] = [
+  ['3 .env files to sync', '1 config.vars file'],
+  ['Plaintext secrets on disk', 'AES-256 encrypted per-value'],
+  ['Shared via Slack DMs', 'Clone repo, enter PIN'],
+  ['12 secrets in Vercel dashboard', '1 VARS_KEY'],
+  ['No types or validation', 'Zod schemas + TypeScript codegen'],
+  ['console.log leaks everything', 'Redacted<T> wrapper'],
+];
+
 export function Comparison() {
   return (
     <section className="mx-auto max-w-[1120px] px-5 py-24 md:px-10">
@@ -64,6 +58,7 @@ export function Comparison() {
         </p>
       </div>
 
+      {/* Code comparison */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* .env — Before */}
         <div className="overflow-hidden rounded-xl border border-red-500/10 bg-red-500/[0.03]">
@@ -75,25 +70,8 @@ export function Comparison() {
               What you&apos;ve been doing
             </span>
           </div>
-
-          <div className={`mx-4 mb-1 ${codeBlockStyle}`}>
+          <div className={`mx-4 mb-4 ${codeBlockStyle}`}>
             <DynamicCodeBlock lang="bash" code={ENV_CODE} codeblock={{ keepBackground: false, allowCopy: false }} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-6">
-            {([
-              [FileWarning, 'Plaintext secrets on disk'],
-              [FolderSync, 'Three files to keep in sync'],
-              [FileQuestion, 'No types or validation'],
-              [MessageSquare, 'Shared via Slack DMs'],
-              [ClipboardCopy, 'Copy-paste between envs'],
-              [ShieldAlert, 'Hope nobody commits prod'],
-            ] as [LucideIcon, string][]).map(([Icon, problem]) => (
-              <div key={problem} className="flex items-start gap-2.5 text-sm text-red-400/80">
-                <Icon size={16} className="mt-0.5 shrink-0 text-red-500/60" />
-                {problem}
-              </div>
-            ))}
           </div>
         </div>
 
@@ -107,28 +85,31 @@ export function Comparison() {
               What it looks like now
             </span>
           </div>
-
           <VarsDynamicCodeBlock
             code={VARS_CODE}
-            className={`mx-4 mb-1 ${codeBlockStyle}`}
+            className={`mx-4 mb-4 ${codeBlockStyle}`}
           />
-
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-6">
-            {([
-              [Lock, 'Encrypted, safe to commit'],
-              [FileStack, 'One file, all environments'],
-              [ShieldCheck, 'Zod schemas validate values'],
-              [KeyRound, 'Clone the repo, enter PIN'],
-              [LockKeyhole, 'Always encrypted, unlock to edit'],
-              [FileCode, 'Types generated for you'],
-            ] as [LucideIcon, string][]).map(([Icon, benefit]) => (
-              <div key={benefit} className="flex items-start gap-2.5 text-sm text-green-400/90">
-                <Icon size={16} className="mt-0.5 shrink-0 text-green-500" />
-                {benefit}
-              </div>
-            ))}
-          </div>
         </div>
+      </div>
+
+      {/* Comparison strip */}
+      <div className="relative mt-4 rounded-xl border border-white/[0.06] overflow-hidden">
+        {/* Subtle gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-red-500/[0.03] via-transparent to-green-500/[0.03]" />
+        {COMPARISONS.map(([pain, solution], i) => (
+          <div
+            key={pain}
+            className={`relative flex flex-col gap-1 px-5 py-3.5 md:px-8 md:grid md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-4 transition-colors hover:bg-white/[0.02] ${
+              i !== COMPARISONS.length - 1 ? 'border-b border-white/[0.04]' : ''
+            }`}
+          >
+            <span className="text-[13px] text-red-400/60 md:text-right line-through decoration-red-500/20 md:text-sm">{pain}</span>
+            <span className="hidden md:flex h-5 w-5 items-center justify-center rounded-full bg-green-500/10 text-green-500 text-[10px] select-none shrink-0" aria-hidden>
+              →
+            </span>
+            <span className="text-[13px] text-green-400/90 font-medium md:text-sm">{solution}</span>
+          </div>
+        ))}
       </div>
     </section>
   );

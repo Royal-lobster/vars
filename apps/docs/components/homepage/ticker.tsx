@@ -1,12 +1,12 @@
 import { Separator } from '@/components/ui/separator';
 
 const ITEMS = [
-  { label: 'AES-256-GCM' },
-  { label: 'Zod' },
-  { label: 'PIN-per-command' },
+  { label: 'Encrypted secrets in git' },
+  { label: 'Zod type safety' },
+  { label: 'One key for CI/CD' },
   { label: 'Any framework' },
-  { label: 'LSP + VS Code' },
-  { label: 'AI-safe by design' },
+  { label: 'VS Code extension' },
+  { label: 'PIN-protected from AI' },
 ];
 
 function TickerRow() {
@@ -27,11 +27,11 @@ function TickerRow() {
 export function Ticker() {
   return (
     <div className="border-b border-white/[0.06] overflow-hidden py-7">
-      <div className="flex w-max animate-marquee items-center gap-6 hover:[animation-play-state:paused]">
+      <div className="flex w-max animate-marquee items-center gap-6 hover:[animation-play-state:paused] motion-reduce:animate-none">
         <TickerRow />
-        <TickerRow />
-        <TickerRow />
-        <TickerRow />
+        <div aria-hidden="true" className="contents"><TickerRow /></div>
+        <div aria-hidden="true" className="contents"><TickerRow /></div>
+        <div aria-hidden="true" className="contents"><TickerRow /></div>
       </div>
     </div>
   );
