@@ -1,5 +1,4 @@
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
-import { VarsDynamicCodeBlock } from './vars-codeblock';
 import {
   Shield,
   Layers,
@@ -20,15 +19,28 @@ const codeBlockStyle =
   '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11px] [&_pre]:!leading-[1.7]';
 
 const cardBase =
-  'group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)]';
+  'group relative overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)]';
 
 function CardHeader({ icon: Icon, title, description }: { icon: LucideIcon; title: string; description: string }) {
   return (
-    <div className="p-5">
+    <div className="relative z-10 p-5">
       <Icon size={16} className="text-green-500" />
       <h3 className="mt-3 text-sm font-semibold">{title}</h3>
       <p className="mt-1 text-[12px] leading-relaxed text-white/40">{description}</p>
     </div>
+  );
+}
+
+function CardImage({ src }: { src: string }) {
+  return (
+    <>
+      <img
+        src={src}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover opacity-[0.07] transition-opacity duration-500 group-hover:opacity-[0.12]"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent" />
+    </>
   );
 }
 
@@ -48,12 +60,13 @@ export function Bento() {
       <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
         {/* Row 1: Zod (wide with code) | Multi-env + CLI (stacked) */}
         <div className={`md:col-span-7 ${cardBase}`}>
+          <CardImage src="/images/topographic.webp" />
           <CardHeader
             icon={Shield}
             title="Zod-native schemas"
             description="No proprietary DSL. Write the same Zod expressions you already use. Validated at build time."
           />
-          <div className={`px-5 pb-5 ${codeBlockStyle}`}>
+          <div className={`relative z-10 px-5 pb-5 ${codeBlockStyle}`}>
             <DynamicCodeBlock
               lang="ts"
               code={`DATABASE_URL : z.string().url().startsWith("postgres://")
@@ -65,6 +78,7 @@ NODE_ENV    : z.enum(["development", "staging", "production"])`}
         </div>
         <div className="flex flex-col gap-3 md:col-span-5">
           <div className={`flex-1 ${cardBase}`}>
+            <CardImage src="/images/aurora.webp" />
             <CardHeader
               icon={Layers}
               title="Multi-environment"
@@ -72,6 +86,7 @@ NODE_ENV    : z.enum(["development", "staging", "production"])`}
             />
           </div>
           <div className={`flex-1 ${cardBase}`}>
+            <CardImage src="/images/neural-mesh.webp" />
             <CardHeader
               icon={Terminal}
               title="Full CLI"
@@ -83,6 +98,7 @@ NODE_ENV    : z.enum(["development", "staging", "production"])`}
         {/* Row 2: VS Code + Check blocks (stacked) | TypeScript codegen (wide with code) */}
         <div className="flex flex-col gap-3 md:col-span-5">
           <div className={`flex-1 ${cardBase}`}>
+            <CardImage src="/images/crystal.webp" />
             <CardHeader
               icon={MonitorSmartphone}
               title="VS Code extension"
@@ -90,6 +106,7 @@ NODE_ENV    : z.enum(["development", "staging", "production"])`}
             />
           </div>
           <div className={`flex-1 ${cardBase}`}>
+            <CardImage src="/images/fireflies.webp" />
             <CardHeader
               icon={CheckSquare}
               title="Check blocks"
@@ -98,12 +115,13 @@ NODE_ENV    : z.enum(["development", "staging", "production"])`}
           </div>
         </div>
         <div className={`md:col-span-7 ${cardBase}`}>
+          <CardImage src="/images/fluid-green.webp" />
           <CardHeader
             icon={Code}
             title="TypeScript codegen"
             description="Generated types with Redacted<T>. Typos become compile errors, not 3am incidents."
           />
-          <div className={`px-5 pb-5 ${codeBlockStyle}`}>
+          <div className={`relative z-10 px-5 pb-5 ${codeBlockStyle}`}>
             <DynamicCodeBlock
               lang="ts"
               code={`import { vars } from "#vars"
@@ -121,6 +139,7 @@ const db: string = vars.DATABASE_URL.unwrap()
 
         {/* Row 3: Interpolation | PIN rotation | Export (wide with code) */}
         <div className={`md:col-span-3 ${cardBase}`}>
+          <CardImage src="/images/aurora.webp" />
           <CardHeader
             icon={Braces}
             title="Interpolation"
@@ -128,6 +147,7 @@ const db: string = vars.DATABASE_URL.unwrap()
           />
         </div>
         <div className={`md:col-span-3 ${cardBase}`}>
+          <CardImage src="/images/crystal.webp" />
           <CardHeader
             icon={RefreshCw}
             title="PIN rotation"
@@ -135,12 +155,13 @@ const db: string = vars.DATABASE_URL.unwrap()
           />
         </div>
         <div className={`md:col-span-6 ${cardBase}`}>
+          <CardImage src="/images/topographic.webp" />
           <CardHeader
             icon={FileOutput}
             title="Export anywhere"
             description="Export resolved values to .env, JSON, or Kubernetes secret format."
           />
-          <div className={`px-5 pb-5 ${codeBlockStyle}`}>
+          <div className={`relative z-10 px-5 pb-5 ${codeBlockStyle}`}>
             <DynamicCodeBlock
               lang="bash"
               code={`$ vars export --env prod > .env         # dotenv format
@@ -152,6 +173,7 @@ $ vars export --env prod --format json  # JSON format`}
 
         {/* Row 4: Pre-commit | Diff & coverage | vars doctor */}
         <div className={`md:col-span-4 ${cardBase}`}>
+          <CardImage src="/images/fireflies.webp" />
           <CardHeader
             icon={GitBranch}
             title="Pre-commit hooks"
@@ -159,6 +181,7 @@ $ vars export --env prod --format json  # JSON format`}
           />
         </div>
         <div className={`md:col-span-4 ${cardBase}`}>
+          <CardImage src="/images/neural-mesh.webp" />
           <CardHeader
             icon={FileSearch}
             title="Diff & coverage"
@@ -166,6 +189,7 @@ $ vars export --env prod --format json  # JSON format`}
           />
         </div>
         <div className={`md:col-span-4 ${cardBase}`}>
+          <CardImage src="/images/fluid-green.webp" />
           <CardHeader
             icon={Stethoscope}
             title="vars doctor"

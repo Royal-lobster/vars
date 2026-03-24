@@ -93,19 +93,21 @@ export function Comparison() {
       </div>
 
       {/* Comparison strip */}
-      <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+      <div className="relative mt-4 rounded-xl border border-white/[0.06] overflow-hidden">
+        {/* Subtle gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-red-500/[0.03] via-transparent to-green-500/[0.03]" />
         {COMPARISONS.map(([pain, solution], i) => (
           <div
             key={pain}
-            className={`grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 py-3 md:px-8 ${
+            className={`relative grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 py-3.5 md:px-8 transition-colors hover:bg-white/[0.02] ${
               i !== COMPARISONS.length - 1 ? 'border-b border-white/[0.04]' : ''
             }`}
           >
-            <span className="text-sm text-red-400/70 text-right">{pain}</span>
-            <span className="text-white/15 text-xs select-none" aria-hidden>
-              &rarr;
+            <span className="text-sm text-red-400/60 text-right line-through decoration-red-500/20">{pain}</span>
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500/10 text-green-500 text-[10px] select-none shrink-0" aria-hidden>
+              →
             </span>
-            <span className="text-sm text-green-400/90">{solution}</span>
+            <span className="text-sm text-green-400/90 font-medium">{solution}</span>
           </div>
         ))}
       </div>
