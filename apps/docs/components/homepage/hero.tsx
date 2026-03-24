@@ -60,22 +60,23 @@ export function Hero() {
           className="mb-8 gap-2 border-green-500/15 bg-green-500/[0.08] px-4 py-1.5 font-mono text-xs text-green-500"
         >
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500 shadow-[0_0_8px] shadow-green-500" aria-hidden="true" />
-          Encrypted by default
+          One file. One key.
         </Badge>
 
         <h1 className="font-sans text-[clamp(40px,7vw,68px)] font-bold leading-[1.05] tracking-[-3px] text-white">
-          Stop leaking secrets
+          Every secret in git.
           <br />
-          in{' '}
+          Just one key in{' '}
           <em className="font-serif italic text-green-500 font-normal">
-            plaintext.
+            prod.
           </em>
         </h1>
 
         <p className="mt-6 max-w-[520px] text-[clamp(15px,2vw,17px)] leading-relaxed text-white/50">
-          vars replaces .env with a single encrypted config file — schema-validated,
-          multi-environment, with <code className="text-green-400 text-sm font-mono">public</code> values kept plaintext.
-          Commit it, share with your team, no external services needed.
+          vars is a single config file that holds your secrets — encrypted — alongside
+          schemas and defaults. Commit it to your repo. In CI, set one{' '}
+          <code className="text-green-400 text-sm font-mono">VARS_KEY</code> and
+          every secret is there. No syncing, no dashboards, no drift.
         </p>
 
         <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">

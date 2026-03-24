@@ -3,28 +3,28 @@ import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 const STEPS = [
   {
     title: 'Init',
-    description: 'One command. Pick a PIN.',
+    description: 'One command. Set a PIN. Migrates your existing .env automatically.',
     command: 'npx vars init',
   },
   {
     title: 'Edit',
-    description: 'Decrypt and add your variables.',
+    description: 'Decrypt with vars show, add your variables with Zod types.',
     command: 'npx vars show',
   },
   {
     title: 'Lock',
-    description: 'Encrypt everything. Safe to commit.',
+    description: 'Run vars hide. Secrets encrypted. Safe to commit.',
     command: 'npx vars hide',
   },
   {
     title: 'Commit',
-    description: 'Push the config. Teammates clone and enter the PIN.',
+    description: "Push to git. Teammates clone and enter the PIN. That's onboarding.",
     command: 'git commit -m "update secrets"',
   },
   {
-    title: 'Run',
-    description: 'Optional — framework adapters handle this for you.',
-    command: 'npx vars run --env dev -- npm start',
+    title: 'Deploy',
+    description: 'Set VARS_KEY in CI. One secret replaces your entire dashboard.',
+    command: 'npx vars run --env prod -- npm start',
   },
 ];
 

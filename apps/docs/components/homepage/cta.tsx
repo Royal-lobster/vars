@@ -15,11 +15,15 @@ export function CTA() {
       </div>
       <div className="relative z-10">
         <h2 className="text-[clamp(32px,5vw,48px)] font-bold tracking-[-2px]">
-          Replace .env{' '}
-          <em className="font-serif italic text-green-500 font-normal">today.</em>
+          Stop managing secrets.{' '}
+          <br className="hidden sm:block" />
+          Start{' '}
+          <em className="font-serif italic text-green-500 font-normal">committing</em>{' '}
+          them.
         </h2>
         <p className="mx-auto mt-4 max-w-[450px] text-base leading-relaxed text-white/50">
-          One command. Five minutes. Your whole team gets every secret, no Slack DMs required.
+          One file in your repo. One key in CI. Every secret encrypted, typed, and version-controlled.
+          Set up in five minutes.
         </p>
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Link

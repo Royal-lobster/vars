@@ -13,10 +13,10 @@ export function FeatureEncryption() {
           </em>
         </h2>
         <p className="mt-4 text-[15px] leading-relaxed text-white/50">
-          AES-256-GCM deterministic per-value encryption (enc:v2) with a PIN prompted every time.
-          Keys are never cached — AI agents can never access decrypted secrets.
+          Every secret value is encrypted individually — not the whole file. Structure and variable
+          names stay readable, only values are locked. A PIN is prompted every time, even in VS Code.
+          AI coding agents hit a system dialog and can&apos;t proceed without your explicit approval.
           Mark non-secret values <code className="text-green-400 text-sm">public</code> to keep them plaintext.
-          Use <code className="text-green-400 text-sm">vars show</code> to decrypt, <code className="text-green-400 text-sm">vars hide</code> to re-encrypt. Safe to commit. Safe to share.
         </p>
       </div>
 

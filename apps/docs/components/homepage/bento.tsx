@@ -16,7 +16,7 @@ const ITEMS: BentoItem[] = [
     label: 'Schema-first',
     title: 'Your schema is native Zod',
     description:
-      'No proprietary DSL. Write the same Zod expressions you already use. Type errors at build time, not in production at 3am.',
+      'No proprietary DSL. Write the same Zod expressions you already use. Your schema is your documentation — new devs read the .vars file and know exactly what every variable needs.',
     image: '/images/topographic.webp',
     span: 'wide',
     lang: 'ts',
@@ -69,16 +69,16 @@ $ vars gen      # typed exports`,
     span: 'narrow',
   },
   {
-    label: 'Platform Sync',
-    title: 'Push and pull from your hosting',
+    label: 'Export',
+    title: 'One key replaces your dashboard',
     description:
-      'Sync secrets with Vercel, Netlify, Railway, and Fly.io. Push from your vault to the platform, or pull existing vars back into your encrypted file.',
+      'Export to .env, JSON, or Kubernetes secrets. In CI, set a single VARS_KEY env var — no more copying 15 secrets into your hosting dashboard one by one.',
     image: '/images/fireflies.webp',
     span: 'wide',
     lang: 'bash',
-    code: `$ vars push --env prod --vercel   # config → Vercel
-$ vars pull --netlify             # Netlify → config
-$ vars export --env prod > .env  # generate .env`,
+    code: `$ vars export --env prod > .env       # dotenv format
+$ vars export --env prod --format json  # JSON format
+$ vars key export                       # base64 key for CI`,
   },
 ];
 
@@ -104,8 +104,8 @@ export function Bento() {
     <section className="mx-auto max-w-[1120px] px-5 pb-20 md:px-10">
       <div className="mb-12 text-center">
         <h2 className="text-[clamp(28px,4vw,38px)] font-bold tracking-[-1.5px]">
-          Built for teams that{' '}
-          <em className="font-serif italic text-green-500 font-normal">ship.</em>
+          Built for teams of{' '}
+          <em className="font-serif italic text-green-500 font-normal">2 to 20.</em>
         </h2>
       </div>
 

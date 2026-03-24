@@ -82,12 +82,12 @@ export function Comparison() {
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-6">
             {([
-              [FileWarning, 'Plaintext secrets on disk'],
-              [FolderSync, 'Three files to keep in sync'],
-              [FileQuestion, 'No types or validation'],
-              [MessageSquare, 'Shared via Slack DMs'],
-              [ClipboardCopy, 'Copy-paste between envs'],
-              [ShieldAlert, 'Hope nobody commits prod'],
+              [FileWarning, '12 secrets pasted into your dashboard'],
+              [FolderSync, 'New dev waits days for env vars'],
+              [FileQuestion, '.env.example drifts from reality'],
+              [MessageSquare, 'Shared via Slack DMs and 1Password'],
+              [ClipboardCopy, 'Staging and prod silently drift apart'],
+              [ShieldAlert, 'One console.log leaks everything'],
             ] as [LucideIcon, string][]).map(([Icon, problem]) => (
               <div key={problem} className="flex items-start gap-2.5 text-sm text-red-400/80">
                 <Icon size={16} className="mt-0.5 shrink-0 text-red-500/60" />
@@ -115,12 +115,12 @@ export function Comparison() {
 
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-6">
             {([
-              [Lock, 'Encrypted, safe to commit'],
-              [FileStack, 'One file, all environments'],
-              [ShieldCheck, 'Zod schemas validate values'],
-              [KeyRound, 'Clone the repo, enter PIN'],
-              [LockKeyhole, 'Always encrypted, unlock to edit'],
-              [FileCode, 'Types generated for you'],
+              [Lock, 'Set one VARS_KEY in CI — done'],
+              [FileStack, 'New dev clones, enters PIN, ships'],
+              [ShieldCheck, 'Schema IS the documentation'],
+              [KeyRound, 'Dev, staging, prod side by side'],
+              [LockKeyhole, 'Secrets are Redacted — can\'t log them'],
+              [FileCode, 'TypeScript types from your config'],
             ] as [LucideIcon, string][]).map(([Icon, benefit]) => (
               <div key={benefit} className="flex items-start gap-2.5 text-sm text-green-400/90">
                 <Icon size={16} className="mt-0.5 shrink-0 text-green-500" />

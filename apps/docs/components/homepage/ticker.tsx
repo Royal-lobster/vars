@@ -1,12 +1,12 @@
 import { Separator } from '@/components/ui/separator';
 
 const ITEMS = [
-  { label: 'AES-256-GCM' },
-  { label: 'Zod' },
-  { label: 'PIN-per-command' },
+  { label: 'Encrypted secrets in git' },
+  { label: 'Zod type safety' },
+  { label: 'One key for CI/CD' },
   { label: 'Any framework' },
-  { label: 'LSP + VS Code' },
-  { label: 'AI-safe by design' },
+  { label: 'VS Code extension' },
+  { label: 'PIN-protected from AI' },
 ];
 
 function TickerRow() {
