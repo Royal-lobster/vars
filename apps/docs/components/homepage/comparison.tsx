@@ -51,6 +51,21 @@ API_KEY : z.string().min(20) {
 
 const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-xs [&_pre]:!leading-[1.9]';
 
+const DASHBOARD_VARS = [
+  'DATABASE_URL',
+  'API_KEY',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'REDIS_URL',
+  'JWT_SECRET',
+  'SMTP_PASSWORD',
+  'AWS_SECRET_ACCESS_KEY',
+  'SENTRY_DSN',
+  'NEXT_PUBLIC_API_URL',
+  'OAUTH_CLIENT_SECRET',
+  'ENCRYPTION_KEY',
+];
+
 export function Comparison() {
   return (
     <section className="mx-auto max-w-[1120px] px-5 py-24 md:px-10">
@@ -64,6 +79,7 @@ export function Comparison() {
         </p>
       </div>
 
+      {/* Code comparison */}
       <div className="grid gap-4 md:grid-cols-2">
         {/* .env — Before */}
         <div className="overflow-hidden rounded-xl border border-red-500/10 bg-red-500/[0.03]">
@@ -128,6 +144,56 @@ export function Comparison() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Dashboard visual: N secrets → 1 key */}
+      <div className="mt-12 grid gap-4 md:grid-cols-2">
+        <div className="overflow-hidden rounded-xl border border-red-500/10 bg-red-500/[0.03] p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-white/40">Your hosting dashboard</span>
+            <span className="font-mono text-xs text-red-400/60">{DASHBOARD_VARS.length} secrets</span>
+          </div>
+          <div className="rounded-lg border border-white/[0.04] bg-black/30 divide-y divide-white/[0.04]">
+            {DASHBOARD_VARS.map((name) => (
+              <div key={name} className="flex items-center justify-between px-3 py-2">
+                <span className="font-mono text-[11px] text-white/50 truncate">{name}</span>
+                <span className="font-mono text-[10px] text-white/15 truncate ml-4">••••••••••••••</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[12px] text-red-400/40">
+            Add a secret? Open dashboard, paste, redeploy. Repeat for staging.
+          </p>
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-green-500/10 bg-green-500/[0.03] p-5 flex flex-col">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium text-white/40">Your hosting dashboard</span>
+            <span className="font-mono text-xs text-green-400/60">1 key</span>
+          </div>
+          <div className="rounded-lg border border-green-500/10 bg-black/30">
+            <div className="flex items-center justify-between px-3 py-3">
+              <span className="font-mono text-[11px] text-green-400">VARS_KEY</span>
+              <span className="flex items-center rounded border border-green-500/20 bg-green-500/10 px-1.5 py-0.5">
+                <span className="text-[9px] font-mono text-green-400">base64</span>
+              </span>
+            </div>
+          </div>
+          <div className="mt-4 flex-1 rounded-lg border border-white/[0.04] bg-black/20 p-3.5">
+            <div className="font-mono text-[11px] text-white/30 leading-relaxed">
+              <span className="text-white/50"># Everything else lives in git</span>
+              <br />
+              <span className="text-green-400">config.vars</span>
+              <span className="text-white/20"> → secrets + schemas + 3 envs</span>
+              <br />
+              <span className="text-green-400">config.generated.ts</span>
+              <span className="text-white/20"> → typed exports</span>
+            </div>
+          </div>
+          <p className="mt-3 text-[12px] text-green-400/40">
+            Add a secret? Edit the file, commit, push. CI picks it up.
+          </p>
         </div>
       </div>
     </section>

@@ -3,28 +3,33 @@ import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 const STEPS = [
   {
     title: 'Init',
-    description: 'One command. Set a PIN. Migrates your existing .env automatically.',
+    description: 'One command. Set a PIN. Auto-detects your framework and migrates existing .env files.',
     command: 'npx vars init',
+    detail: 'Installs a pre-commit hook that blocks plaintext secrets from being committed.',
   },
   {
     title: 'Edit',
-    description: 'Decrypt with vars show, add your variables with Zod types.',
+    description: 'Decrypt with vars show, add variables with Zod schemas. VS Code gives you autocomplete and validation.',
     command: 'npx vars show',
+    detail: 'z.string().url(), z.number().min(1024) — same Zod you already know.',
   },
   {
     title: 'Lock',
-    description: 'Run vars hide. Secrets encrypted. Safe to commit.',
+    description: 'Run vars hide. Every secret value encrypted individually. Structure stays readable.',
     command: 'npx vars hide',
+    detail: 'Safe to commit. Variable names and schemas are visible, only values are locked.',
   },
   {
     title: 'Commit',
-    description: "Push to git. Teammates clone and enter the PIN. That's onboarding.",
-    command: 'git commit -m "update secrets"',
+    description: "Push to git. Teammates clone the repo and enter the PIN. That's the entire onboarding.",
+    command: 'git commit -m "update config"',
+    detail: 'No Slack DMs, no shared vaults, no waiting for access.',
   },
   {
     title: 'Deploy',
-    description: 'Set VARS_KEY in CI. One secret replaces your entire dashboard.',
+    description: 'Set VARS_KEY in CI once. Generates typed exports with Redacted<T> — typos become compile errors.',
     command: 'npx vars run --env prod -- npm start',
+    detail: 'One secret in your dashboard replaces every env var you used to paste.',
   },
 ];
 
@@ -45,23 +50,30 @@ export function Workflow() {
         {STEPS.map((step, i) => (
           <div
             key={step.title}
-            className="flex items-center gap-5 rounded-xl border border-white/[0.06] bg-[#0a0a0a] p-5 transition-all hover:border-green-500/15"
+            className="rounded-xl border border-white/[0.06] bg-[#0a0a0a] p-5 transition-all hover:border-green-500/15"
           >
-            {/* Number */}
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-green-500/30 bg-green-500/10 font-mono text-sm font-bold text-green-400">
-              {i + 1}
+            <div className="flex items-center gap-5">
+              {/* Number */}
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-green-500/30 bg-green-500/10 font-mono text-sm font-bold text-green-400">
+                {i + 1}
+              </div>
+
+              {/* Title + description */}
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-semibold">{step.title}</h3>
+                <p className="mt-0.5 text-xs text-white/40">{step.description}</p>
+              </div>
+
+              {/* Command */}
+              <code className="hidden shrink-0 rounded-lg border border-white/[0.06] bg-white/[0.03] px-4 py-2 font-mono text-xs text-white/60 sm:block">
+                {step.command}
+              </code>
             </div>
 
-            {/* Title + description */}
-            <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-semibold">{step.title}</h3>
-              <p className="mt-0.5 text-xs text-white/40">{step.description}</p>
-            </div>
-
-            {/* Command */}
-            <code className="hidden shrink-0 rounded-lg border border-white/[0.06] bg-white/[0.03] px-4 py-2 font-mono text-xs text-white/60 sm:block">
-              {step.command}
-            </code>
+            {/* Detail line */}
+            <p className="mt-2.5 ml-14 text-[11px] text-green-400/40 leading-relaxed">
+              {step.detail}
+            </p>
           </div>
         ))}
       </div>
