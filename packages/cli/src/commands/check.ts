@@ -41,7 +41,7 @@ export default defineCommand({
         let value = v.value;
         if (isEncrypted(value)) {
           if (!key && keyFile) {
-            try { key = await requireKey(keyFile); } catch { /* skip */ }
+            try { key = await requireKey(keyFile, "vars check"); } catch { /* skip */ }
           }
           if (key) { value = decrypt(value, key); }
           else { continue; }

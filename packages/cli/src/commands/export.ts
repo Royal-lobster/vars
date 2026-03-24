@@ -38,7 +38,7 @@ export default defineCommand({
     let key: Buffer | null = getKeyFromEnv();
     if (!key) {
       const keyFile = findKeyFile(file);
-      key = await requireKey(keyFile);
+      key = await requireKey(keyFile, `vars export --env ${env}`);
     }
 
     const pairs: [string, string][] = [];

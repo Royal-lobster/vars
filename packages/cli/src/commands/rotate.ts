@@ -17,7 +17,7 @@ export default defineCommand({
     if (!keyFile) { console.error(pc.red("No key found")); process.exit(1); }
 
     // Decrypt with old key
-    const oldKey = await requireKey(keyFile);
+    const oldKey = await requireKey(keyFile, "vars rotate");
 
     // Create new key + PIN
     const pin = await prompts.password({ message: "Set new PIN:" });

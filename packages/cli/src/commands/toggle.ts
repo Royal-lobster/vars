@@ -22,7 +22,7 @@ export default defineCommand({
     const isUnlocked = isUnlockedPath(file) || existsSync(unlockedPath);
 
     const keyFile = findKeyFile(file);
-    const key = await requireKey(keyFile);
+    const key = await requireKey(keyFile, `vars toggle ${args.file ?? file}`);
 
     if (isUnlocked) {
       const target = existsSync(unlockedPath) ? unlockedPath : file;
