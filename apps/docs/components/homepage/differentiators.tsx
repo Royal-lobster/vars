@@ -34,7 +34,7 @@ function SectionBg({ image, side }: { image: string; side: 'left' | 'right' }) {
       <img
         src={image}
         alt=""
-        className={`absolute ${side === 'left' ? '-left-40 -top-20' : '-right-40 -top-20'} h-[120%] w-[70%] object-cover opacity-[0.06] blur-sm`}
+        className={`absolute ${side === 'left' ? '-left-40 -top-20' : '-right-40 -top-20'} h-[120%] w-[70%] object-cover opacity-[0.1] blur-sm`}
       />
       <div className="absolute inset-0 bg-gradient-to-r from-[#050505] via-transparent to-[#050505]" />
     </div>
@@ -54,7 +54,7 @@ export function Differentiators() {
       <div className="flex flex-col gap-0">
         {/* Differentiator 1: Schema + Secrets */}
         <div className="relative overflow-hidden border-t border-white/[0.04] py-20">
-          <SectionBg image="/images/crystal.webp" side="right" />
+          <SectionBg image="/images/diff-schema.webp" side="right" />
           <div className="relative z-10 mx-auto grid max-w-[1120px] items-center gap-10 md:grid-cols-2">
             <div>
               <span className="font-mono text-[11px] uppercase tracking-[2px] text-green-500">
@@ -84,7 +84,7 @@ export function Differentiators() {
 
         {/* Differentiator 2: N secrets → 1 key */}
         <div className="relative overflow-hidden border-t border-white/[0.04] py-20">
-          <SectionBg image="/images/aurora.webp" side="left" />
+          <SectionBg image="/images/diff-onekey.webp" side="left" />
           <div className="relative z-10 mx-auto grid max-w-[1120px] items-center gap-10 md:grid-cols-2">
             <div className="order-2 md:order-1 rounded-xl border border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-sm overflow-hidden">
               <DynamicCodeBlock
@@ -115,7 +115,7 @@ export function Differentiators() {
 
         {/* Differentiator 3: AI-safe PIN dialog */}
         <div className="relative overflow-hidden border-t border-b border-white/[0.04] py-20">
-          <SectionBg image="/images/neural-mesh.webp" side="right" />
+          <SectionBg image="/images/diff-aisafe.webp" side="right" />
           <div className="relative z-10 mx-auto grid max-w-[1120px] items-center gap-10 md:grid-cols-2">
             <div>
               <span className="font-mono text-[11px] uppercase tracking-[2px] text-green-500">
