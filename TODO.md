@@ -7,8 +7,6 @@
 
 ## Nice to Have (post-launch)
 
-- [ ] **`vars push`/`pull`** — push secrets to Vercel/Cloudflare/Fly APIs (commands stubbed, not implemented)
-- [ ] **`vars gen --watch`** — file watcher for auto-regen during dev
 - [ ] **Vite plugin** (`@vars/vite`) — auto-bridge `process.env` → `import.meta.env` for client bundles
 - [ ] **Monorepo guide** in docs — the `use` composition pattern with shared config across services
 - [ ] **`vars add` non-interactive mode** — `vars add NAME --schema z.string() --dev "val" --prod "val"` for scripting/CI

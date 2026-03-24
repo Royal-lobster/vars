@@ -23,8 +23,6 @@ const main = defineCommand({
     doctor: () => import("./commands/doctor.js").then((m) => m.default),
     "export": () => import("./commands/export.js").then((m) => m.default),
     hook: () => import("./commands/hook.js").then((m) => m.default),
-    push: () => import("./commands/push.js").then((m) => m.default),
-    pull: () => import("./commands/pull.js").then((m) => m.default),
     rotate: () => import("./commands/rotate.js").then((m) => m.default),
   },
 });
