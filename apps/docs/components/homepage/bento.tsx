@@ -1,4 +1,5 @@
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
+import { VarsDynamicCodeBlock } from './vars-codeblock';
 import {
   Shield,
   Layers,
@@ -15,92 +16,21 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-interface BentoItem {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  code?: string;
-  lang?: string;
-}
-
-const ITEMS: BentoItem[] = [
-  {
-    icon: Shield,
-    title: 'Zod-native schemas',
-    description: 'No proprietary DSL. Same Zod you already use.',
-    lang: 'ts',
-    code: `z.string().url().startsWith("postgres://")
-z.coerce.number().int().min(1024).max(65535)
-z.enum(["development", "staging", "production"])`,
-  },
-  {
-    icon: Layers,
-    title: 'Multi-environment',
-    description: 'dev, staging, prod side by side. Can never drift.',
-  },
-  {
-    icon: Terminal,
-    title: 'Full CLI',
-    description: '17 commands: show, hide, run, gen, check, export, rotate, diff, doctor.',
-  },
-  {
-    icon: MonitorSmartphone,
-    title: 'VS Code extension',
-    description: 'Autocomplete, validation, hover docs, go-to-definition.',
-  },
-  {
-    icon: Code,
-    title: 'TypeScript codegen',
-    description: 'Generated types with Redacted<T>. Typos = compile errors.',
-    lang: 'ts',
-    code: `import { vars } from "#vars"
-
-const port: number = vars.PORT
-const db: string = vars.DATABASE_URL.unwrap()
-//                                   ^^^^^^^^ Redacted<string>`,
-  },
-  {
-    icon: CheckSquare,
-    title: 'Check blocks',
-    description: 'Cross-variable constraints at build time.',
-  },
-  {
-    icon: Braces,
-    title: 'Variable interpolation',
-    description: '${} references with per-env resolution.',
-  },
-  {
-    icon: RefreshCw,
-    title: 'PIN rotation',
-    description: 'vars rotate re-encrypts with new PIN. One command.',
-  },
-  {
-    icon: FileOutput,
-    title: 'Export anywhere',
-    description: '.env, JSON, or Kubernetes secret format.',
-    lang: 'bash',
-    code: `$ vars export --env prod > .env
-$ vars export --env prod --format json`,
-  },
-  {
-    icon: GitBranch,
-    title: 'Pre-commit hooks',
-    description: 'Auto-installed. Blocks decrypted secrets from git.',
-  },
-  {
-    icon: FileSearch,
-    title: 'Diff & coverage',
-    description: 'Compare values across envs. Find missing values.',
-  },
-  {
-    icon: Stethoscope,
-    title: 'vars doctor',
-    description: 'Diagnose key health, .gitignore, hooks, expiring secrets.',
-  },
-];
-
 const codeBlockStyle =
   '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11px] [&_pre]:!leading-[1.7]';
+
+const cardBase =
+  'group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)]';
+
+function CardHeader({ icon: Icon, title, description }: { icon: LucideIcon; title: string; description: string }) {
+  return (
+    <div className="p-5">
+      <Icon size={16} className="text-green-500" />
+      <h3 className="mt-3 text-sm font-semibold">{title}</h3>
+      <p className="mt-1 text-[12px] leading-relaxed text-white/40">{description}</p>
+    </div>
+  );
+}
 
 export function Bento() {
   return (
@@ -115,32 +45,133 @@ export function Bento() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
-        {ITEMS.map((item) => (
-          <div
-            key={item.title}
-            className="group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] p-5 transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)]"
-          >
-            <div className="flex items-start gap-3">
-              <item.icon size={16} className="mt-0.5 shrink-0 text-green-500" />
-              <div className="min-w-0">
-                <h3 className="text-sm font-semibold">{item.title}</h3>
-                <p className="mt-1 text-[12px] leading-relaxed text-white/40">
-                  {item.description}
-                </p>
-              </div>
-            </div>
-            {item.code && (
-              <div className={`mt-3 ${codeBlockStyle}`}>
-                <DynamicCodeBlock
-                  lang={item.lang ?? 'text'}
-                  code={item.code}
-                  codeblock={{ keepBackground: false, allowCopy: false }}
-                />
-              </div>
-            )}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+        {/* Row 1: Zod (wide with code) | Multi-env + CLI (stacked) */}
+        <div className={`md:col-span-7 ${cardBase}`}>
+          <CardHeader
+            icon={Shield}
+            title="Zod-native schemas"
+            description="No proprietary DSL. Write the same Zod expressions you already use. Validated at build time."
+          />
+          <div className={`px-5 pb-5 ${codeBlockStyle}`}>
+            <DynamicCodeBlock
+              lang="ts"
+              code={`DATABASE_URL : z.string().url().startsWith("postgres://")
+PORT        : z.coerce.number().int().min(1024).max(65535)
+NODE_ENV    : z.enum(["development", "staging", "production"])`}
+              codeblock={{ keepBackground: false, allowCopy: false }}
+            />
           </div>
-        ))}
+        </div>
+        <div className="flex flex-col gap-3 md:col-span-5">
+          <div className={`flex-1 ${cardBase}`}>
+            <CardHeader
+              icon={Layers}
+              title="Multi-environment"
+              description="dev, staging, prod in one file. Side by side. They can never drift apart."
+            />
+          </div>
+          <div className={`flex-1 ${cardBase}`}>
+            <CardHeader
+              icon={Terminal}
+              title="Full CLI"
+              description="17 commands: show, hide, run, gen, check, export, rotate, diff, doctor, and more."
+            />
+          </div>
+        </div>
+
+        {/* Row 2: VS Code + Check blocks (stacked) | TypeScript codegen (wide with code) */}
+        <div className="flex flex-col gap-3 md:col-span-5">
+          <div className={`flex-1 ${cardBase}`}>
+            <CardHeader
+              icon={MonitorSmartphone}
+              title="VS Code extension"
+              description="Autocomplete, inline validation, hover docs, go-to-definition. Full LSP."
+            />
+          </div>
+          <div className={`flex-1 ${cardBase}`}>
+            <CardHeader
+              icon={CheckSquare}
+              title="Check blocks"
+              description='Cross-variable constraints validated at build time. "If prod, no debug logging."'
+            />
+          </div>
+        </div>
+        <div className={`md:col-span-7 ${cardBase}`}>
+          <CardHeader
+            icon={Code}
+            title="TypeScript codegen"
+            description="Generated types with Redacted<T>. Typos become compile errors, not 3am incidents."
+          />
+          <div className={`px-5 pb-5 ${codeBlockStyle}`}>
+            <DynamicCodeBlock
+              lang="ts"
+              code={`import { vars } from "#vars"
+
+// Public values are plain types
+const port: number = vars.PORT
+
+// Secrets require explicit unwrap — can't accidentally log them
+const db: string = vars.DATABASE_URL.unwrap()
+//                 ^^^^^^^^^^^^^^^^^^^^^^^^^ Redacted<string>`}
+              codeblock={{ keepBackground: false, allowCopy: false }}
+            />
+          </div>
+        </div>
+
+        {/* Row 3: Interpolation | PIN rotation | Export (wide with code) */}
+        <div className={`md:col-span-3 ${cardBase}`}>
+          <CardHeader
+            icon={Braces}
+            title="Interpolation"
+            description="${} variable references with per-environment resolution."
+          />
+        </div>
+        <div className={`md:col-span-3 ${cardBase}`}>
+          <CardHeader
+            icon={RefreshCw}
+            title="PIN rotation"
+            description="vars rotate re-encrypts everything with a new PIN. One command."
+          />
+        </div>
+        <div className={`md:col-span-6 ${cardBase}`}>
+          <CardHeader
+            icon={FileOutput}
+            title="Export anywhere"
+            description="Export resolved values to .env, JSON, or Kubernetes secret format."
+          />
+          <div className={`px-5 pb-5 ${codeBlockStyle}`}>
+            <DynamicCodeBlock
+              lang="bash"
+              code={`$ vars export --env prod > .env         # dotenv format
+$ vars export --env prod --format json  # JSON format`}
+              codeblock={{ keepBackground: false, allowCopy: false }}
+            />
+          </div>
+        </div>
+
+        {/* Row 4: Pre-commit | Diff & coverage | vars doctor */}
+        <div className={`md:col-span-4 ${cardBase}`}>
+          <CardHeader
+            icon={GitBranch}
+            title="Pre-commit hooks"
+            description="Auto-installed during init. Blocks you from committing decrypted secrets to git."
+          />
+        </div>
+        <div className={`md:col-span-4 ${cardBase}`}>
+          <CardHeader
+            icon={FileSearch}
+            title="Diff & coverage"
+            description="Compare values across environments. See which envs are missing values at a glance."
+          />
+        </div>
+        <div className={`md:col-span-4 ${cardBase}`}>
+          <CardHeader
+            icon={Stethoscope}
+            title="vars doctor"
+            description="Diagnose your setup — key health, .gitignore, hooks, expiring secrets, schema errors."
+          />
+        </div>
       </div>
     </section>
   );
