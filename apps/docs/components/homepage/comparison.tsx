@@ -99,15 +99,15 @@ export function Comparison() {
         {COMPARISONS.map(([pain, solution], i) => (
           <div
             key={pain}
-            className={`relative grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 py-3.5 md:px-8 transition-colors hover:bg-white/[0.02] ${
+            className={`relative flex flex-col gap-1 px-5 py-3.5 md:px-8 md:grid md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-4 transition-colors hover:bg-white/[0.02] ${
               i !== COMPARISONS.length - 1 ? 'border-b border-white/[0.04]' : ''
             }`}
           >
-            <span className="text-sm text-red-400/60 text-right line-through decoration-red-500/20">{pain}</span>
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500/10 text-green-500 text-[10px] select-none shrink-0" aria-hidden>
+            <span className="text-[13px] text-red-400/60 md:text-right line-through decoration-red-500/20 md:text-sm">{pain}</span>
+            <span className="hidden md:flex h-5 w-5 items-center justify-center rounded-full bg-green-500/10 text-green-500 text-[10px] select-none shrink-0" aria-hidden>
               →
             </span>
-            <span className="text-sm text-green-400/90 font-medium">{solution}</span>
+            <span className="text-[13px] text-green-400/90 font-medium md:text-sm">{solution}</span>
           </div>
         ))}
       </div>

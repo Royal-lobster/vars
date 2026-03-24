@@ -27,11 +27,11 @@ function TickerRow() {
 export function Ticker() {
   return (
     <div className="border-b border-white/[0.06] overflow-hidden py-7">
-      <div className="flex w-max animate-marquee items-center gap-6 hover:[animation-play-state:paused]">
+      <div className="flex w-max animate-marquee items-center gap-6 hover:[animation-play-state:paused] motion-reduce:animate-none">
         <TickerRow />
-        <TickerRow />
-        <TickerRow />
-        <TickerRow />
+        <div aria-hidden="true" className="contents"><TickerRow /></div>
+        <div aria-hidden="true" className="contents"><TickerRow /></div>
+        <div aria-hidden="true" className="contents"><TickerRow /></div>
       </div>
     </div>
   );

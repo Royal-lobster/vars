@@ -12,8 +12,10 @@ export function PinDialog() {
         </p>
       </div>
 
-      {/* macOS dialog */}
+      {/* macOS dialog — purely illustrative */}
       <div
+        aria-hidden="true"
+        role="presentation"
         className="relative w-full max-w-[380px] rounded-xl border border-white/[0.12] bg-[#1c1c1e]/95 p-8 backdrop-blur-2xl"
         style={{
           boxShadow:
