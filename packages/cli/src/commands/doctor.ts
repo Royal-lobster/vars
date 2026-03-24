@@ -1,8 +1,9 @@
 import { defineCommand } from "citty";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isUnlockedPath } from "@vars/node";
+import { isUnlockedPath, resolveUseChain } from "@vars/node";
 import { findKeyFile, findAllVarsFiles, getProjectRoot } from "../utils/context.js";
+import { checkExpiry, formatExpiryMessage } from "../utils/expiry.js";
 import { HOOK_MARKER } from "./hook.js";
 import pc from "picocolors";
 
@@ -79,6 +80,39 @@ export default defineCommand({
           console.log(pc.yellow("  ⚠ No #vars import in package.json"));
         }
       } catch {}
+    }
+
+    // Check for expiring secrets
+    let expiryWarnings = 0;
+    for (const filePath of files) {
+      try {
+        const resolved = resolveUseChain(filePath, { env: "dev" });
+        const seen = new Set<string>();
+        for (const env of resolved.envs) {
+          let envResolved;
+          try { envResolved = resolveUseChain(filePath, { env }); } catch { continue; }
+          for (const v of envResolved.vars) {
+            if (!v.metadata?.expires || seen.has(v.flatName)) continue;
+            seen.add(v.flatName);
+            const status = checkExpiry(v.metadata.expires);
+            if (status.invalid) {
+              console.log(pc.red(`  ✗ ${formatExpiryMessage(v.flatName, status, v.metadata.expires)}`));
+              issues++;
+            } else if (status.expired) {
+              console.log(pc.red(`  ✗ ${formatExpiryMessage(v.flatName, status, v.metadata.expires)}`));
+              expiryWarnings++;
+              issues++;
+            } else if (status.expiringSoon) {
+              console.log(pc.yellow(`  ⚠ ${formatExpiryMessage(v.flatName, status, v.metadata.expires)}`));
+              expiryWarnings++;
+              issues++;
+            }
+          }
+        }
+      } catch { /* skip unresolvable files */ }
+    }
+    if (expiryWarnings === 0 && files.length > 0) {
+      console.log(pc.green("  ✓ No secrets expiring soon"));
     }
 
     if (issues === 0) {
