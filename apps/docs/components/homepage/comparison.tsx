@@ -1,21 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 import { VarsDynamicCodeBlock } from './vars-codeblock';
-import {
-  FileWarning,
-  FolderSync,
-  FileQuestion,
-  MessageSquare,
-  ClipboardCopy,
-  ShieldAlert,
-  Lock,
-  FileStack,
-  ShieldCheck,
-  KeyRound,
-  LockKeyhole,
-  FileCode,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 
 const ENV_CODE = `# .env.development
 DATABASE_URL=postgres://localhost:5432/myapp
@@ -51,19 +36,13 @@ API_KEY : z.string().min(20) {
 
 const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-xs [&_pre]:!leading-[1.9]';
 
-const DASHBOARD_VARS = [
-  'DATABASE_URL',
-  'API_KEY',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
-  'REDIS_URL',
-  'JWT_SECRET',
-  'SMTP_PASSWORD',
-  'AWS_SECRET_ACCESS_KEY',
-  'SENTRY_DSN',
-  'NEXT_PUBLIC_API_URL',
-  'OAUTH_CLIENT_SECRET',
-  'ENCRYPTION_KEY',
+const COMPARISONS: [string, string][] = [
+  ['3 .env files to sync', '1 config.vars file'],
+  ['Plaintext secrets on disk', 'AES-256 encrypted per-value'],
+  ['Shared via Slack DMs', 'Clone repo, enter PIN'],
+  ['12 secrets in Vercel dashboard', '1 VARS_KEY'],
+  ['No types or validation', 'Zod schemas + TypeScript codegen'],
+  ['console.log leaks everything', 'Redacted<T> wrapper'],
 ];
 
 export function Comparison() {
@@ -91,25 +70,8 @@ export function Comparison() {
               What you&apos;ve been doing
             </span>
           </div>
-
-          <div className={`mx-4 mb-1 ${codeBlockStyle}`}>
+          <div className={`mx-4 mb-4 ${codeBlockStyle}`}>
             <DynamicCodeBlock lang="bash" code={ENV_CODE} codeblock={{ keepBackground: false, allowCopy: false }} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-6">
-            {([
-              [FileWarning, '12 secrets pasted into your dashboard'],
-              [FolderSync, 'New dev waits days for env vars'],
-              [FileQuestion, '.env.example drifts from reality'],
-              [MessageSquare, 'Shared via Slack DMs and 1Password'],
-              [ClipboardCopy, 'Staging and prod silently drift apart'],
-              [ShieldAlert, 'One console.log leaks everything'],
-            ] as [LucideIcon, string][]).map(([Icon, problem]) => (
-              <div key={problem} className="flex items-start gap-2.5 text-sm text-red-400/80">
-                <Icon size={16} className="mt-0.5 shrink-0 text-red-500/60" />
-                {problem}
-              </div>
-            ))}
           </div>
         </div>
 
@@ -123,78 +85,29 @@ export function Comparison() {
               What it looks like now
             </span>
           </div>
-
           <VarsDynamicCodeBlock
             code={VARS_CODE}
-            className={`mx-4 mb-1 ${codeBlockStyle}`}
+            className={`mx-4 mb-4 ${codeBlockStyle}`}
           />
-
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4 px-6 py-6">
-            {([
-              [Lock, 'Set one VARS_KEY in CI — done'],
-              [FileStack, 'New dev clones, enters PIN, ships'],
-              [ShieldCheck, 'Schema IS the documentation'],
-              [KeyRound, 'Dev, staging, prod side by side'],
-              [LockKeyhole, 'Secrets are Redacted — can\'t log them'],
-              [FileCode, 'TypeScript types from your config'],
-            ] as [LucideIcon, string][]).map(([Icon, benefit]) => (
-              <div key={benefit} className="flex items-start gap-2.5 text-sm text-green-400/90">
-                <Icon size={16} className="mt-0.5 shrink-0 text-green-500" />
-                {benefit}
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
-      {/* Dashboard visual: N secrets → 1 key */}
-      <div className="mt-12 grid gap-4 md:grid-cols-2">
-        <div className="overflow-hidden rounded-xl border border-red-500/10 bg-red-500/[0.03] p-5">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-white/40">Your hosting dashboard</span>
-            <span className="font-mono text-xs text-red-400/60">{DASHBOARD_VARS.length} secrets</span>
+      {/* Comparison strip */}
+      <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+        {COMPARISONS.map(([pain, solution], i) => (
+          <div
+            key={pain}
+            className={`grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 py-3 md:px-8 ${
+              i !== COMPARISONS.length - 1 ? 'border-b border-white/[0.04]' : ''
+            }`}
+          >
+            <span className="text-sm text-red-400/70 text-right">{pain}</span>
+            <span className="text-white/15 text-xs select-none" aria-hidden>
+              &rarr;
+            </span>
+            <span className="text-sm text-green-400/90">{solution}</span>
           </div>
-          <div className="rounded-lg border border-white/[0.04] bg-black/30 divide-y divide-white/[0.04]">
-            {DASHBOARD_VARS.map((name) => (
-              <div key={name} className="flex items-center justify-between px-3 py-2">
-                <span className="font-mono text-[11px] text-white/50 truncate">{name}</span>
-                <span className="font-mono text-[10px] text-white/15 truncate ml-4">••••••••••••••</span>
-              </div>
-            ))}
-          </div>
-          <p className="mt-3 text-[12px] text-red-400/40">
-            Add a secret? Open dashboard, paste, redeploy. Repeat for staging.
-          </p>
-        </div>
-
-        <div className="overflow-hidden rounded-xl border border-green-500/10 bg-green-500/[0.03] p-5 flex flex-col">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-white/40">Your hosting dashboard</span>
-            <span className="font-mono text-xs text-green-400/60">1 key</span>
-          </div>
-          <div className="rounded-lg border border-green-500/10 bg-black/30">
-            <div className="flex items-center justify-between px-3 py-3">
-              <span className="font-mono text-[11px] text-green-400">VARS_KEY</span>
-              <span className="flex items-center rounded border border-green-500/20 bg-green-500/10 px-1.5 py-0.5">
-                <span className="text-[9px] font-mono text-green-400">base64</span>
-              </span>
-            </div>
-          </div>
-          <div className="mt-4 flex-1 rounded-lg border border-white/[0.04] bg-black/20 p-3.5">
-            <div className="font-mono text-[11px] text-white/30 leading-relaxed">
-              <span className="text-white/50"># Everything else lives in git</span>
-              <br />
-              <span className="text-green-400">config.vars</span>
-              <span className="text-white/20"> → secrets + schemas + 3 envs</span>
-              <br />
-              <span className="text-green-400">config.generated.ts</span>
-              <span className="text-white/20"> → typed exports</span>
-            </div>
-          </div>
-          <p className="mt-3 text-[12px] text-green-400/40">
-            Add a secret? Edit the file, commit, push. CI picks it up.
-          </p>
-        </div>
+        ))}
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
 import { VarsDynamicCodeBlock } from './vars-codeblock';
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
+import { PinDialog } from './pin-dialog';
 
 const VARS_FILE_CODE = `env(dev, staging, prod)
 
@@ -25,20 +26,6 @@ steps:
   - run: npx vars run --env prod -- npm start
   # ✔ 12 secrets decrypted and injected`;
 
-const AGENT_DIALOG = `$ cursor run "add a new database migration"
-
-┌─────────────────────────────────────────┐
-│  🔒 vars — PIN Required                │
-│                                         │
-│  The AI agent is requesting access to   │
-│  decrypt secrets in config.vars         │
-│                                         │
-│  Command: vars show config.vars         │
-│                                         │
-│  Enter PIN: ____                        │
-│                                         │
-│  [ Cancel ]              [ Approve ]    │
-└─────────────────────────────────────────┘`;
 
 const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[12px] [&_pre]:!leading-[1.8]';
 
@@ -124,13 +111,7 @@ export function Differentiators() {
               approval. The agent sees encrypted blobs, never plaintext.
             </p>
           </div>
-          <div className={codeBlockStyle}>
-            <DynamicCodeBlock
-              lang="text"
-              code={AGENT_DIALOG}
-              codeblock={{ keepBackground: false, allowCopy: false }}
-            />
-          </div>
+          <PinDialog />
         </div>
       </div>
     </section>

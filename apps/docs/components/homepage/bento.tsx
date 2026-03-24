@@ -1,5 +1,4 @@
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
-import { VarsDynamicCodeBlock } from './vars-codeblock';
 import {
   Shield,
   Layers,
@@ -20,7 +19,6 @@ interface BentoItem {
   icon: LucideIcon;
   title: string;
   description: string;
-  span: 'default' | 'wide';
   code?: string;
   lang?: string;
 }
@@ -29,8 +27,7 @@ const ITEMS: BentoItem[] = [
   {
     icon: Shield,
     title: 'Zod-native schemas',
-    description: 'No proprietary DSL. Write the same Zod expressions you already use.',
-    span: 'wide',
+    description: 'No proprietary DSL. Same Zod you already use.',
     lang: 'ts',
     code: `z.string().url().startsWith("postgres://")
 z.coerce.number().int().min(1024).max(65535)
@@ -39,59 +36,48 @@ z.enum(["development", "staging", "production"])`,
   {
     icon: Layers,
     title: 'Multi-environment',
-    description: 'dev, staging, prod in one file. Side by side. They can never drift.',
-    span: 'default',
+    description: 'dev, staging, prod side by side. Can never drift.',
   },
   {
     icon: Terminal,
     title: 'Full CLI',
-    description: 'show, hide, run, gen, check, export, rotate, diff, doctor — 17 commands.',
-    span: 'default',
+    description: '17 commands: show, hide, run, gen, check, export, rotate, diff, doctor.',
   },
   {
     icon: MonitorSmartphone,
     title: 'VS Code extension',
-    description: 'Autocomplete, inline validation, hover docs, go-to-definition.',
-    span: 'default',
+    description: 'Autocomplete, validation, hover docs, go-to-definition.',
   },
   {
     icon: Code,
     title: 'TypeScript codegen',
-    description: 'Generated types with Redacted<T>. Typos become compile errors.',
-    span: 'wide',
+    description: 'Generated types with Redacted<T>. Typos = compile errors.',
     lang: 'ts',
     code: `import { vars } from "#vars"
 
-// Public values are plain types
 const port: number = vars.PORT
-
-// Secrets require explicit unwrap — can't accidentally log them
 const db: string = vars.DATABASE_URL.unwrap()
 //                                   ^^^^^^^^ Redacted<string>`,
   },
   {
     icon: CheckSquare,
     title: 'Check blocks',
-    description: 'Cross-variable constraints validated at build time. "If prod, no debug logging."',
-    span: 'default',
+    description: 'Cross-variable constraints at build time.',
   },
   {
     icon: Braces,
     title: 'Variable interpolation',
-    description: 'Reference other variables with ${} syntax. Per-environment resolution.',
-    span: 'default',
+    description: '${} references with per-env resolution.',
   },
   {
     icon: RefreshCw,
     title: 'PIN rotation',
-    description: 'vars rotate re-encrypts everything with a new PIN. One command.',
-    span: 'default',
+    description: 'vars rotate re-encrypts with new PIN. One command.',
   },
   {
     icon: FileOutput,
     title: 'Export anywhere',
-    description: 'Export to .env, JSON, or Kubernetes secret format.',
-    span: 'default',
+    description: '.env, JSON, or Kubernetes secret format.',
     lang: 'bash',
     code: `$ vars export --env prod > .env
 $ vars export --env prod --format json`,
@@ -99,24 +85,22 @@ $ vars export --env prod --format json`,
   {
     icon: GitBranch,
     title: 'Pre-commit hooks',
-    description: 'Auto-installed. Blocks you from committing decrypted secrets.',
-    span: 'default',
+    description: 'Auto-installed. Blocks decrypted secrets from git.',
   },
   {
     icon: FileSearch,
     title: 'Diff & coverage',
-    description: 'Compare values across environments. See which envs are missing values.',
-    span: 'default',
+    description: 'Compare values across envs. Find missing values.',
   },
   {
     icon: Stethoscope,
     title: 'vars doctor',
-    description: 'Diagnoses your setup — key health, .gitignore, hooks, expiring secrets.',
-    span: 'default',
+    description: 'Diagnose key health, .gitignore, hooks, expiring secrets.',
   },
 ];
 
-const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11px] [&_pre]:!leading-[1.7]';
+const codeBlockStyle =
+  '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11px] [&_pre]:!leading-[1.7]';
 
 export function Bento() {
   return (
@@ -131,13 +115,11 @@ export function Bento() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
         {ITEMS.map((item) => (
           <div
             key={item.title}
-            className={`group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] p-5 transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)] ${
-              item.span === 'wide' ? 'sm:col-span-2 md:col-span-2' : ''
-            }`}
+            className="group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] p-5 transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)]"
           >
             <div className="flex items-start gap-3">
               <item.icon size={16} className="mt-0.5 shrink-0 text-green-500" />
