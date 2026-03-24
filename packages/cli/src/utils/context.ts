@@ -4,6 +4,7 @@ import { execSync } from "node:child_process";
 import { getKeyFromEnv, decryptMasterKey } from "@vars/node";
 import { isUnlockedPath, toCanonicalPath, toUnlockedPath, toLockedPath } from "@vars/node";
 import * as prompts from "@clack/prompts";
+import { requestAgentApproval } from "./agent-auth.js";
 
 export interface CliContext {
   varsFilePath: string;
@@ -92,7 +93,7 @@ export function findKeyFile(startDir: string): string | null {
 }
 
 /** Get encryption key — from env var or by prompting for PIN */
-export async function requireKey(keyFilePath: string | null): Promise<Buffer> {
+export async function requireKey(keyFilePath: string | null, command?: string): Promise<Buffer> {
   // First: try VARS_KEY env var (works in CI/non-TTY)
   const envKey = getKeyFromEnv();
   if (envKey) return envKey;
@@ -109,18 +110,26 @@ export async function requireKey(keyFilePath: string | null): Promise<Buffer> {
     return decryptMasterKey(encoded, envPin);
   }
 
-  // Check if stdin is a TTY — if not, can't prompt
-  if (!process.stdin.isTTY) {
+  // Interactive TTY — prompt directly
+  if (process.stdin.isTTY) {
+    const pin = await prompts.password({ message: "Enter PIN:" });
+    if (prompts.isCancel(pin)) process.exit(0);
+    return decryptMasterKey(encoded, pin as string);
+  }
+
+  // Non-interactive (AI agent, piped stdin) — try system dialog
+  const commandDesc = command ?? "vars (unknown command)";
+  const pin = requestAgentApproval(commandDesc);
+
+  if (!pin) {
     throw new Error(
-      "Cannot prompt for PIN in non-interactive mode.\n" +
+      "PIN approval denied or no dialog available.\n" +
       "Set VARS_KEY environment variable with your base64-encoded master key.\n" +
       "Get it with: vars key export"
     );
   }
 
-  const pin = await prompts.password({ message: "Enter PIN:" });
-  if (prompts.isCancel(pin)) process.exit(0);
-  return decryptMasterKey(encoded, pin as string);
+  return decryptMasterKey(encoded, pin);
 }
 
 /** Resolve environment name with common aliases */

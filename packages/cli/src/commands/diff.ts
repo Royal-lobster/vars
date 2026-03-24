@@ -32,7 +32,7 @@ export default defineCommand({
       for (const v of resolved.vars) {
         let val = v.value;
         if (val && isEncrypted(val)) {
-          if (!key && keyFile) try { key = await requireKey(keyFile); } catch {}
+          if (!key && keyFile) try { key = await requireKey(keyFile, "vars diff"); } catch {}
           if (key) val = decrypt(val, key);
           else val = pc.dim("<encrypted>");
         }

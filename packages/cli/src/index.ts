@@ -16,6 +16,7 @@ const main = defineCommand({
     check: () => import("./commands/check.js").then((m) => m.default),
     add: () => import("./commands/add.js").then((m) => m.default),
     remove: () => import("./commands/remove.js").then((m) => m.default),
+    set: () => import("./commands/set.js").then((m) => m.default),
     key: () => import("./commands/key.js").then((m) => m.default),
     ls: () => import("./commands/ls.js").then((m) => m.default),
     diff: () => import("./commands/diff.js").then((m) => m.default),
