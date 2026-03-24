@@ -1,10 +1,9 @@
 import { Hero } from '@/components/homepage/hero';
 import { Ticker } from '@/components/homepage/ticker';
 import { Comparison } from '@/components/homepage/comparison';
-import { Audience } from '@/components/homepage/audience';
+import { Differentiators } from '@/components/homepage/differentiators';
 import { Workflow } from '@/components/homepage/workflow';
-import { FeatureEncryption } from '@/components/homepage/feature-encryption';
-import { Frameworks } from '@/components/homepage/frameworks';
+import { Bento } from '@/components/homepage/bento';
 import { CTA } from '@/components/homepage/cta';
 import { Footer } from '@/components/homepage/footer';
 
@@ -14,10 +13,9 @@ export default function HomePage() {
       <Hero />
       <Ticker />
       <Comparison />
-      <Audience />
+      <Differentiators />
       <Workflow />
-      <FeatureEncryption />
-      <Frameworks />
+      <Bento />
       <CTA />
       <Footer />
     </main>

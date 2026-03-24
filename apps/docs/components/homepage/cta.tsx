@@ -1,5 +1,26 @@
 import Link from 'next/link';
 import { CopyCommand } from './copy-command';
+import {
+  SiNextdotjs,
+  SiVite,
+  SiAstro,
+  SiNestjs,
+  SiSvelte,
+  SiNuxt,
+  SiRemix,
+  SiExpress,
+} from '@icons-pack/react-simple-icons';
+
+const ICONS = [
+  SiNextdotjs,
+  SiVite,
+  SiAstro,
+  SiNestjs,
+  SiSvelte,
+  SiNuxt,
+  SiRemix,
+  SiExpress,
+];
 
 export function CTA() {
   return (
@@ -27,13 +48,25 @@ export function CTA() {
         </p>
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Link
-            href="/docs"
+            href="/docs/getting-started"
             className="inline-flex h-11 items-center justify-center rounded-lg bg-green-500 px-6 text-sm font-semibold text-black shadow-[0_0_30px] shadow-green-500/30 transition-all hover:bg-green-400 hover:shadow-green-500/50"
           >
-            Why vars? →
+            Get Started →
           </Link>
           <CopyCommand command="npx vars init" />
         </div>
+
+        {/* Framework icons */}
+        <div className="mt-12 flex flex-wrap items-center justify-center gap-6">
+          {ICONS.map((Icon, i) => (
+            <Icon
+              key={i}
+              size={20}
+              className="text-white/20"
+            />
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-white/20">Works with any framework</p>
       </div>
     </section>
   );

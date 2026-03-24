@@ -1,0 +1,138 @@
+import { VarsDynamicCodeBlock } from './vars-codeblock';
+import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
+
+const VARS_FILE_CODE = `env(dev, staging, prod)
+
+public PORT : z.number().min(1024).max(65535) = 3000
+
+DATABASE_URL : z.string().url() {
+  dev     = "postgres://localhost:5432/myapp"
+  staging = enc:v2:aes256gcm-det:b2c3d4:f6g7h8:i9j0k1
+  prod    = enc:v2:aes256gcm-det:e8d1f0:k5l6m7:n8o9p0
+}
+
+API_KEY : z.string().min(32) {
+  dev     = "dev_test_key_not_a_secret_at_all"
+  staging = enc:v2:aes256gcm-det:a1b2c3:e5f6g7:i9j0k1
+  prod    = enc:v2:aes256gcm-det:f3e2d1:c3d4e5:f6g7h8
+} (description = "Primary API key", expires = 2026-09-01)`;
+
+const CI_CODE = `# GitHub Actions — this is your ENTIRE secrets config
+env:
+  VARS_KEY: \${{ secrets.VARS_KEY }}
+
+steps:
+  - run: npx vars run --env prod -- npm start
+  # ✔ 12 secrets decrypted and injected`;
+
+const AGENT_DIALOG = `$ cursor run "add a new database migration"
+
+┌─────────────────────────────────────────┐
+│  🔒 vars — PIN Required                │
+│                                         │
+│  The AI agent is requesting access to   │
+│  decrypt secrets in config.vars         │
+│                                         │
+│  Command: vars show config.vars         │
+│                                         │
+│  Enter PIN: ____                        │
+│                                         │
+│  [ Cancel ]              [ Approve ]    │
+└─────────────────────────────────────────┘`;
+
+const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[12px] [&_pre]:!leading-[1.8]';
+
+export function Differentiators() {
+  return (
+    <section className="mx-auto max-w-[1120px] px-5 py-24 md:px-10">
+      <div className="mb-16 text-center">
+        <h2 className="text-[clamp(28px,4vw,38px)] font-bold tracking-[-1.5px]">
+          What no other tool{' '}
+          <em className="font-serif italic text-green-500 font-normal">does.</em>
+        </h2>
+      </div>
+
+      <div className="flex flex-col gap-20">
+        {/* Differentiator 1: Schema + Secrets in one file */}
+        <div className="grid items-center gap-10 md:grid-cols-2">
+          <div>
+            <span className="font-mono text-[11px] uppercase tracking-[2px] text-green-500">
+              Schema + Secrets
+            </span>
+            <h3 className="mt-4 text-2xl font-bold leading-[1.2] tracking-[-1px]">
+              Your types, your values, your environments.
+              <br />
+              <span className="text-white/40">One file.</span>
+            </h3>
+            <p className="mt-4 text-[15px] leading-relaxed text-white/50">
+              t3-env gives you schema validation. Doppler gives you a secrets vault.
+              vars gives you both — in a single file you commit to git. The schema{' '}
+              <em className="text-white/70">is</em> the documentation. New devs read it and
+              know exactly what every variable needs, what type it is, and which environments
+              it spans.
+            </p>
+          </div>
+          <VarsDynamicCodeBlock
+            code={VARS_FILE_CODE}
+            className={codeBlockStyle}
+          />
+        </div>
+
+        {/* Differentiator 2: N secrets → 1 key */}
+        <div className="grid items-center gap-10 md:grid-cols-2">
+          <div className="order-2 md:order-1">
+            <DynamicCodeBlock
+              lang="yaml"
+              code={CI_CODE}
+              codeblock={{ keepBackground: false, allowCopy: false }}
+            />
+          </div>
+          <div className="order-1 md:order-2">
+            <span className="font-mono text-[11px] uppercase tracking-[2px] text-green-500">
+              One Key
+            </span>
+            <h3 className="mt-4 text-2xl font-bold leading-[1.2] tracking-[-1px]">
+              12 dashboard secrets?
+              <br />
+              <span className="text-white/40">Now it&apos;s 1.</span>
+            </h3>
+            <p className="mt-4 text-[15px] leading-relaxed text-white/50">
+              Every secret is already in your repo, encrypted. In CI, you set a single{' '}
+              <code className="text-green-400 font-mono text-sm">VARS_KEY</code> environment
+              variable. That&apos;s it. No more pasting 12 secrets into Vercel one by one.
+              No more hoping staging matches prod. Add a secret? Edit, commit, push — CI
+              picks it up automatically.
+            </p>
+          </div>
+        </div>
+
+        {/* Differentiator 3: AI-safe PIN dialog */}
+        <div className="grid items-center gap-10 md:grid-cols-2">
+          <div>
+            <span className="font-mono text-[11px] uppercase tracking-[2px] text-green-500">
+              AI-Safe
+            </span>
+            <h3 className="mt-4 text-2xl font-bold leading-[1.2] tracking-[-1px]">
+              Your AI agent can&apos;t read
+              <br />
+              <span className="text-white/40">your secrets.</span>
+            </h3>
+            <p className="mt-4 text-[15px] leading-relaxed text-white/50">
+              When an AI coding agent tries to decrypt your .vars file, it hits a native
+              system dialog — a real OS-level prompt that requires your PIN. No session
+              caching, no token persistence. Every single decryption needs your explicit
+              approval. The agent sees encrypted blobs, never plaintext.
+            </p>
+          </div>
+          <div className={codeBlockStyle}>
+            <DynamicCodeBlock
+              lang="text"
+              code={AGENT_DIALOG}
+              codeblock={{ keepBackground: false, allowCopy: false }}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

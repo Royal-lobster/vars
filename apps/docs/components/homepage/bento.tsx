@@ -1,23 +1,35 @@
 import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
 import { VarsDynamicCodeBlock } from './vars-codeblock';
+import {
+  Shield,
+  Layers,
+  Terminal,
+  MonitorSmartphone,
+  Code,
+  GitBranch,
+  FileSearch,
+  RefreshCw,
+  FileOutput,
+  Stethoscope,
+  CheckSquare,
+  Braces,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 interface BentoItem {
-  label: string;
+  icon: LucideIcon;
   title: string;
   description: string;
-  image: string;
-  span: 'wide' | 'narrow' | 'full';
+  span: 'default' | 'wide';
   code?: string;
   lang?: string;
 }
 
 const ITEMS: BentoItem[] = [
   {
-    label: 'Schema-first',
-    title: 'Your schema is native Zod',
-    description:
-      'No proprietary DSL. Write the same Zod expressions you already use. Your schema is your documentation — new devs read the .vars file and know exactly what every variable needs.',
-    image: '/images/topographic.webp',
+    icon: Shield,
+    title: 'Zod-native schemas',
+    description: 'No proprietary DSL. Write the same Zod expressions you already use.',
     span: 'wide',
     lang: 'ts',
     code: `z.string().url().startsWith("postgres://")
@@ -25,154 +37,128 @@ z.coerce.number().int().min(1024).max(65535)
 z.enum(["development", "staging", "production"])`,
   },
   {
-    label: 'Multi-env',
-    title: 'One file, all environments',
-    description:
-      'dev, staging, prod in one .vars file. No more .env.local, .env.production, .env.staging sprawl.',
-    image: '/images/fireflies.webp',
-    span: 'narrow',
-    lang: 'vars',
-    code: `public PORT : z.number().min(1024) = 3000
+    icon: Layers,
+    title: 'Multi-environment',
+    description: 'dev, staging, prod in one file. Side by side. They can never drift.',
+    span: 'default',
+  },
+  {
+    icon: Terminal,
+    title: 'Full CLI',
+    description: 'show, hide, run, gen, check, export, rotate, diff, doctor — 17 commands.',
+    span: 'default',
+  },
+  {
+    icon: MonitorSmartphone,
+    title: 'VS Code extension',
+    description: 'Autocomplete, inline validation, hover docs, go-to-definition.',
+    span: 'default',
+  },
+  {
+    icon: Code,
+    title: 'TypeScript codegen',
+    description: 'Generated types with Redacted<T>. Typos become compile errors.',
+    span: 'wide',
+    lang: 'ts',
+    code: `import { vars } from "#vars"
 
-DATABASE_URL : z.string().url() {
-  dev  = "postgres://localhost/myapp"
-  prod = "postgres://prod.db.internal/myapp"
-}`,
+// Public values are plain types
+const port: number = vars.PORT
+
+// Secrets require explicit unwrap — can't accidentally log them
+const db: string = vars.DATABASE_URL.unwrap()
+//                                   ^^^^^^^^ Redacted<string>`,
   },
   {
-    label: 'CLI',
-    title: 'Powerful tooling',
-    description:
-      'Everything from the command line. Scriptable and CI-friendly.',
-    image: '/images/aurora.webp',
-    span: 'wide',
+    icon: CheckSquare,
+    title: 'Check blocks',
+    description: 'Cross-variable constraints validated at build time. "If prod, no debug logging."',
+    span: 'default',
+  },
+  {
+    icon: Braces,
+    title: 'Variable interpolation',
+    description: 'Reference other variables with ${} syntax. Per-environment resolution.',
+    span: 'default',
+  },
+  {
+    icon: RefreshCw,
+    title: 'PIN rotation',
+    description: 'vars rotate re-encrypts everything with a new PIN. One command.',
+    span: 'default',
+  },
+  {
+    icon: FileOutput,
+    title: 'Export anywhere',
+    description: 'Export to .env, JSON, or Kubernetes secret format.',
+    span: 'default',
     lang: 'bash',
-    code: `$ vars show     # decrypt, edit
-$ vars hide     # re-encrypt
-$ vars run      # inject & run
-$ vars gen      # typed exports`,
+    code: `$ vars export --env prod > .env
+$ vars export --env prod --format json`,
   },
   {
-    label: 'Editor Intelligence',
-    title: 'LSP + VS Code extension',
-    description:
-      'Autocomplete, inline validation, hover docs — your .vars file gets first-class editor support through a dedicated language server.',
-    image: '/images/neural-mesh.webp',
-    span: 'narrow',
+    icon: GitBranch,
+    title: 'Pre-commit hooks',
+    description: 'Auto-installed. Blocks you from committing decrypted secrets.',
+    span: 'default',
   },
   {
-    label: 'Team Sharing',
-    title: 'Commit your secrets',
-    description:
-      'The vault is encrypted, so it goes straight into git. New teammate? Clone and enter the PIN. No Slack DMs. No 1Password vaults. No Doppler.',
-    image: '/images/crystal.webp',
-    span: 'narrow',
+    icon: FileSearch,
+    title: 'Diff & coverage',
+    description: 'Compare values across environments. See which envs are missing values.',
+    span: 'default',
   },
   {
-    label: 'Export',
-    title: 'One key replaces your dashboard',
-    description:
-      'Export to .env, JSON, or Kubernetes secrets. In CI, set a single VARS_KEY env var — no more copying 15 secrets into your hosting dashboard one by one.',
-    image: '/images/fireflies.webp',
-    span: 'wide',
-    lang: 'bash',
-    code: `$ vars export --env prod > .env       # dotenv format
-$ vars export --env prod --format json  # JSON format
-$ vars key export                       # base64 key for CI`,
+    icon: Stethoscope,
+    title: 'vars doctor',
+    description: 'Diagnoses your setup — key health, .gitignore, hooks, expiring secrets.',
+    span: 'default',
   },
 ];
 
-const REFINE_CODE = `# Cross-variable constraint
-refine(env.LOG_LEVEL !== "debug" || env.DEBUG === true,
-  "DEBUG must be true when LOG_LEVEL is debug")`;
-
-function spanClass(span: BentoItem['span']) {
-  switch (span) {
-    case 'wide':
-      return 'md:col-span-8';
-    case 'narrow':
-      return 'md:col-span-4';
-    case 'full':
-      return 'md:col-span-12';
-  }
-}
-
-const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11.5px] [&_pre]:!leading-[1.8]';
+const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-[11px] [&_pre]:!leading-[1.7]';
 
 export function Bento() {
   return (
-    <section className="mx-auto max-w-[1120px] px-5 pb-20 md:px-10">
+    <section className="mx-auto max-w-[1120px] px-5 pb-20 pt-24 md:px-10">
       <div className="mb-12 text-center">
         <h2 className="text-[clamp(28px,4vw,38px)] font-bold tracking-[-1.5px]">
-          Built for teams of{' '}
-          <em className="font-serif italic text-green-500 font-normal">2 to 20.</em>
+          And that&apos;s not{' '}
+          <em className="font-serif italic text-green-500 font-normal">even half of it.</em>
         </h2>
+        <p className="mt-3 text-[15px] text-white/50">
+          Everything you need. Nothing you don&apos;t.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-12">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
         {ITEMS.map((item) => (
           <div
-            key={item.label}
-            className={`group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)] ${spanClass(item.span)}`}
+            key={item.title}
+            className={`group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] p-5 transition-all hover:border-green-500/15 hover:shadow-[0_0_30px_rgba(34,197,94,0.04)] ${
+              item.span === 'wide' ? 'sm:col-span-2 md:col-span-2' : ''
+            }`}
           >
-            <div className="relative h-[200px] overflow-hidden">
-              <img
-                src={item.image}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
+            <div className="flex items-start gap-3">
+              <item.icon size={16} className="mt-0.5 shrink-0 text-green-500" />
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold">{item.title}</h3>
+                <p className="mt-1 text-[12px] leading-relaxed text-white/40">
+                  {item.description}
+                </p>
+              </div>
             </div>
-            <div className="p-6">
-              <span className="font-mono text-[10px] uppercase tracking-[2px] text-green-500">
-                {item.label}
-              </span>
-              <h3 className="mt-2.5 text-lg font-semibold tracking-[-0.5px]">
-                {item.title}
-              </h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-white/50">
-                {item.description}
-              </p>
-              {item.code && (
-                <div className={`mt-4 ${codeBlockStyle}`}>
-                  <DynamicCodeBlock
-                    lang={item.lang ?? 'text'}
-                    code={item.code}
-                    codeblock={{ keepBackground: false, allowCopy: false }}
-                  />
-                </div>
-              )}
-            </div>
+            {item.code && (
+              <div className={`mt-3 ${codeBlockStyle}`}>
+                <DynamicCodeBlock
+                  lang={item.lang ?? 'text'}
+                  code={item.code}
+                  codeblock={{ keepBackground: false, allowCopy: false }}
+                />
+              </div>
+            )}
           </div>
         ))}
-
-        {/* Full-width refinements card */}
-        <div className="group overflow-hidden rounded-xl border border-white/[0.06] bg-[#0a0a0a] transition-all hover:border-green-500/15 md:col-span-12">
-          <div className="grid md:grid-cols-2">
-            <div className="relative min-h-[240px] overflow-hidden">
-              <img
-                src="/images/crystal.webp"
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            </div>
-            <div className="flex flex-col justify-center p-8">
-              <span className="font-mono text-[10px] uppercase tracking-[2px] text-green-500">
-                Refinements
-              </span>
-              <h3 className="mt-2.5 text-lg font-semibold tracking-[-0.5px]">
-                Cross-variable constraints
-              </h3>
-              <p className="mt-2 text-[13px] leading-relaxed text-white/50">
-                Express relationships between variables. If LOG_LEVEL is &quot;debug&quot;,
-                enforce that DEBUG is true. Validated at build time.
-              </p>
-              <VarsDynamicCodeBlock
-                code={REFINE_CODE}
-                className={`mt-4 ${codeBlockStyle}`}
-              />
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );
