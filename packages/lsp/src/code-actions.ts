@@ -1,22 +1,22 @@
 import { type CodeAction, CodeActionKind } from "vscode-languageserver/node.js";
 
 export interface CodeActionContext {
-  text: string;
-  startLine: number;
-  endLine: number;
-  uri: string;
+	text: string;
+	startLine: number;
+	endLine: number;
+	uri: string;
 }
 
 export interface TextEdit {
-  line: number;
-  character: number;
-  newText: string;
+	line: number;
+	character: number;
+	newText: string;
 }
 
 export interface RawCodeAction {
-  title: string;
-  kind: string;
-  edit: TextEdit[];
+	title: string;
+	kind: string;
+	edit: TextEdit[];
 }
 
 /**
@@ -24,5 +24,5 @@ export interface RawCodeAction {
  * Minimal implementation — returns empty for now.
  */
 export function computeCodeActions(_ctx: CodeActionContext): RawCodeAction[] {
-  return [];
+	return [];
 }

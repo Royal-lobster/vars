@@ -1,12 +1,12 @@
 {
-  "root": true,
-  "pages": [
-    "index",
-    "getting-started",
-    "file-format",
-    "cli",
-    "frameworks",
-    "---",
-    "encryption-security"
-  ]
+	"root": true,
+	"pages": [
+		"index",
+		"getting-started",
+		"file-format",
+		"cli",
+		"frameworks",
+		"---",
+		"encryption-security"
+	]
 }

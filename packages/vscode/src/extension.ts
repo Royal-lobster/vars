@@ -1,6 +1,6 @@
-import * as path from "node:path";
 import * as cp from "node:child_process";
-import { type ExtensionContext, Uri, commands, window, workspace } from "vscode";
+import * as path from "node:path";
+import { type ExtensionContext, type Uri, commands, window, workspace } from "vscode";
 import {
 	LanguageClient,
 	type LanguageClientOptions,
@@ -11,9 +11,7 @@ import {
 let client: LanguageClient | undefined;
 
 export function activate(context: ExtensionContext): void {
-	const serverModule = context.asAbsolutePath(
-		path.join("dist", "server.js"),
-	);
+	const serverModule = context.asAbsolutePath(path.join("dist", "server.js"));
 
 	const serverOptions: ServerOptions = {
 		run: {
@@ -99,8 +97,8 @@ export function activate(context: ExtensionContext): void {
 
 		// Only act if the old counterpart was open in an editor tab
 		const staleTab = window.tabGroups.all
-			.flatMap(g => g.tabs)
-			.find(t => (t.input as { uri?: Uri })?.uri?.fsPath === oldPath);
+			.flatMap((g) => g.tabs)
+			.find((t) => (t.input as { uri?: Uri })?.uri?.fsPath === oldPath);
 		if (!staleTab) return;
 
 		// Close stale tab first to avoid two tabs being visible
@@ -121,7 +119,9 @@ function runVarsWithPin(subcommand: string, pin: string, cwd: string): Promise<v
 		});
 
 		let stderr = "";
-		child.stderr.on("data", (data) => { stderr += data.toString(); });
+		child.stderr.on("data", (data) => {
+			stderr += data.toString();
+		});
 
 		child.on("close", (code) => {
 			if (code === 0) {
