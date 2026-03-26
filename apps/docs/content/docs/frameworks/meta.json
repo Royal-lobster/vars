@@ -1,6 +1,6 @@
 {
-  "title": "Frameworks",
-  "icon": "Blocks",
-  "defaultOpen": false,
-  "pages": ["nextjs", "vite", "sveltekit", "astro", "remix", "express", "cloudflare"]
+	"title": "Frameworks",
+	"icon": "Blocks",
+	"defaultOpen": false,
+	"pages": ["nextjs", "vite", "sveltekit", "astro", "remix", "express", "cloudflare"]
 }

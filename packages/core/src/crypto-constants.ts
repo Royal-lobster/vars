@@ -8,5 +8,5 @@ export const PREFIX = `enc:${VERSION}:${ALG_NAME}:`;
 
 /** Check if a string value is an encrypted token */
 export function isEncrypted(value: string): boolean {
-  return value.startsWith(PREFIX);
+	return value.startsWith(PREFIX);
 }

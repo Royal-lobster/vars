@@ -1,6 +1,6 @@
-import { Badge } from '@/components/ui/badge';
-import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
-import { VarsDynamicCodeBlock } from './vars-codeblock';
+import { Badge } from "@/components/ui/badge";
+import { DynamicCodeBlock } from "fumadocs-ui/components/dynamic-codeblock";
+import { VarsDynamicCodeBlock } from "./vars-codeblock";
 
 const ENV_CODE = `# .env.development
 DATABASE_URL=postgres://localhost:5432/myapp
@@ -34,83 +34,89 @@ API_KEY : z.string().min(20) {
   prod = enc:v2:aes256gcm-det:9c2b4f:o5p6q7:r8s9t0
 }`;
 
-const codeBlockStyle = '[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-xs [&_pre]:!leading-[1.9]';
+const codeBlockStyle =
+	"[&_figure]:!my-0 [&_figure]:!rounded-lg [&_pre]:!text-xs [&_pre]:!leading-[1.9]";
 
 const COMPARISONS: [string, string][] = [
-  ['3 .env files to sync', '1 config.vars file'],
-  ['Plaintext secrets on disk', 'AES-256 encrypted per-value'],
-  ['Shared via Slack DMs', 'Clone repo, enter PIN'],
-  ['12 secrets in Vercel dashboard', '1 VARS_KEY'],
-  ['No types or validation', 'Zod schemas + TypeScript codegen'],
-  ['console.log leaks everything', 'Redacted<T> wrapper'],
+	["3 .env files to sync", "1 config.vars file"],
+	["Plaintext secrets on disk", "AES-256 encrypted per-value"],
+	["Shared via Slack DMs", "Clone repo, enter PIN"],
+	["12 secrets in Vercel dashboard", "1 VARS_KEY"],
+	["No types or validation", "Zod schemas + TypeScript codegen"],
+	["console.log leaks everything", "Redacted<T> wrapper"],
 ];
 
 export function Comparison() {
-  return (
-    <section className="mx-auto max-w-[1120px] px-5 py-24 md:px-10">
-      <div className="mb-12 text-center">
-        <h2 className="text-[clamp(28px,4vw,38px)] font-bold tracking-[-1.5px]">
-          The .env file is{' '}
-          <em className="font-serif italic text-green-500 font-normal">broken.</em>
-        </h2>
-        <p className="mt-3 text-[15px] text-white/50">
-          Here&apos;s what changes with vars.
-        </p>
-      </div>
+	return (
+		<section className="mx-auto max-w-[1120px] px-5 py-24 md:px-10">
+			<div className="mb-12 text-center">
+				<h2 className="text-[clamp(28px,4vw,38px)] font-bold tracking-[-1.5px]">
+					The .env file is <em className="font-serif italic text-green-500 font-normal">broken.</em>
+				</h2>
+				<p className="mt-3 text-[15px] text-white/50">Here&apos;s what changes with vars.</p>
+			</div>
 
-      {/* Code comparison */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* .env — Before */}
-        <div className="overflow-hidden rounded-xl border border-red-500/10 bg-red-500/[0.03]">
-          <div className="flex items-center gap-3 px-5 pt-5 pb-4">
-            <Badge variant="outline" className="border-red-500/20 text-red-400 bg-red-500/10 font-mono text-xs">
-              .env
-            </Badge>
-            <span className="text-sm font-medium text-white/40">
-              What you&apos;ve been doing
-            </span>
-          </div>
-          <div className={`mx-4 mb-4 ${codeBlockStyle}`}>
-            <DynamicCodeBlock lang="bash" code={ENV_CODE} codeblock={{ keepBackground: false, allowCopy: false }} />
-          </div>
-        </div>
+			{/* Code comparison */}
+			<div className="grid gap-4 md:grid-cols-2">
+				{/* .env — Before */}
+				<div className="overflow-hidden rounded-xl border border-red-500/10 bg-red-500/[0.03]">
+					<div className="flex items-center gap-3 px-5 pt-5 pb-4">
+						<Badge
+							variant="outline"
+							className="border-red-500/20 text-red-400 bg-red-500/10 font-mono text-xs"
+						>
+							.env
+						</Badge>
+						<span className="text-sm font-medium text-white/40">What you&apos;ve been doing</span>
+					</div>
+					<div className={`mx-4 mb-4 ${codeBlockStyle}`}>
+						<DynamicCodeBlock
+							lang="bash"
+							code={ENV_CODE}
+							codeblock={{ keepBackground: false, allowCopy: false }}
+						/>
+					</div>
+				</div>
 
-        {/* .vars — After */}
-        <div className="overflow-hidden rounded-xl border border-green-500/10 bg-green-500/[0.03]">
-          <div className="flex items-center gap-3 px-5 pt-5 pb-4">
-            <Badge variant="outline" className="border-green-500/20 text-green-400 bg-green-500/10 font-mono text-xs">
-              .vars
-            </Badge>
-            <span className="text-sm font-medium text-white/40">
-              What it looks like now
-            </span>
-          </div>
-          <VarsDynamicCodeBlock
-            code={VARS_CODE}
-            className={`mx-4 mb-4 ${codeBlockStyle}`}
-          />
-        </div>
-      </div>
+				{/* .vars — After */}
+				<div className="overflow-hidden rounded-xl border border-green-500/10 bg-green-500/[0.03]">
+					<div className="flex items-center gap-3 px-5 pt-5 pb-4">
+						<Badge
+							variant="outline"
+							className="border-green-500/20 text-green-400 bg-green-500/10 font-mono text-xs"
+						>
+							.vars
+						</Badge>
+						<span className="text-sm font-medium text-white/40">What it looks like now</span>
+					</div>
+					<VarsDynamicCodeBlock code={VARS_CODE} className={`mx-4 mb-4 ${codeBlockStyle}`} />
+				</div>
+			</div>
 
-      {/* Comparison strip */}
-      <div className="relative mt-4 rounded-xl border border-white/[0.06] overflow-hidden">
-        {/* Subtle gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-r from-red-500/[0.03] via-transparent to-green-500/[0.03]" />
-        {COMPARISONS.map(([pain, solution], i) => (
-          <div
-            key={pain}
-            className={`relative flex flex-col gap-1 px-5 py-3.5 md:px-8 md:grid md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-4 transition-colors hover:bg-white/[0.02] ${
-              i !== COMPARISONS.length - 1 ? 'border-b border-white/[0.04]' : ''
-            }`}
-          >
-            <span className="text-[13px] text-red-400/60 md:text-right line-through decoration-red-500/20 md:text-sm">{pain}</span>
-            <span className="hidden md:flex h-5 w-5 items-center justify-center rounded-full bg-green-500/10 text-green-500 text-[10px] select-none shrink-0" aria-hidden>
-              →
-            </span>
-            <span className="text-[13px] text-green-400/90 font-medium md:text-sm">{solution}</span>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
+			{/* Comparison strip */}
+			<div className="relative mt-4 rounded-xl border border-white/[0.06] overflow-hidden">
+				{/* Subtle gradient background */}
+				<div className="absolute inset-0 bg-gradient-to-r from-red-500/[0.03] via-transparent to-green-500/[0.03]" />
+				{COMPARISONS.map(([pain, solution], i) => (
+					<div
+						key={pain}
+						className={`relative flex flex-col gap-1 px-5 py-3.5 md:px-8 md:grid md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-4 transition-colors hover:bg-white/[0.02] ${
+							i !== COMPARISONS.length - 1 ? "border-b border-white/[0.04]" : ""
+						}`}
+					>
+						<span className="text-[13px] text-red-400/60 md:text-right line-through decoration-red-500/20 md:text-sm">
+							{pain}
+						</span>
+						<span
+							className="hidden md:flex h-5 w-5 items-center justify-center rounded-full bg-green-500/10 text-green-500 text-[10px] select-none shrink-0"
+							aria-hidden
+						>
+							→
+						</span>
+						<span className="text-[13px] text-green-400/90 font-medium md:text-sm">{solution}</span>
+					</div>
+				))}
+			</div>
+		</section>
+	);
 }

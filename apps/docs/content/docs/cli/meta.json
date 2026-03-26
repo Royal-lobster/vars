@@ -1,6 +1,6 @@
 {
-  "title": "CLI",
-  "icon": "Terminal",
-  "defaultOpen": true,
-  "pages": ["setup-auth", "managing-variables", "running-apps", "platform-integration"]
+	"title": "CLI",
+	"icon": "Terminal",
+	"defaultOpen": true,
+	"pages": ["setup-auth", "managing-variables", "running-apps", "platform-integration"]
 }
