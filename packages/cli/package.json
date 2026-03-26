@@ -3,6 +3,7 @@
 	"version": "0.3.0",
 	"type": "module",
 	"bin": {
+		"dotvars": "./dist/index.js",
 		"vars": "./dist/index.js"
 	},
 	"files": [
