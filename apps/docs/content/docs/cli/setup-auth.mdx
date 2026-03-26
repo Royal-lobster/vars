@@ -7,7 +7,7 @@ icon: KeyRound
 ## `vars init`
 
 ```bash
-npx vars init
+npx dotvars init
 ```
 
 Sets up a new vars project. vars:
@@ -32,7 +32,7 @@ If `config.vars` already exists but `.vars/key` is missing (e.g., a fresh clone)
 
 ```bash
 # Import from a non-default path, label values as "staging"
-npx vars init --file .env.staging --env staging
+npx dotvars init --file .env.staging --env staging
 ```
 
 ---
@@ -44,7 +44,7 @@ Subcommands for managing your encryption key.
 ### `vars key init`
 
 ```bash
-npx vars key init
+npx dotvars key init
 ```
 
 Generates a new `.vars/key` file. Run this on a fresh clone that already has a `config.vars` committed.
@@ -52,7 +52,7 @@ Generates a new `.vars/key` file. Run this on a fresh clone that already has a `
 ### `vars key fingerprint`
 
 ```bash
-npx vars key fingerprint
+npx dotvars key fingerprint
 ```
 
 Prints a short fingerprint of the current key. Use it to verify that two machines share the same key without exposing the key itself.
@@ -60,14 +60,14 @@ Prints a short fingerprint of the current key. Use it to verify that two machine
 ### `vars key export`
 
 ```bash
-npx vars key export
+npx dotvars key export
 ```
 
 Prints the raw key to stdout. Pipe it to a secure channel when sharing with a teammate or storing in CI.
 
 ```bash
 # Copy key to clipboard (macOS)
-npx vars key export | pbcopy
+npx dotvars key export | pbcopy
 ```
 
 ---
@@ -75,7 +75,7 @@ npx vars key export | pbcopy
 ## `vars doctor`
 
 ```bash
-npx vars doctor
+npx dotvars doctor
 ```
 
 Runs health checks and prints a summary. Exits 1 if any check fails.
@@ -120,7 +120,7 @@ Run it in CI to catch drift before it bites you in prod.
 ## `vars hook`
 
 ```bash
-npx vars hook
+npx dotvars hook
 ```
 
 Installs a pre-commit hook that blocks commits when any `*.unlocked.vars` file is staged. This prevents accidentally committing decrypted secrets.
@@ -132,7 +132,7 @@ Run it once after cloning — `vars init` does this automatically for new projec
 ## `vars completions`
 
 ```bash
-npx vars completions <shell>
+npx dotvars completions <shell>
 ```
 
 Writes a shell completion script to stdout. Redirect it to wherever your shell loads completions from.
@@ -141,8 +141,8 @@ Writes a shell completion script to stdout. Redirect it to wherever your shell l
 
 | Shell | Setup |
 |-------|-------|
-| `bash` | `npx vars completions bash >> ~/.bash_completion` |
-| `zsh` | `npx vars completions zsh > ~/.zsh/completions/_vars` |
-| `fish` | `npx vars completions fish > ~/.config/fish/completions/vars.fish` |
+| `bash` | `npx dotvars completions bash >> ~/.bash_completion` |
+| `zsh` | `npx dotvars completions zsh > ~/.zsh/completions/_vars` |
+| `fish` | `npx dotvars completions fish > ~/.config/fish/completions/vars.fish` |
 
 Open a new shell after running and tab-completion works for all vars subcommands.

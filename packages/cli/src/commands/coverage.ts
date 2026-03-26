@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { resolveUseChain } from "@vars/node";
+import { resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findVarsFile } from "../utils/context.js";

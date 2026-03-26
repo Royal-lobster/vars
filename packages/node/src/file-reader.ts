@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { parse } from "@vars/core";
-import type { ParseResult } from "@vars/core";
+import { parse } from "@dotvars/core";
+import type { ParseResult } from "@dotvars/core";
 
 export function readVarsFile(filePath: string): ParseResult {
 	const content = readFileSync(filePath, "utf8");

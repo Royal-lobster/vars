@@ -1,5 +1,5 @@
-import { evaluateSchema } from "@vars/core";
-import type { VariableDecl } from "@vars/core";
+import { evaluateSchema } from "@dotvars/core";
+import type { VariableDecl } from "@dotvars/core";
 import { type Diagnostic, DiagnosticSeverity } from "vscode-languageserver/node.js";
 import { getAllVariables, parseDocument } from "./patterns.js";
 

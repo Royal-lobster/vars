@@ -6,7 +6,7 @@ export default defineConfig({
 	dts: true,
 	clean: true,
 	sourcemap: true,
-	noExternal: ["@vars/core", "@vars/node"],
+	noExternal: ["@dotvars/core", "@dotvars/node"],
 	external: ["argon2", "keytar"],
 	banner: {
 		js: "#!/usr/bin/env node",

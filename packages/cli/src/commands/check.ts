@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
-import { evaluateCheck, isEncrypted, validateValue } from "@vars/core";
-import { decrypt, getKeyFromEnv, resolveUseChain } from "@vars/node";
+import { evaluateCheck, isEncrypted, validateValue } from "@dotvars/core";
+import { decrypt, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findKeyFile, findVarsFile, requireKey } from "../utils/context.js";

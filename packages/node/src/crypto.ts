@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, createHmac } from "node:crypto";
-import { ALGORITHM, ALG_NAME, IV_LENGTH, TAG_LENGTH, VERSION } from "@vars/core";
+import { ALGORITHM, ALG_NAME, IV_LENGTH, TAG_LENGTH, VERSION } from "@dotvars/core";
 
 export function encryptDeterministic(plaintext: string, key: Buffer, context: string): string {
 	const iv = deriveIV(key, context, plaintext);

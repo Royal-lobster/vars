@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as prompts from "@clack/prompts";
-import { createMasterKey, decryptMasterKey, encryptMasterKey } from "@vars/node";
+import { createMasterKey, decryptMasterKey, encryptMasterKey } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findKeyFile, getProjectRoot } from "../utils/context.js";
