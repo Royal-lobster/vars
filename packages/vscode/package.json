@@ -1,4 +1,5 @@
 {
+	"private": true,
 	"name": "dotvars-vscode",
 	"displayName": "vars",
 	"description": "Encrypted, typed environment variables — syntax highlighting, validation, autocomplete for .vars files",
@@ -13,27 +14,15 @@
 	"engines": {
 		"vscode": "^1.85.0"
 	},
-	"categories": [
-		"Programming Languages",
-		"Linters",
-		"Snippets"
-	],
-	"activationEvents": [
-		"onLanguage:vars",
-		"workspaceContains:**/*.vars"
-	],
+	"categories": ["Programming Languages", "Linters", "Snippets"],
+	"activationEvents": ["onLanguage:vars", "workspaceContains:**/*.vars"],
 	"main": "./dist/extension.js",
 	"contributes": {
 		"languages": [
 			{
 				"id": "vars",
-				"aliases": [
-					"vars",
-					"Vars"
-				],
-				"extensions": [
-					".vars"
-				],
+				"aliases": ["vars", "Vars"],
+				"extensions": [".vars"],
 				"configuration": "./language-configuration.json",
 				"icon": {
 					"light": "./icons/vars-light.png",
@@ -287,11 +276,7 @@
 			"properties": {
 				"vars.trace.server": {
 					"type": "string",
-					"enum": [
-						"off",
-						"messages",
-						"verbose"
-					],
+					"enum": ["off", "messages", "verbose"],
 					"default": "off",
 					"description": "Traces the communication between VS Code and the vars language server."
 				}

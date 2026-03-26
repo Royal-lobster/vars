@@ -40,8 +40,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish VS Code Extension
+      - name: Check if VS Code extension was published
+        id: vscode-check
         if: steps.changesets.outputs.published == 'true'
+        run: |
+          PUBLISHED=$(echo '${{ steps.changesets.outputs.publishedPackages }}' | jq -r '.[] | select(.name == "dotvars-vscode") | .name')
+          if [ -n "$PUBLISHED" ]; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish VS Code Extension
+        if: steps.vscode-check.outputs.published == 'true'
         run: cd packages/vscode && npx @vscode/vsce publish --no-dependencies --pat "$VSCE_PAT"
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
