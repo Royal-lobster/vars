@@ -1,5 +1,11 @@
 # dotvars
 
+## 0.3.1
+
+### Patch Changes
+
+- [`ada914a`](https://github.com/Royal-lobster/vars/commit/ada914af1aaa2ccf53352d329fe52db83eb94b12) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Add dotvars bin alias so npx dotvars works
+
 ## 0.3.0
 
 ### Minor Changes
