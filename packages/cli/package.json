@@ -1,11 +1,13 @@
 {
 	"name": "dotvars",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"type": "module",
 	"bin": {
 		"vars": "./dist/index.js"
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"build": "tsup",
 		"test": "vitest run",
