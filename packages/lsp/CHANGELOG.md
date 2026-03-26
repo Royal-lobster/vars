@@ -1,5 +1,16 @@
 # @dotvars/lsp
 
+## 0.3.0
+
+### Minor Changes
+
+- [`c1bb0ac`](https://github.com/Royal-lobster/vars/commit/c1bb0ac18b49cf368299239432d97f05a24ded9f) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Initial publish under dotvars namespace
+
+### Patch Changes
+
+- Updated dependencies [[`c1bb0ac`](https://github.com/Royal-lobster/vars/commit/c1bb0ac18b49cf368299239432d97f05a24ded9f)]:
+  - @dotvars/core@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes
