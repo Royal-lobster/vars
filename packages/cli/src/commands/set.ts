@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { parse } from "@vars/core";
-import type { Declaration, VariableDecl } from "@vars/core";
+import { parse } from "@dotvars/core";
+import type { Declaration, VariableDecl } from "@dotvars/core";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findVarsFile } from "../utils/context.js";

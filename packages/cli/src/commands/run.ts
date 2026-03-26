@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
-import { isEncrypted } from "@vars/core";
-import { decrypt, getKeyFromEnv, resolveUseChain } from "@vars/node";
+import { isEncrypted } from "@dotvars/core";
+import { decrypt, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findKeyFile, findVarsFile, requireKey, resolveEnv } from "../utils/context.js";

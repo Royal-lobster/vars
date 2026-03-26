@@ -1,8 +1,8 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { generateTypeScript } from "@vars/core";
-import { resolveUseChain } from "@vars/node";
-import { toCanonicalPath } from "@vars/node";
+import { generateTypeScript } from "@dotvars/core";
+import { resolveUseChain } from "@dotvars/node";
+import { toCanonicalPath } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findAllVarsFiles, findVarsFile, getProjectRoot } from "../utils/context.js";

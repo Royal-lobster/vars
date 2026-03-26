@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { parse, resolveAll } from "@vars/core";
-import type { Check, Declaration, Import, Param, ResolvedVars } from "@vars/core";
+import { parse, resolveAll } from "@dotvars/core";
+import type { Check, Declaration, Import, Param, ResolvedVars } from "@dotvars/core";
 import { isUnlockedPath, toUnlockedPath } from "./unlocked-path.js";
 
 export interface UseResolveOptions {

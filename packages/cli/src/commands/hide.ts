@@ -1,4 +1,4 @@
-import { hideFile } from "@vars/node";
+import { hideFile } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import {

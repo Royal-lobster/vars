@@ -86,7 +86,7 @@ export function Hero() {
 					>
 						Get Started →
 					</Link>
-					<CopyCommand command="npx vars init" />
+					<CopyCommand command="npx dotvars init" />
 				</div>
 
 				<HeroCodeToggle

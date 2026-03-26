@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { isEncrypted, parse } from "@vars/core";
+import { isEncrypted, parse } from "@dotvars/core";
 import { decrypt, encryptDeterministic } from "./crypto.js";
 import { isUnlockedPath, toLockedPath, toUnlockedPath } from "./unlocked-path.js";
 
