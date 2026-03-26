@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { evaluateCheck, generateTypeScript, parse, validateValue } from "@vars/core";
+import { evaluateCheck, generateTypeScript, parse, validateValue } from "@dotvars/core";
 import { describe, expect, it } from "vitest";
 import { createMasterKey } from "../key-manager.js";
 import { hideFile, showFile } from "../show-hide.js";

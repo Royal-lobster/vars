@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { isEncrypted } from "@vars/core";
+import { isEncrypted } from "@dotvars/core";
 import { describe, expect, it } from "vitest";
 import { decrypt, encryptDeterministic } from "../crypto.js";
 

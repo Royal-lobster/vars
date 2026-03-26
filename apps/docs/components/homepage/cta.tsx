@@ -41,7 +41,7 @@ export function CTA() {
 					>
 						Get Started →
 					</Link>
-					<CopyCommand command="npx vars init" />
+					<CopyCommand command="npx dotvars init" />
 				</div>
 
 				{/* Framework icons */}

@@ -174,7 +174,7 @@ export default function OGImage() {
 							color: "rgba(255,255,255,0.6)",
 						}}
 					>
-						npx vars init
+						npx dotvars init
 					</span>
 				</div>
 			</div>

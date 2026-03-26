@@ -1,5 +1,5 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
-import { ALGORITHM, IV_LENGTH, KEY_LENGTH, TAG_LENGTH } from "@vars/core";
+import { ALGORITHM, IV_LENGTH, KEY_LENGTH, TAG_LENGTH } from "@dotvars/core";
 
 export async function createMasterKey(): Promise<Buffer> {
 	return randomBytes(KEY_LENGTH);

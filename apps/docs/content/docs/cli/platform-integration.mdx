@@ -11,7 +11,7 @@ icon: Upload
 ## export
 
 ```bash
-npx vars export --env <env> --format <format>
+npx dotvars export --env <env> --format <format>
 ```
 
 Decrypts `config.vars` for a given environment and writes the resolved values in the requested format to stdout. Pipe it wherever.
@@ -30,16 +30,16 @@ stdout gets the data. stderr gets status messages. Pipes work fine.
 
 ```bash
 # Write a .env file for prod
-npx vars export --env prod --format dotenv > .env.production
+npx dotvars export --env prod --format dotenv > .env.production
 
 # Pipe straight into your deploy script
-npx vars export --env staging --format dotenv | some-deploy-tool --env-file /dev/stdin
+npx dotvars export --env staging --format dotenv | some-deploy-tool --env-file /dev/stdin
 
 # Generate a Kubernetes secret manifest
-npx vars export --env prod --format k8s-secret > secret.yaml
+npx dotvars export --env prod --format k8s-secret > secret.yaml
 
 # Export as JSON for custom tooling
-npx vars export --env prod --format json | jq '.DATABASE_URL'
+npx dotvars export --env prod --format json | jq '.DATABASE_URL'
 ```
 
 **Flags**
@@ -55,7 +55,7 @@ npx vars export --env prod --format json | jq '.DATABASE_URL'
 ## key rotate
 
 ```bash
-npx vars key rotate
+npx dotvars key rotate
 ```
 
 Generates a new encryption key, re-encrypts all values in every `*.vars` file, and replaces `.vars/key`. The old key is overwritten.
@@ -63,8 +63,8 @@ Generates a new encryption key, re-encrypts all values in every `*.vars` file, a
 Before rotating, export your current key as a backup:
 
 ```bash
-npx vars key export > vars-key.bak
-npx vars key rotate
+npx dotvars key export > vars-key.bak
+npx dotvars key rotate
 ```
 
 Share the new key with teammates using `vars key export`.
@@ -83,8 +83,8 @@ VARS_KEY=<paste output of `vars key export`>
 Then run commands normally:
 
 ```bash
-npx vars run --env prod -- node scripts/deploy.js
-npx vars export --env prod --format dotenv > .env.production
+npx dotvars run --env prod -- node scripts/deploy.js
+npx dotvars export --env prod --format dotenv > .env.production
 ```
 
 `vars gen` and `vars check` on locked files do not require `VARS_KEY`.
@@ -95,7 +95,7 @@ npx vars export --env prod --format dotenv > .env.production
 - name: Deploy
   env:
     VARS_KEY: ${{ secrets.VARS_KEY }}
-  run: npx vars run --env prod -- npm run deploy
+  run: npx dotvars run --env prod -- npm run deploy
 ```
 
 ---
@@ -105,9 +105,9 @@ npx vars export --env prod --format dotenv > .env.production
 When generating types for edge or serverless runtimes, use `--platform` to get the right accessor pattern:
 
 ```bash
-npx vars gen config.vars --platform cloudflare   # Cloudflare Workers
-npx vars gen config.vars --platform deno         # Deno Deploy
-npx vars gen config.vars --platform static       # Static/CDN (import.meta.env)
+npx dotvars gen config.vars --platform cloudflare   # Cloudflare Workers
+npx dotvars gen config.vars --platform deno         # Deno Deploy
+npx dotvars gen config.vars --platform static       # Static/CDN (import.meta.env)
 ```
 
 See [Running Apps](/docs/cli/running-apps) for full `gen` documentation.
@@ -117,7 +117,7 @@ See [Running Apps](/docs/cli/running-apps) for full `gen` documentation.
 ## push <span style={{ color: "var(--color-fd-muted-foreground)", fontSize: "0.75em", fontWeight: "normal", marginLeft: "0.5em" }}>coming soon</span>
 
 ```bash
-npx vars push --env prod --vercel
+npx dotvars push --env prod --vercel
 ```
 
 Decrypts your vault and pushes the values to your deployment platform. The scaffolding exists but platform adapters are not wired up yet.
@@ -127,7 +127,7 @@ Decrypts your vault and pushes the values to your deployment platform. The scaff
 ## pull <span style={{ color: "var(--color-fd-muted-foreground)", fontSize: "0.75em", fontWeight: "normal", marginLeft: "0.5em" }}>coming soon</span>
 
 ```bash
-npx vars pull --vercel
+npx dotvars pull --vercel
 ```
 
 Pulls environment variables from your platform, encrypts them, and merges them into `config.vars`. Existing values aren't overwritten by default. Scaffolded, not implemented.

@@ -1,5 +1,5 @@
 {
-	"name": "@vars/node",
+	"name": "@dotvars/node",
 	"version": "0.1.0",
 	"type": "module",
 	"main": "./dist/index.cjs",
@@ -20,7 +20,7 @@
 		"clean": "rm -rf dist"
 	},
 	"dependencies": {
-		"@vars/core": "workspace:*",
+		"@dotvars/core": "workspace:*",
 		"argon2": "^0.44.0",
 		"keytar": "^7.9.0"
 	},

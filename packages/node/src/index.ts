@@ -1,4 +1,4 @@
-// @vars/node — Node.js filesystem and key management layer
+// @dotvars/node — Node.js filesystem and key management layer
 export { readVarsFile } from "./file-reader.js";
 export { resolveUseChain } from "./use-resolver.js";
 export type { UseResolveOptions } from "./use-resolver.js";

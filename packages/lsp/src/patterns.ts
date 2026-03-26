@@ -1,5 +1,5 @@
-import { parse } from "@vars/core";
-import type { ParseResult, VariableDecl, VarsFile } from "@vars/core";
+import { parse } from "@dotvars/core";
+import type { ParseResult, VariableDecl, VarsFile } from "@dotvars/core";
 
 export function parseDocument(text: string, uri?: string): ParseResult {
 	return parse(text, uri);

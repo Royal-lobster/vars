@@ -7,7 +7,7 @@ icon: Rocket
 ## 1. Initialize
 
 ```bash
-npx vars init
+npx dotvars init
 ```
 
 You'll set a PIN to protect your encryption key. After that, you get:
@@ -25,7 +25,7 @@ vars also updates your `.gitignore` and installs a pre-commit hook that prevents
 ## 2. Decrypt and edit
 
 ```bash
-npx vars show config.vars
+npx dotvars show config.vars
 ```
 
 Enter your PIN. The file decrypts in-place — open it in your editor and add variables:
@@ -53,7 +53,7 @@ DATABASE_URL : z.string().url() {
 ## 3. Encrypt and commit
 
 ```bash
-npx vars hide
+npx dotvars hide
 ```
 
 Enter your PIN. All secret values get encrypted. Public values stay readable:
@@ -81,7 +81,7 @@ The pre-commit hook will block the commit if any secrets are still decrypted —
 ## 4. Run your app
 
 ```bash
-npx vars run --env dev -- node server.js
+npx dotvars run --env dev -- node server.js
 ```
 
 vars decrypts secrets in memory (nothing written to disk) and injects them as environment variables before handing off to your process. Works with any command:
@@ -99,7 +99,7 @@ vars decrypts secrets in memory (nothing written to disk) and injects them as en
 ## 5. Use the generated types
 
 ```bash
-npx vars gen config.vars
+npx dotvars gen config.vars
 ```
 
 This generates `config.generated.ts` with typed exports. Import them anywhere:
