@@ -1,5 +1,8 @@
 ---
+"@dotvars/core": minor
+"@dotvars/node": minor
+"@dotvars/lsp": minor
 "dotvars": minor
 ---
 
-Initial publish of dotvars CLI (renamed from @vars/cli)
+Initial publish under dotvars namespace
