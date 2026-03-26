@@ -6,7 +6,7 @@
 
   <a href="https://vars-docs.vercel.app">Documentation</a> ·
   <a href="https://vars-docs.vercel.app/docs/getting-started">Getting Started</a> ·
-  <a href="https://marketplace.visualstudio.com/items?itemName=vars">VS Code Extension</a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=srujangurram.dotvars-vscode">VS Code Extension</a>
 </div>
 
 ---

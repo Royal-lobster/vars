@@ -68,7 +68,13 @@ use "./shared.vars" { pick: [API_KEY] }
 
 No additional dependencies needed. The extension bundles the vars language server.
 
+## Installation
+
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=srujangurram.dotvars-vscode) or search for **"vars"** in the Extensions panel.
+
 ## Learn More
 
-- [vars documentation](https://github.com/Royal-lobster/vars)
-- [CLI reference](https://github.com/Royal-lobster/vars/tree/main/packages/cli)
+- [vars documentation](https://vars-docs.vercel.app)
+- [Getting started](https://vars-docs.vercel.app/docs/getting-started)
+- [CLI reference](https://vars-docs.vercel.app/docs/cli)
+- [GitHub](https://github.com/Royal-lobster/vars)

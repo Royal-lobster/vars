@@ -6,6 +6,7 @@
 		"file-format",
 		"cli",
 		"frameworks",
+		"editor-integration",
 		"---",
 		"encryption-security"
 	]

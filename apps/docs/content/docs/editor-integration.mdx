@@ -1,0 +1,47 @@
+---
+title: Editor Integration
+description: VS Code extension with syntax highlighting, diagnostics, autocomplete, and more for .vars files.
+icon: Code
+---
+
+## VS Code / Cursor
+
+The official **vars** extension gives you a full editing experience for `.vars` files — install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=srujangurram.dotvars-vscode) or search for **"vars"** in the Extensions panel.
+
+Works in **VS Code**, **Cursor**, and any editor that supports VS Code extensions.
+
+### Features
+
+**Syntax highlighting** — variable names, Zod schemas, environment blocks, encrypted values, check blocks, groups, and metadata are all color-coded.
+
+**Real-time diagnostics** — parse errors, expired secrets, deprecation warnings, and undeclared environment usage show up as you type.
+
+**Autocomplete** — top-level keywords (`env`, `param`, `use`, `group`, `public`, `check`), Zod schema methods, metadata keys, environment names, and check block functions.
+
+**Hover information** — hover over a variable to see its schema, visibility (public/secret), and metadata (description, owner, expires, tags).
+
+**Go to Definition** — jump to variable declarations and imported files.
+
+**Code Actions** — quick fixes for common issues.
+
+### Commands
+
+The extension adds three commands, accessible via the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`):
+
+| Command | Description |
+|---------|-------------|
+| `vars: Decrypt Values (Show)` | Decrypt and show secret values in the editor |
+| `vars: Encrypt Values (Hide)` | Encrypt values before committing |
+| `vars: Toggle Encryption` | Toggle between encrypted and decrypted views |
+
+When viewing a `.vars` file, an eye icon appears in the editor title bar for quick toggling.
+
+### Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `vars.trace.server` | `off` | Trace communication between VS Code and the language server (`off`, `messages`, `verbose`) |
+
+### No extra dependencies
+
+The extension bundles the vars language server — no global CLI install required for editor features.
