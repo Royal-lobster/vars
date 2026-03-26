@@ -2,8 +2,8 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import * as prompts from "@clack/prompts";
-import { decryptMasterKey, getKeyFromEnv } from "@vars/node";
-import { isUnlockedPath, toCanonicalPath, toLockedPath, toUnlockedPath } from "@vars/node";
+import { decryptMasterKey, getKeyFromEnv } from "@dotvars/node";
+import { isUnlockedPath, toCanonicalPath, toLockedPath, toUnlockedPath } from "@dotvars/node";
 import { requestAgentApproval } from "./agent-auth.js";
 
 export interface CliContext {

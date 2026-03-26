@@ -11,7 +11,7 @@ icon: Settings
 ## show
 
 ```bash
-npx vars show [file]
+npx dotvars show [file]
 ```
 
 Decrypts a `config.vars` file and renames it to `config.unlocked.vars`. The encrypted values are replaced with their plaintext. Edit the file directly, then run `hide`.
@@ -28,7 +28,7 @@ Before it decrypts, vars auto-fixes safety issues:
 | `--file <path>` | `-f` | Target a specific `.vars` file |
 
 ```bash
-npx vars show -f staging.vars
+npx dotvars show -f staging.vars
 ```
 
 ---
@@ -36,7 +36,7 @@ npx vars show -f staging.vars
 ## hide
 
 ```bash
-npx vars hide
+npx dotvars hide
 ```
 
 Encrypts ALL unlocked `.unlocked.vars` files. Scans for any `*.unlocked.vars` file in the current project and encrypts each one, renaming it back to `.vars`. You don't need to specify a file.
@@ -52,7 +52,7 @@ If schemas changed since the last `gen` run, `hide` regenerates the TypeScript t
 | `--file <path>` | `-f` | Target a specific file only |
 
 ```bash
-npx vars hide -f staging.vars
+npx dotvars hide -f staging.vars
 ```
 
 ---
@@ -60,7 +60,7 @@ npx vars hide -f staging.vars
 ## toggle
 
 ```bash
-npx vars toggle [file]
+npx dotvars toggle [file]
 ```
 
 Checks the current lock state of the file (by extension) and runs the right command. File is `.unlocked.vars`? Hides it. File is `.vars`? Shows it. Same command either way.
@@ -76,7 +76,7 @@ Checks the current lock state of the file (by extension) and runs the right comm
 ## add
 
 ```bash
-npx vars add NAME
+npx dotvars add NAME
 ```
 
 Adds a variable without opening the file. vars prompts you for a Zod schema, then asks for a value per environment (`default`, `dev`, `staging`, `prod`). Skip any env you don't need yet.
@@ -93,7 +93,7 @@ Names must be `UPPER_SNAKE_CASE`. Mark a variable as non-secret with the `public
 | `--file <path>` | `-f` | Use a different vars file |
 
 ```bash
-npx vars add STRIPE_KEY --schema "z.string().startsWith('sk_')"
+npx dotvars add STRIPE_KEY --schema "z.string().startsWith('sk_')"
 ```
 
 ---
@@ -101,7 +101,7 @@ npx vars add STRIPE_KEY --schema "z.string().startsWith('sk_')"
 ## remove
 
 ```bash
-npx vars remove NAME
+npx dotvars remove NAME
 ```
 
 Deletes the variable, every env value, and all metadata. Prompts for confirmation first.
@@ -114,7 +114,7 @@ Deletes the variable, every env value, and all metadata. Prompts for confirmatio
 | `--file <path>` | `-f` | Use a different vars file |
 
 ```bash
-npx vars remove OLD_API_URL --yes
+npx dotvars remove OLD_API_URL --yes
 ```
 
 ---
@@ -122,7 +122,7 @@ npx vars remove OLD_API_URL --yes
 ## ls
 
 ```bash
-npx vars ls
+npx dotvars ls
 ```
 
 Without a file argument: prints an overview of all `*.vars` files in the project with their lock state and variable count.
@@ -136,7 +136,7 @@ staging.vars      unlocked   5
 With a file argument: prints a table of every variable in that file — schema, which envs have values, required vs optional, and any metadata (description, owner, expiry, deprecation). Deprecated vars show with strikethrough.
 
 ```bash
-npx vars ls config.vars
+npx dotvars ls config.vars
 ```
 
 ```text
@@ -158,12 +158,12 @@ PORT             z.coerce.number()       default               optional
 
 ```bash
 # Unlock (config.vars → config.unlocked.vars)
-npx vars show
+npx dotvars show
 
 # Edit config.unlocked.vars directly
 
 # Lock (config.unlocked.vars → config.vars)
-npx vars hide
+npx dotvars hide
 ```
 
 Or skip the file entirely and use `add` and `remove`.

@@ -1,5 +1,5 @@
 {
-	"name": "@vars/cli",
+	"name": "dotvars",
 	"version": "0.1.0",
 	"type": "module",
 	"bin": {
@@ -14,8 +14,8 @@
 		"clean": "rm -rf dist"
 	},
 	"dependencies": {
-		"@vars/node": "workspace:*",
-		"@vars/core": "workspace:*",
+		"@dotvars/node": "workspace:*",
+		"@dotvars/core": "workspace:*",
 		"@clack/prompts": "^0.10.0",
 		"argon2": "^0.44.0",
 		"citty": "^0.2.1",

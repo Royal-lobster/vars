@@ -1,4 +1,4 @@
-import { evaluateSchema as coreEvaluateSchema } from "@vars/core";
+import { evaluateSchema as coreEvaluateSchema } from "@dotvars/core";
 import { z } from "zod";
 
 // ─── Schema Evaluation ─────────────────────────────
@@ -17,7 +17,7 @@ export type EvalResult = EvalSuccess | EvalFailure;
 
 /**
  * Evaluate a Zod schema string using core's implementation.
- * Delegates to @vars/core which provides env-aware boolean coercion
+ * Delegates to @dotvars/core which provides env-aware boolean coercion
  * (via the envZ proxy) and a strict keyword-based security blocklist.
  */
 export function evaluateSchema(schemaText: string): EvalResult {

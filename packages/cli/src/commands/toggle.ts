@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { hideFile, isUnlockedPath, showFile, toCanonicalPath, toUnlockedPath } from "@vars/node";
+import { hideFile, isUnlockedPath, showFile, toCanonicalPath, toUnlockedPath } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findKeyFile, findVarsFile, requireKey } from "../utils/context.js";

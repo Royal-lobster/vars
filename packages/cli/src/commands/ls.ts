@@ -1,7 +1,7 @@
 import { readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
-import { parse } from "@vars/core";
-import { isUnlockedPath, resolveUseChain } from "@vars/node";
+import { parse } from "@dotvars/core";
+import { isUnlockedPath, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findAllVarsFiles, getProjectRoot } from "../utils/context.js";

@@ -8,8 +8,8 @@ import {
 } from "node:fs";
 import { join, resolve } from "node:path";
 import * as prompts from "@clack/prompts";
-import { generateTypeScript } from "@vars/core";
-import { createMasterKey, encryptMasterKey, resolveUseChain, toUnlockedPath } from "@vars/node";
+import { generateTypeScript } from "@dotvars/core";
+import { createMasterKey, encryptMasterKey, resolveUseChain, toUnlockedPath } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { buildHeaderComment } from "../utils/build-header-comment.js";

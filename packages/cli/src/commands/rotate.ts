@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import * as prompts from "@clack/prompts";
-import { createMasterKey, encryptMasterKey, hideFile, showFile } from "@vars/node";
+import { createMasterKey, encryptMasterKey, hideFile, showFile } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findAllVarsFiles, findKeyFile, getProjectRoot, requireKey } from "../utils/context.js";
