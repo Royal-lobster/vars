@@ -135,25 +135,13 @@ Secrets Health:
 ◆  Security
 │  ✓ .vars/key is gitignored
 │  △ Pre-commit hook installed
-│      Run vars hook to install
+│      Run vars init to install
 
 ◆  Secrets Health
 │  ✓ No expiring or deprecated secrets
 ```
 
 Run it in CI to catch drift before it bites you in prod.
-
----
-
-## `vars hook`
-
-```bash
-npx dotvars hook
-```
-
-Installs a pre-commit hook that blocks commits when any `*.unlocked.vars` file is staged. This prevents accidentally committing decrypted secrets.
-
-Run it once after cloning — `vars init` does this automatically for new projects.
 
 ---
 
