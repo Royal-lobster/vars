@@ -45,7 +45,7 @@ export default defineCommand({
 				if (isEncrypted(value)) {
 					if (!key && keyFile) {
 						try {
-							key = await requireKey(keyFile, "vars check");
+							({ key } = await requireKey(keyFile, "vars check"));
 						} catch {
 							/* skip */
 						}

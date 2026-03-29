@@ -21,7 +21,7 @@ export default defineCommand({
 		}
 
 		const keyFile = findKeyFile(process.cwd());
-		const key = await requireKey(keyFile, "vars hide");
+		const { key } = await requireKey(keyFile, "vars hide");
 
 		for (const f of unlocked) {
 			const lockedPath = hideFile(f, key);

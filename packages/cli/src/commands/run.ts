@@ -54,10 +54,10 @@ export default defineCommand({
 		let key: Buffer | null = getKeyFromEnv();
 		if (!key) {
 			const keyFile = findKeyFile(file);
-			key = await requireKey(
+			({ key } = await requireKey(
 				keyFile,
 				`vars run --env ${env} -- ${rawArgs.slice(rawArgs.indexOf("--") + 1).join(" ")}`,
-			);
+			));
 		}
 
 		// Build env vars (decrypt encrypted values)

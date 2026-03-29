@@ -33,7 +33,7 @@ export default defineCommand({
 		}
 
 		const keyFile = findKeyFile(file);
-		const key = await requireKey(keyFile, `vars show ${args.file ?? file}`);
+		const { key } = await requireKey(keyFile, `vars show ${args.file ?? file}`);
 		const resultPath = showFile(file, key);
 		console.log(pc.green(`  ✓ Decrypted → ${resultPath}`));
 	},

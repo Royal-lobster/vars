@@ -37,7 +37,7 @@ export default defineCommand({
 				if (val && isEncrypted(val)) {
 					if (!key && keyFile)
 						try {
-							key = await requireKey(keyFile, "vars diff");
+							({ key } = await requireKey(keyFile, "vars diff"));
 						} catch {}
 					if (key) val = decrypt(val, key);
 					else val = pc.dim("<encrypted>");

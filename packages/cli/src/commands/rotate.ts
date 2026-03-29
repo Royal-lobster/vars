@@ -20,7 +20,7 @@ export default defineCommand({
 		}
 
 		// Decrypt with old key
-		const oldKey = await requireKey(keyFile, "vars rotate");
+		const { key: oldKey } = await requireKey(keyFile, "vars rotate");
 
 		// Create new key + PIN
 		const pin = await prompts.password({ message: "Set new PIN:" });

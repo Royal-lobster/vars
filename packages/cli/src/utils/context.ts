@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import * as prompts from "@clack/prompts";
-import { decryptMasterKey, getKeyFromEnv } from "@dotvars/node";
+import { decryptMasterKey, getKeyFromEnv, parseKeyFile } from "@dotvars/node";
 import {
 	isLocalPath,
 	isUnlockedPath,
@@ -11,6 +11,13 @@ import {
 	toUnlockedPath,
 } from "@dotvars/node";
 import { requestAgentApproval } from "./agent-auth.js";
+
+export type KeyScope = "master" | { owner: string };
+
+export interface KeyResult {
+  key: Buffer;
+  scope: KeyScope;
+}
 
 export interface CliContext {
 	varsFilePath: string;
@@ -105,43 +112,57 @@ export function findKeyFile(startDir: string): string | null {
 }
 
 /** Get encryption key — from env var or by prompting for PIN */
-export async function requireKey(keyFilePath: string | null, command?: string): Promise<Buffer> {
+export async function requireKey(keyFilePath: string | null, command?: string): Promise<KeyResult> {
 	// First: try VARS_KEY env var (works in CI/non-TTY)
 	const envKey = getKeyFromEnv();
-	if (envKey) return envKey;
+	if (envKey) return { key: envKey, scope: "master" };
 
 	if (!keyFilePath || !existsSync(keyFilePath)) {
 		throw new Error("No encryption key found. Run `vars key init` first.");
 	}
 
-	const encoded = readFileSync(keyFilePath, "utf8").trim();
+	const content = readFileSync(keyFilePath, "utf8").trim();
+	const entries = parseKeyFile(content);
 
-	// VARS_PIN env var — used by the VS Code extension (non-TTY)
+	if (entries.length === 0) {
+		throw new Error("Key file is empty. Run `vars key init` first.");
+	}
+
+	// Get PIN
+	let pin: string;
 	const envPin = process.env.VARS_PIN;
 	if (envPin) {
-		return decryptMasterKey(encoded, envPin);
+		pin = envPin;
+	} else if (process.stdin.isTTY) {
+		const result = await prompts.password({ message: "Enter PIN:" });
+		if (prompts.isCancel(result)) process.exit(0);
+		pin = result as string;
+	} else {
+		const commandDesc = command ?? "vars (unknown command)";
+		const agentPin = requestAgentApproval(commandDesc);
+		if (!agentPin) {
+			throw new Error(
+				"PIN approval denied or no dialog available.\n" +
+					"Set VARS_KEY environment variable with your base64-encoded master key.\n" +
+					"Get it with: vars key export",
+			);
+		}
+		pin = agentPin;
 	}
 
-	// Interactive TTY — prompt directly
-	if (process.stdin.isTTY) {
-		const pin = await prompts.password({ message: "Enter PIN:" });
-		if (prompts.isCancel(pin)) process.exit(0);
-		return decryptMasterKey(encoded, pin as string);
+	// Try each entry in the key file
+	for (const entry of entries) {
+		try {
+			const key = await decryptMasterKey(entry.raw, pin);
+			const scope: KeyScope =
+				entry.scope === "master" ? "master" : { owner: entry.scope.replace("owner:", "") };
+			return { key, scope };
+		} catch {
+			// Wrong PIN for this entry, try next
+		}
 	}
 
-	// Non-interactive (AI agent, piped stdin) — try system dialog
-	const commandDesc = command ?? "vars (unknown command)";
-	const pin = requestAgentApproval(commandDesc);
-
-	if (!pin) {
-		throw new Error(
-			"PIN approval denied or no dialog available.\n" +
-				"Set VARS_KEY environment variable with your base64-encoded master key.\n" +
-				"Get it with: vars key export",
-		);
-	}
-
-	return decryptMasterKey(encoded, pin);
+	throw new Error("Invalid PIN");
 }
 
 /** Resolve environment name with common aliases */
