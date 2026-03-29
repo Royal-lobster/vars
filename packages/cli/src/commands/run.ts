@@ -54,17 +54,25 @@ export default defineCommand({
 		let key: Buffer | null = getKeyFromEnv();
 		if (!key) {
 			const keyFile = findKeyFile(file);
-			key = await requireKey(
+			({ key } = await requireKey(
 				keyFile,
 				`vars run --env ${env} -- ${rawArgs.slice(rawArgs.indexOf("--") + 1).join(" ")}`,
-			);
+			));
 		}
 
 		// Build env vars (decrypt encrypted values)
 		const envVars: Record<string, string> = {};
 		for (const v of resolved.vars) {
 			if (v.value === undefined) continue;
-			envVars[v.flatName] = isEncrypted(v.value) ? decrypt(v.value, key) : v.value;
+			let val = v.value;
+			if (isEncrypted(val)) {
+				try {
+					val = decrypt(val, key);
+				} catch {
+					continue;
+				}
+			}
+			envVars[v.flatName] = val;
 		}
 
 		// Find command after --

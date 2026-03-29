@@ -1,12 +1,13 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { isEncrypted, parse } from "@dotvars/core";
-import { decrypt, encryptDeterministic } from "./crypto.js";
+import { isEncrypted, parse, parseEncryptedToken } from "@dotvars/core";
+import { decrypt, deriveOwnerKey, encryptDeterministic } from "./crypto.js";
 import { isUnlockedPath, toLockedPath, toUnlockedPath } from "./unlocked-path.js";
 
-export function showFile(filePath: string, key: Buffer): string {
+export type KeyScope = "master" | { owner: string };
+
+export async function showFile(filePath: string, key: Buffer, scope?: KeyScope): Promise<string> {
 	const unlockedPath = isUnlockedPath(filePath) ? filePath : toUnlockedPath(filePath);
 
-	// Rename to .unlocked.vars if not already there
 	if (!isUnlockedPath(filePath) && existsSync(filePath)) {
 		renameSync(filePath, unlockedPath);
 	}
@@ -14,16 +15,35 @@ export function showFile(filePath: string, key: Buffer): string {
 	const content = readFileSync(unlockedPath, "utf8");
 	const lines = content.split("\n");
 	const result: string[] = [];
+	const effectiveScope = scope ?? "master";
+	const ownerKeyCache = new Map<string, Buffer>();
 
 	for (const line of lines) {
-		// Match encrypted values in both plain assignments and schema-with-default lines:
-		//   `  dev = enc:v2:...` or `SECRET = enc:v2:...` or `SECRET : z.string() = enc:v2:...`
 		const match = line.match(/^(.*=\s*)(enc:v2:\S+)(.*)$/);
 		if (match) {
 			const [, prefix, encrypted, suffix] = match;
-			const decrypted = decrypt(encrypted, key);
-			const escaped = decrypted.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-			result.push(`${prefix}"${escaped}"${suffix}`);
+			const parsed = parseEncryptedToken(encrypted);
+
+			if (effectiveScope === "master") {
+				let decryptKey = key;
+				if (parsed?.owner) {
+					if (!ownerKeyCache.has(parsed.owner)) {
+						ownerKeyCache.set(parsed.owner, await deriveOwnerKey(key, parsed.owner));
+					}
+					decryptKey = ownerKeyCache.get(parsed.owner)!;
+				}
+				const decrypted = decrypt(encrypted, decryptKey);
+				const escaped = decrypted.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+				result.push(`${prefix}"${escaped}"${suffix}`);
+			} else {
+				if (parsed?.owner === effectiveScope.owner) {
+					const decrypted = decrypt(encrypted, key);
+					const escaped = decrypted.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+					result.push(`${prefix}"${escaped}"${suffix}`);
+				} else {
+					result.push(line);
+				}
+			}
 			continue;
 		}
 		result.push(line);
@@ -33,40 +53,45 @@ export function showFile(filePath: string, key: Buffer): string {
 	return unlockedPath;
 }
 
-export function hideFile(filePath: string, key: Buffer): string {
+export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope): Promise<string> {
 	const lockedPath = isUnlockedPath(filePath) ? toLockedPath(filePath) : filePath;
 	const readPath = filePath;
 
 	const content = readFileSync(readPath, "utf8");
 	const parsed = parse(content, readPath);
 	const publicVars = new Set<string>();
+	const ownerMap = new Map<string, string>();
 
-	// Collect public variable names
 	for (const decl of parsed.ast.declarations) {
-		if (decl.kind === "variable" && decl.public) publicVars.add(decl.name);
+		if (decl.kind === "variable") {
+			if (decl.public) publicVars.add(decl.name);
+			if (decl.metadata?.owner) ownerMap.set(decl.name, decl.metadata.owner);
+		}
 		if (decl.kind === "group") {
 			for (const v of decl.declarations) {
 				if (v.public) publicVars.add(v.name);
+				if (v.metadata?.owner) ownerMap.set(v.name, v.metadata.owner);
 			}
 		}
 	}
+
+	const effectiveScope = scope ?? "master";
+	const ownerKeyCache = new Map<string, Buffer>();
 
 	const lines = content.split("\n");
 	const result: string[] = [];
 	let currentVar: string | null = null;
 	let currentIsPublic = false;
 	let currentGroup: string | null = null;
-	let checkDepth = 0; // tracks brace depth inside check blocks (>0 means inside a check)
+	let checkDepth = 0;
 
 	for (const line of lines) {
-		// Detect check block starts: `check "..." {`
 		if (line.match(/^\s*check\s+/)) {
 			if (line.includes("{")) checkDepth = 1;
 			result.push(line);
 			continue;
 		}
 
-		// Track brace depth inside check blocks — skip all content
 		if (checkDepth > 0) {
 			for (const ch of line) {
 				if (ch === "{") checkDepth++;
@@ -76,90 +101,78 @@ export function hideFile(filePath: string, key: Buffer): string {
 			continue;
 		}
 
-		// Detect group starts: `group stripe {`
 		const groupMatch = line.match(/^group\s+(\w+)\s*\{/);
 		if (groupMatch) {
 			currentGroup = groupMatch[1];
 		}
 
-		// Detect top-level closing brace to end group context
 		if (currentGroup && line.trim() === "}" && !line.match(/^\s{2,}/)) {
 			currentGroup = null;
 		}
 
-		// Track current variable context to know if public
-		// Detect variable declaration lines (top-level or indented inside groups)
 		const varMatch = line.match(/^\s*(?:public\s+)?([A-Z][A-Z0-9_]*)\s*[:{=]/);
 		if (varMatch) {
 			currentVar = varMatch[1];
 			currentIsPublic = line.trimStart().startsWith("public") || publicVars.has(currentVar);
 		}
 
-		// Match schema-with-default lines: `NAME : z.schema() = "value"`
-		// Must be checked BEFORE the plain assignment regex since both could match
+		const currentOwner = currentVar ? (ownerMap.get(currentVar) ?? null) : null;
+		const inScope =
+			effectiveScope === "master" ||
+			(currentOwner !== null &&
+				typeof effectiveScope === "object" &&
+				currentOwner === effectiveScope.owner);
+
+		// Schema-with-default lines
 		const schemaDefaultMatch = line.match(
 			/^(\s*(?:public\s+)?[A-Z][A-Z0-9_]*\s*:\s*[^=]+=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/,
 		);
-		if (schemaDefaultMatch && !currentIsPublic) {
+		if (schemaDefaultMatch && !currentIsPublic && inScope) {
 			const [, prefix, rawValue, suffix] = schemaDefaultMatch;
-
-			// Only encrypt quoted string values — bare numbers/booleans are not secrets
 			if (!rawValue.startsWith('"') && !rawValue.startsWith("'")) {
 				result.push(line);
 				continue;
 			}
-
 			const value = rawValue.slice(1, -1);
-
 			if (isEncrypted(value)) {
 				result.push(line);
 				continue;
 			}
-
 			const context = currentGroup
 				? `${currentGroup.toUpperCase()}_${currentVar}@default`
 				: `${currentVar}@default`;
-			const encrypted = encryptDeterministic(value, key, context);
+			const encKey = await getEncryptionKey(key, currentOwner, effectiveScope, ownerKeyCache);
+			const encrypted = encryptDeterministic(value, encKey, context, currentOwner ?? undefined);
 			result.push(`${prefix}${encrypted}${suffix}`);
 			continue;
 		}
 
-		// Match value assignment lines (indented env-block values or flat top-level assignments):
-		//   `  dev = "value"` or `SECRET = "value"`
+		// Env-block value assignment lines
 		const envMatch = line.match(
 			/^(\s*\w[\w-]*\s*=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/,
 		);
-		if (envMatch && !currentIsPublic) {
+		if (envMatch && !currentIsPublic && inScope) {
 			const [, prefix, rawValue, suffix] = envMatch;
-
-			// Skip lines that are variable declarations (no schema default — block opener or simple name = value)
-			// e.g. `SECRET : z.string() {` or `SECRET : z.string().url() {`
 			if (line.match(/^\s*(?:public\s+)?[A-Z][A-Z0-9_]*\s*:.*\{\s*$/)) {
 				result.push(line);
 				continue;
 			}
-
 			const value =
 				rawValue.startsWith('"') || rawValue.startsWith("'") ? rawValue.slice(1, -1) : rawValue;
-
-			// Skip if already encrypted
 			if (isEncrypted(value)) {
 				result.push(line);
 				continue;
 			}
-
-			// Skip triple-quoted (multi-line) — handled differently
 			if (rawValue.startsWith('"""')) {
 				result.push(line);
 				continue;
 			}
-
-			// Derive context for deterministic encryption, including group if present
 			const envName = line.trim().split(/\s*=/)[0].trim();
 			const context = currentGroup
 				? `${currentGroup.toUpperCase()}_${currentVar}@${envName}`
 				: `${currentVar}@${envName}`;
-			const encrypted = encryptDeterministic(value, key, context);
+			const encKey = await getEncryptionKey(key, currentOwner, effectiveScope, ownerKeyCache);
+			const encrypted = encryptDeterministic(value, encKey, context, currentOwner ?? undefined);
 			result.push(`${prefix}${encrypted}${suffix}`);
 			continue;
 		}
@@ -167,10 +180,24 @@ export function hideFile(filePath: string, key: Buffer): string {
 		result.push(line);
 	}
 
-	// Write encrypted content, then rename to locked path
 	writeFileSync(readPath, result.join("\n"));
 	if (isUnlockedPath(readPath) && readPath !== lockedPath) {
 		renameSync(readPath, lockedPath);
 	}
 	return lockedPath;
+}
+
+async function getEncryptionKey(
+	key: Buffer,
+	owner: string | null,
+	scope: KeyScope,
+	cache: Map<string, Buffer>,
+): Promise<Buffer> {
+	if (scope === "master" && owner) {
+		if (!cache.has(owner)) {
+			cache.set(owner, await deriveOwnerKey(key, owner));
+		}
+		return cache.get(owner)!;
+	}
+	return key;
 }

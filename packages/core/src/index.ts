@@ -4,6 +4,8 @@ export { parse } from "./parser.js";
 export { Redacted } from "./redacted.js";
 export {
 	isEncrypted,
+	parseEncryptedToken,
+	isOwnerEncrypted,
 	PREFIX,
 	VERSION,
 	ALG_NAME,
@@ -12,6 +14,7 @@ export {
 	TAG_LENGTH,
 	KEY_LENGTH,
 } from "./crypto-constants.js";
+export type { EncryptedTokenParts } from "./crypto-constants.js";
 export { evaluateSchema, validateValue } from "./validator.js";
 export type { ValidateResult } from "./validator.js";
 export { evaluateCheck } from "./check-evaluator.js";

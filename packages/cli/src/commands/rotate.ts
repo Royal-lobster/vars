@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import * as prompts from "@clack/prompts";
-import { createMasterKey, encryptMasterKey, hideFile, showFile } from "@dotvars/node";
+import { createMasterKey, encryptMasterKey, hideFile, parseKeyFile, showFile } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findAllVarsFiles, findKeyFile, getProjectRoot, requireKey } from "../utils/context.js";
@@ -19,8 +19,30 @@ export default defineCommand({
 			process.exit(1);
 		}
 
-		// Decrypt with old key
-		const oldKey = await requireKey(keyFile, "vars rotate");
+		// Warn if owner entries exist — they'll be dropped and need re-creation
+		const keyContent = readFileSync(keyFile, "utf8").trim();
+		const entries = parseKeyFile(keyContent);
+		const ownerEntries = entries.filter((e) => e.scope !== "master");
+		if (ownerEntries.length > 0) {
+			const ownerNames = ownerEntries.map((e) => e.scope.replace("owner:", ""));
+			console.log(
+				pc.yellow(
+					`  ⚠ ${ownerEntries.length} owner PIN(s) will be invalidated: ${ownerNames.join(", ")}`,
+				),
+			);
+			console.log(
+				pc.dim("  You'll need to re-run `vars pin create` for each owner after rotation."),
+			);
+			const proceed = await prompts.confirm({ message: "Continue?" });
+			if (prompts.isCancel(proceed) || !proceed) process.exit(0);
+		}
+
+		// Decrypt with old key (must be master)
+		const { key: oldKey, scope } = await requireKey(keyFile, "vars rotate");
+		if (scope !== "master") {
+			console.error(pc.red("  Only the master PIN can rotate keys."));
+			process.exit(1);
+		}
 
 		// Create new key + PIN
 		const pin = await prompts.password({ message: "Set new PIN:" });
@@ -40,8 +62,8 @@ export default defineCommand({
 		for (const f of files) {
 			const content = readFileSync(f, "utf8");
 			if (content.includes("enc:v2:")) {
-				showFile(f, oldKey);
-				hideFile(f, newKey);
+				await showFile(f, oldKey, "master");
+				await hideFile(f, newKey, "master");
 				console.log(pc.green(`  ✓ Re-encrypted ${f}`));
 			}
 		}

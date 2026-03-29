@@ -22,14 +22,14 @@ export default defineCommand({
 		const isUnlocked = isUnlockedPath(file) || existsSync(unlockedPath);
 
 		const keyFile = findKeyFile(file);
-		const key = await requireKey(keyFile, `vars toggle ${args.file ?? file}`);
+		const { key, scope } = await requireKey(keyFile, `vars toggle ${args.file ?? file}`);
 
 		if (isUnlocked) {
 			const target = existsSync(unlockedPath) ? unlockedPath : file;
-			const lockedPath = hideFile(target, key);
+			const lockedPath = await hideFile(target, key, scope);
 			console.log(pc.green(`  ✓ Locked → ${lockedPath}`));
 		} else {
-			const resultPath = showFile(file, key);
+			const resultPath = await showFile(file, key, scope);
 			console.log(pc.green(`  ✓ Unlocked → ${resultPath}`));
 		}
 	},

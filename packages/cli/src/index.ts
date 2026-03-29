@@ -18,6 +18,7 @@ const main = defineCommand({
 		remove: () => import("./commands/remove.js").then((m) => m.default),
 		set: () => import("./commands/set.js").then((m) => m.default),
 		key: () => import("./commands/key.js").then((m) => m.default),
+		pin: () => import("./commands/pin.js").then((m) => m.default),
 		ls: () => import("./commands/ls.js").then((m) => m.default),
 		diff: () => import("./commands/diff.js").then((m) => m.default),
 		coverage: () => import("./commands/coverage.js").then((m) => m.default),
