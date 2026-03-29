@@ -10,7 +10,7 @@ export const metadata = {
 	},
 	description:
 		"Schema-validated, encrypted, multi-environment variables. One .vars file replaces your entire .env workflow.",
-	metadataBase: new URL("https://vars.dev"),
+	metadataBase: new URL("https://vars-docs.vercel.app"),
 	openGraph: {
 		siteName: "vars",
 		type: "website",
