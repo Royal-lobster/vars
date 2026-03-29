@@ -4,7 +4,7 @@ description: Day-to-day workflow for adding, editing, and removing variables.
 icon: Settings
 ---
 
-`show`, edit, `hide`. That's it. `add`, `remove`, `ls`, and `toggle` exist for when you'd rather not open the file at all.
+`show`, edit, `hide`. That's it. `add`, `remove`, `set`, `ls`, `diff`, `coverage`, and `toggle` exist for when you'd rather not open the file at all.
 
 ---
 
@@ -151,6 +151,79 @@ PORT             z.coerce.number()       default               optional
 | Flag | Short | Description |
 |------|-------|-------------|
 | `--file <path>` | `-f` | Use a different vars file |
+
+---
+
+## set
+
+```bash
+npx dotvars set NAME --value "new-value"
+```
+
+Updates a variable's value without opening the file. Supports per-environment values with `--dev`, `--staging`, `--prod` flags. If the variable is flat and you set env-specific values, it auto-converts to an env block.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--value <val>` | `-v` | Set value for all envs (or default) |
+| `--dev <val>` | | Set dev value |
+| `--staging <val>` | | Set staging value |
+| `--prod <val>` | | Set prod value |
+| `--file <path>` | `-f` | Use a different vars file |
+
+```bash
+# Update a single value
+npx dotvars set DATABASE_URL --dev "postgres://localhost/mydb"
+
+# Set different values per environment
+npx dotvars set API_URL --dev "http://localhost:3000" --prod "https://api.example.com"
+```
+
+---
+
+## diff
+
+```bash
+npx dotvars diff --env dev,prod [file]
+```
+
+Compares resolved values across two or more environments side-by-side. Values that are identical across all compared envs are dimmed. Encrypted values are decrypted for comparison (prompts for PIN).
+
+```bash
+npx dotvars diff --env dev,staging,prod
+```
+
+```text
+Variable                       dev                            prod
+---------------------------------------------------------------------
+APP_NAME                       my-app                         my-app
+DATABASE_URL                   postgres://localhost/db         postgres://prod-host/db
+```
+
+---
+
+## coverage
+
+```bash
+npx dotvars coverage
+```
+
+Shows a matrix of which variables have values defined for each environment. Useful for spotting gaps — a missing `prod` value that'll crash your deploy.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--file <path>` | `-f` | Use a different vars file |
+
+```text
+Variable                       dev      staging  prod
+------------------------------------------------------
+DATABASE_URL                     ✓        ✓        ✓
+STRIPE_KEY                       ✓        ✗        ✓
+NEW_FEATURE_FLAG                 ✓        ✗        ✗
+```
 
 ---
 
