@@ -4,10 +4,10 @@
 		"index",
 		"getting-started",
 		"file-format",
+		"editor-integration",
 		"local-overrides",
 		"cli",
 		"frameworks",
-		"editor-integration",
 		"---",
 		"security"
 	]
