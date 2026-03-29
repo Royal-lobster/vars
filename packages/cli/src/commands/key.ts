@@ -38,7 +38,7 @@ export default defineCommand({
 				console.log(pc.green("  ✓ Key created at .vars/key"));
 			},
 		}),
-export: defineCommand({
+		export: defineCommand({
 			meta: { name: "export", description: "Print base64 master key for CI" },
 			async run() {
 				if (!process.stdin.isTTY) {
