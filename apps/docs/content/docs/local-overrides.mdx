@@ -1,0 +1,127 @@
+---
+title: Local Overrides
+description: Per-developer .local.vars files that layer on top of shared config without affecting the team.
+icon: UserCog
+---
+
+Every developer on a team uses the same committed `.vars` file — but local setups differ. One person runs Postgres on `localhost`, another uses Docker. Instead of cluttering the shared config with everyone's personal values, create a `.local.vars` file:
+
+```
+config.vars              ← committed, shared by team
+config.local.vars        ← gitignored, your personal overrides
+```
+
+The local file uses the same `.vars` syntax and automatically layers on top of the base file. Local declarations shadow base declarations — same semantics as [`use` imports](/docs/file-format#level-9-file-composition).
+
+## Example
+
+Your team shares this `config.vars`:
+
+```vars title="config.vars (committed)"
+env(dev, staging, prod)
+
+DATABASE_URL : z.string().url() {
+  dev     = "postgres://shared-dev.internal:5432/myapp"
+  staging = "postgres://staging.db:5432/myapp"
+  prod    = enc:v2:aes256gcm-det:...
+}
+
+REDIS_URL : z.string().url() {
+  dev     = "redis://shared-dev.internal:6379"
+  staging = "redis://staging.redis:6379"
+  prod    = enc:v2:aes256gcm-det:...
+}
+```
+
+You run everything in Docker locally, so you create `config.local.vars`:
+
+```vars title="config.local.vars (gitignored)"
+# I run everything in Docker
+DATABASE_URL : z.string().url() {
+  dev = "postgres://host.docker.internal:5433/myapp"
+}
+
+REDIS_URL : z.string().url() {
+  dev = "redis://host.docker.internal:6380"
+}
+
+# Local-only debug flag
+DEBUG_SQL = "true"
+```
+
+Now when you run `vars run --env dev`, you get:
+
+```
+  Using local overrides from config.local.vars
+
+DATABASE_URL = postgres://host.docker.internal:5433/myapp  ← from local
+REDIS_URL    = redis://host.docker.internal:6380           ← from local
+DEBUG_SQL    = true                                        ← local-only
+```
+
+Your teammate who runs Postgres natively gets the shared `dev` values. No coordination needed.
+
+## How it works
+
+When `vars run` (or any command that resolves variables) loads a `.vars` file, it automatically checks for a `.local.vars` sibling with the same base name. If found, it merges the local declarations on top of the fully-resolved base file.
+
+The merge order is:
+
+1. Base file resolves its `use` imports
+2. Base file's own declarations shadow imports
+3. **`.local.vars` declarations shadow everything above**
+
+No flags, no config — just create the file and it works.
+
+## Rules
+
+### Full syntax
+
+Local files support the complete [`.vars` file format](/docs/file-format): env blocks, groups, schemas, interpolation, `use` imports, and conditionals. No restrictions.
+
+### New variables allowed
+
+Your local file can introduce variables that don't exist in the base file. Useful for debug flags, local tunnel ports, or anything only your machine needs.
+
+### `env()` and `param` inherited from base
+
+The base file is authoritative for structural declarations. If your local file declares `env()` or `param`, they're ignored with a warning:
+
+```
+⚠ config.local.vars: env() declaration ignored (inherited from base file)
+⚠ config.local.vars: param "region" ignored (inherited from base file)
+```
+
+This prevents local files from accidentally changing the environment or parameter structure the team agreed on.
+
+### Top-level only
+
+Only the entry-point file (the one you pass to `vars run`) gets a `.local.vars` overlay. Files reached via `use` imports don't automatically pick up their own `.local.vars` siblings.
+
+If you need to override something from an imported file, just redeclare it in your top-level `config.local.vars` — the local declaration shadows everything, including imports.
+
+### Never encrypted
+
+Local files are always plaintext and always gitignored. No PIN needed to create or edit them. They're your personal scratchpad.
+
+### Naming convention
+
+Follows the existing `<name>.<modifier>.vars` pattern:
+
+| Base file | Local override |
+|-----------|---------------|
+| `config.vars` | `config.local.vars` |
+| `config.unlocked.vars` | `config.local.vars` |
+| `services/api/vars.vars` | `services/api/vars.local.vars` |
+
+Both the locked and unlocked variants of a base file resolve to the same `.local.vars` file.
+
+## Setup
+
+`vars init` adds `*.local.vars` to your `.gitignore` automatically. If you initialized before this feature existed, add it manually:
+
+```bash
+echo "*.local.vars" >> .gitignore
+```
+
+The pre-commit hook also blocks accidental commits of `.local.vars` files — even if someone runs `git add --force`.

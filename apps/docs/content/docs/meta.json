@@ -4,6 +4,7 @@
 		"index",
 		"getting-started",
 		"file-format",
+		"local-overrides",
 		"cli",
 		"frameworks",
 		"editor-integration",
