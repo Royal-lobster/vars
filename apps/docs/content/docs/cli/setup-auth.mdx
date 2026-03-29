@@ -63,12 +63,36 @@ Prints a short fingerprint of the current key. Use it to verify that two machine
 npx dotvars key export
 ```
 
-Prints the raw key to stdout. Pipe it to a secure channel when sharing with a teammate or storing in CI.
+Prints the base64-encoded master key to stdout. Requires the master PIN — owner PINs cannot export. Pipe it to a secure channel when sharing with a teammate or storing in CI.
 
 ```bash
 # Copy key to clipboard (macOS)
 npx dotvars key export | pbcopy
 ```
+
+---
+
+## `vars pin`
+
+Subcommands for managing owner-scoped PINs. See [Multi-PIN: owner-scoped access](/docs/encryption-security#multi-pin-owner-scoped-access) for the full explanation.
+
+### `vars pin create`
+
+```bash
+npx dotvars pin create <owner>
+```
+
+Creates a scoped PIN for an owner. Requires the master PIN. The CLI derives a sub-key from the master key, wraps it with the new PIN, and re-encrypts all fields tagged with that owner.
+
+```bash
+# Create a PIN for the backend team
+npx dotvars pin create backend-team
+
+# The backend team can now use their PIN with show/hide
+npx dotvars show   # enter backend-team PIN → only their fields decrypt
+```
+
+Owner names may only contain letters, digits, hyphens, and underscores.
 
 ---
 

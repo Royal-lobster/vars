@@ -52,6 +52,7 @@ Each encrypted value looks like:
 
 ```text
 enc:v2:aes256gcm-det:<iv>:<ciphertext>:<tag>
+enc:v2:aes256gcm-det:owner=<name>:<iv>:<ciphertext>:<tag>
 ```
 
 | Segment | What it is |
@@ -59,6 +60,7 @@ enc:v2:aes256gcm-det:<iv>:<ciphertext>:<tag>
 | `enc` | Literal marker |
 | `v2` | Format version |
 | `aes256gcm-det` | AES-256-GCM with HMAC-derived deterministic IV |
+| `owner=<name>` | Optional — which owner's key encrypted this value |
 | `<iv>` | 12-byte initialization vector |
 | `<ciphertext>` | The encrypted value |
 | `<tag>` | 16-byte authentication tag |
@@ -99,6 +101,103 @@ The master key never touches disk in plaintext. Knowing the PIN is the only way 
 The PIN is prompted at the terminal every time vars needs to decrypt (`vars show`, `vars hide`, `vars run`). Not cached. Not stored in an env var. Not passed as a flag. You type it, it unlocks, done.
 
 This two-layer design means changing your PIN only re-encrypts the 32-byte master key — not every secret in the file.
+
+---
+
+## Multi-PIN: owner-scoped access
+
+Not everyone on the team needs access to every secret. vars lets you create **owner PINs** — scoped credentials that can only decrypt fields tagged with a specific owner.
+
+### How it works
+
+When you tag a variable with `owner` metadata:
+
+```vars
+DB_PASSWORD : z.string() {
+  dev  = "dev-db-pass"
+  prod = "prod-db-pass"
+} (owner = "backend-team")
+
+GA_TOKEN : z.string() {
+  dev = "ga-token-123"
+} (owner = "frontend-team")
+```
+
+...and create a PIN for that owner:
+
+```bash
+vars pin create backend-team
+```
+
+The CLI:
+
+1. Derives a **sub-key** from the master key using HKDF (a standard key derivation function)
+2. Wraps that sub-key with the new owner PIN
+3. Re-encrypts all fields tagged `(owner = "backend-team")` with the derived sub-key
+
+The result is **cryptographic isolation** — the backend team's PIN literally cannot decrypt the frontend team's fields, or any unowned fields. It's not access control enforced by the CLI; it's different keys.
+
+### The encrypted tokens show ownership
+
+Owner-encrypted values include the owner in the prefix:
+
+```text
+# Master-encrypted (no owner)
+enc:v2:aes256gcm-det:<iv>:<ciphertext>:<tag>
+
+# Owner-encrypted
+enc:v2:aes256gcm-det:owner=backend-team:<iv>:<ciphertext>:<tag>
+```
+
+This lets the CLI skip fields it can't decrypt without even trying — no trial-and-error.
+
+### Partial show/hide
+
+When a backend team member runs `vars show` with their PIN, they get a **partially decrypted** file:
+
+```vars
+# Their fields — decrypted
+DB_PASSWORD : z.string() {
+  dev  = "dev-db-pass"
+  prod = "prod-db-pass"
+} (owner = "backend-team")
+
+# Other fields — still encrypted
+GA_TOKEN : z.string() {
+  dev = enc:v2:aes256gcm-det:owner=frontend-team:...
+} (owner = "frontend-team")
+
+# Unowned fields — still encrypted
+API_KEY = enc:v2:aes256gcm-det:...
+```
+
+`vars hide` with an owner PIN only re-encrypts that owner's fields, leaving everything else untouched.
+
+### The key file
+
+`.vars/key` stores one line per PIN:
+
+```text
+pin:v1:aes256gcm:master:<salt>:<iv>:<ct>:<tag>
+pin:v1:aes256gcm:owner=backend-team:<salt>:<iv>:<ct>:<tag>
+pin:v1:aes256gcm:owner=frontend-team:<salt>:<iv>:<ct>:<tag>
+```
+
+To share access with the backend team, copy the file and **delete the lines they shouldn't have**:
+
+```text
+pin:v1:aes256gcm:owner=backend-team:<salt>:<iv>:<ct>:<tag>
+```
+
+Give them this key file and the PIN. They can decrypt their fields and nothing else. No CLI command needed — it's a text file.
+
+### Master PIN still decrypts everything
+
+The master PIN holds the master key, which can derive any owner sub-key on the fly. It always has full access. Owner PINs are strictly scoped.
+
+### Key rotation with owner PINs
+
+`vars rotate` with owner PINs present will warn you that all owner PINs will be invalidated, then ask for confirmation. After rotation, re-run `vars pin create` for each owner to issue new PINs derived from the new master key.
 
 ---
 
@@ -221,6 +320,7 @@ The `Redacted` class is inlined in the generated `.ts` file. Your application ha
 - **Accidental commits** — the `.vars` file only contains encrypted blobs for secrets. You can commit it safely.
 - **Log leaks** — `Redacted<T>` keeps secrets out of structured logs, error reporters, and `console.log` dumps.
 - **Unauthorized file access** — if someone gets your `.vars` file (leaked backup, overly-permissive S3 bucket), they get ciphertext. Useless without the PIN or `VARS_KEY`.
+- **Lateral access within a team** — owner PINs ensure the frontend team can't decrypt backend secrets, even with access to the same repo and key file. Different keys, not just different permissions.
 - **Automated tools and AI agents** — tools with file-system access can read the file, but can't decrypt it. The PIN prompt blocks them.
 
 ### What vars doesn't protect against
