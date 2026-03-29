@@ -34,8 +34,7 @@ export default function OGImage() {
 				style={{
 					position: "absolute",
 					inset: 0,
-					backgroundImage:
-						"radial-gradient(rgba(34,197,94,0.07) 1px, transparent 1px)",
+					backgroundImage: "radial-gradient(rgba(34,197,94,0.07) 1px, transparent 1px)",
 					backgroundSize: "32px 32px",
 					display: "flex",
 				}}
@@ -198,11 +197,9 @@ export default function OGImage() {
 					width: "360px",
 					borderRadius: "14px",
 					border: "1px solid rgba(34,197,94,0.12)",
-					background:
-						"linear-gradient(160deg, rgba(20,20,20,0.95) 0%, rgba(10,15,10,0.9) 100%)",
+					background: "linear-gradient(160deg, rgba(20,20,20,0.95) 0%, rgba(10,15,10,0.9) 100%)",
 					overflow: "hidden",
-					boxShadow:
-						"0 0 80px rgba(34,197,94,0.06), 0 25px 50px rgba(0,0,0,0.5)",
+					boxShadow: "0 0 80px rgba(34,197,94,0.06), 0 25px 50px rgba(0,0,0,0.5)",
 				}}
 			>
 				{/* File header */}
@@ -273,22 +270,16 @@ export default function OGImage() {
 						lineHeight: 1.7,
 					}}
 				>
-					<span style={{ color: "rgba(255,255,255,0.25)" }}>
-						# Database
-					</span>
+					<span style={{ color: "rgba(255,255,255,0.25)" }}># Database</span>
 					<div style={{ display: "flex" }}>
 						<span style={{ color: "#22c55e" }}>DATABASE_URL</span>
 						<span style={{ color: "rgba(255,255,255,0.2)" }}> = </span>
-						<span style={{ color: "rgba(187,247,208,0.6)" }}>
-							enc:aes256:Kx9...
-						</span>
+						<span style={{ color: "rgba(187,247,208,0.6)" }}>enc:aes256:Kx9...</span>
 					</div>
 					<div style={{ display: "flex" }}>
 						<span style={{ color: "#22c55e" }}>REDIS_URL</span>
 						<span style={{ color: "rgba(255,255,255,0.2)" }}> = </span>
-						<span style={{ color: "rgba(187,247,208,0.6)" }}>
-							enc:aes256:Qm7...
-						</span>
+						<span style={{ color: "rgba(187,247,208,0.6)" }}>enc:aes256:Qm7...</span>
 					</div>
 					<div
 						style={{
@@ -298,22 +289,16 @@ export default function OGImage() {
 							display: "flex",
 						}}
 					/>
-					<span style={{ color: "rgba(255,255,255,0.25)" }}>
-						# API Keys
-					</span>
+					<span style={{ color: "rgba(255,255,255,0.25)" }}># API Keys</span>
 					<div style={{ display: "flex" }}>
 						<span style={{ color: "#22c55e" }}>STRIPE_KEY</span>
 						<span style={{ color: "rgba(255,255,255,0.2)" }}> = </span>
-						<span style={{ color: "rgba(187,247,208,0.6)" }}>
-							enc:aes256:Rv2...
-						</span>
+						<span style={{ color: "rgba(187,247,208,0.6)" }}>enc:aes256:Rv2...</span>
 					</div>
 					<div style={{ display: "flex" }}>
 						<span style={{ color: "#22c55e" }}>JWT_SECRET</span>
 						<span style={{ color: "rgba(255,255,255,0.2)" }}> = </span>
-						<span style={{ color: "rgba(187,247,208,0.6)" }}>
-							enc:aes256:Wn4...
-						</span>
+						<span style={{ color: "rgba(187,247,208,0.6)" }}>enc:aes256:Wn4...</span>
 					</div>
 				</div>
 			</div>
