@@ -1,5 +1,11 @@
 # dotvars
 
+## 0.4.1
+
+### Patch Changes
+
+- [`4a6844a`](https://github.com/Royal-lobster/vars/commit/4a6844a81c30392bcac18a77fc52049bcfeb4f6b) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Remove `vars key fingerprint` subcommand
+
 ## 0.4.0
 
 ### Minor Changes
