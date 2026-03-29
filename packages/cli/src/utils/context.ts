@@ -3,7 +3,13 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import * as prompts from "@clack/prompts";
 import { decryptMasterKey, getKeyFromEnv } from "@dotvars/node";
-import { isUnlockedPath, toCanonicalPath, toLockedPath, toUnlockedPath } from "@dotvars/node";
+import {
+	isLocalPath,
+	isUnlockedPath,
+	toCanonicalPath,
+	toLockedPath,
+	toUnlockedPath,
+} from "@dotvars/node";
 import { requestAgentApproval } from "./agent-auth.js";
 
 export interface CliContext {
@@ -31,7 +37,9 @@ export function findVarsFile(startDir: string, fileName?: string): string | null
 	let dir = resolve(startDir);
 	while (true) {
 		try {
-			const files = readdirSync(dir).filter((f) => f.endsWith(".vars") && !f.startsWith("."));
+			const files = readdirSync(dir).filter(
+				(f) => f.endsWith(".vars") && !f.startsWith(".") && !isLocalPath(f),
+			);
 			// Prefer .unlocked.vars over .vars (most recent state), but deduplicate
 			const seen = new Set<string>();
 			const result: string[] = [];
@@ -69,7 +77,7 @@ export function findAllVarsFiles(rootDir: string): string[] {
 				if (SKIP.has(entry.name)) continue;
 				const fullPath = join(dir, entry.name);
 				if (entry.isDirectory()) walk(fullPath);
-				else if (entry.name.endsWith(".vars")) results.push(fullPath);
+				else if (entry.name.endsWith(".vars") && !isLocalPath(entry.name)) results.push(fullPath);
 			}
 		} catch {
 			/* permission error */

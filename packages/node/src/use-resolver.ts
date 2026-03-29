@@ -16,7 +16,7 @@ export function resolveUseChain(filePath: string, options: UseResolveOptions): R
 	const merged = resolveFile(absPath, visited);
 
 	// Merge local overrides (top-level only — imported files don't get local overlays)
-	const localOverrides = mergeLocalFile(absPath, merged);
+	const localOverrides = mergeLocalFile(absPath, merged, visited);
 
 	const resolved = resolveAll(
 		localOverrides.declarations,
@@ -34,30 +34,26 @@ export function resolveUseChain(filePath: string, options: UseResolveOptions): R
 
 // ── Internal types ───────────────────────────────────────────────────────────
 
-function mergeLocalFile(basePath: string, base: MergedFile): MergedFile {
+function mergeLocalFile(basePath: string, base: MergedFile, baseVisited: Set<string>): MergedFile {
 	// Don't look for local files of local files
 	if (isLocalPath(basePath)) return base;
 
 	const localPath = toLocalPath(basePath);
 	if (!existsSync(localPath)) return base;
 
-	const content = readFileSync(localPath, "utf8");
-	const result = parse(content, localPath);
-	const localAst = result.ast;
+	// Resolve the local file through the normal resolver (handles use imports).
+	// Inherit the base chain's visited set so circular-import guards stay consistent.
+	const localMerged = resolveFile(localPath, new Set(baseVisited));
 
 	// Warn and discard env() declarations from local file
-	if (localAst.envs.length > 0) {
+	if (localMerged.envs.length > 0) {
 		console.warn(`⚠ ${localPath}: env() declaration ignored (inherited from base file)`);
 	}
 
 	// Warn and discard param declarations from local file
-	for (const param of localAst.params) {
+	for (const param of localMerged.params) {
 		console.warn(`⚠ ${localPath}: param "${param.name}" ignored (inherited from base file)`);
 	}
-
-	// Resolve the local file through the normal resolver (handles use imports)
-	const visited = new Set<string>();
-	const localMerged = resolveFile(localPath, visited);
 
 	// Local declarations shadow base declarations (same semantics as use shadowing)
 	const localNames = new Set(localMerged.declarations.map(getDeclName));
@@ -74,7 +70,7 @@ function mergeLocalFile(basePath: string, base: MergedFile): MergedFile {
 		envs: base.envs,
 		params: base.params,
 		declarations: mergedDecls,
-		checks: [...base.checks, ...localAst.checks],
+		checks: [...base.checks, ...localMerged.checks],
 		sourceFiles: [...base.sourceFiles, ...localMerged.sourceFiles],
 	};
 }
