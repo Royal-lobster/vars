@@ -4,6 +4,8 @@ import {
 	decryptMasterKey,
 	encryptMasterKey,
 	getKeyFromEnv,
+	parseKeyFile,
+	type KeyEntry,
 } from "../key-manager.js";
 
 describe("key-manager", () => {
@@ -31,5 +33,68 @@ describe("key-manager", () => {
 		process.env.VARS_KEY = key.toString("base64");
 		expect(getKeyFromEnv()).toEqual(key);
 		process.env.VARS_KEY = undefined;
+	});
+});
+
+describe("scoped key format", () => {
+	it("encryptMasterKey produces master-scoped line", async () => {
+		const key = await createMasterKey();
+		const encrypted = await encryptMasterKey(key, "my-pin");
+		expect(encrypted).toMatch(/^pin:v1:aes256gcm:master:/);
+	});
+
+	it("encryptMasterKey with owner produces owner-scoped line", async () => {
+		const key = await createMasterKey();
+		const encrypted = await encryptMasterKey(key, "my-pin", "backend-team");
+		expect(encrypted).toMatch(/^pin:v1:aes256gcm:owner=backend-team:/);
+	});
+
+	it("decryptMasterKey works with master-scoped line", async () => {
+		const key = await createMasterKey();
+		const encrypted = await encryptMasterKey(key, "test-pin");
+		const decrypted = await decryptMasterKey(encrypted, "test-pin");
+		expect(decrypted).toEqual(key);
+	});
+
+	it("decryptMasterKey works with owner-scoped line", async () => {
+		const key = await createMasterKey();
+		const encrypted = await encryptMasterKey(key, "owner-pin", "backend-team");
+		const decrypted = await decryptMasterKey(encrypted, "owner-pin");
+		expect(decrypted).toEqual(key);
+	});
+});
+
+describe("parseKeyFile", () => {
+	it("parses single master line", async () => {
+		const key = await createMasterKey();
+		const line = await encryptMasterKey(key, "pin");
+		const entries = parseKeyFile(line);
+		expect(entries).toHaveLength(1);
+		expect(entries[0].scope).toBe("master");
+	});
+
+	it("parses multiple lines", async () => {
+		const key = await createMasterKey();
+		const masterLine = await encryptMasterKey(key, "master-pin");
+		const ownerLine = await encryptMasterKey(key, "owner-pin", "backend-team");
+		const entries = parseKeyFile(`${masterLine}\n${ownerLine}`);
+		expect(entries).toHaveLength(2);
+		expect(entries[0].scope).toBe("master");
+		expect(entries[1].scope).toBe("owner:backend-team");
+	});
+
+	it("skips empty lines", async () => {
+		const key = await createMasterKey();
+		const line = await encryptMasterKey(key, "pin");
+		const entries = parseKeyFile(`\n${line}\n\n`);
+		expect(entries).toHaveLength(1);
+	});
+
+	it("parses legacy format (no scope) as master", () => {
+		const legacy = "pin:v1:aes256gcm:SALT:IV:CT:TAG";
+		const entries = parseKeyFile(legacy);
+		expect(entries).toHaveLength(1);
+		expect(entries[0].scope).toBe("master");
+		expect(entries[0].raw).toBe(legacy);
 	});
 });
