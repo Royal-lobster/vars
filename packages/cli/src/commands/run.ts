@@ -36,7 +36,7 @@ export default defineCommand({
 		// Notify if local overrides are active
 		const localFile = resolved.sourceFiles.find((f) => f.endsWith(".local.vars"));
 		if (localFile) {
-			const relative = localFile.replace(process.cwd() + "/", "");
+			const relative = localFile.replace(`${process.cwd()}/`, "");
 			console.error(pc.dim(`  Using local overrides from ${relative}`));
 		}
 

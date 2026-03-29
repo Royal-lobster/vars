@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { isUnlockedPath, toCanonicalPath, toLockedPath, toUnlockedPath, toLocalPath, isLocalPath } from "../unlocked-path.js";
+import {
+	isLocalPath,
+	isUnlockedPath,
+	toCanonicalPath,
+	toLocalPath,
+	toLockedPath,
+	toUnlockedPath,
+} from "../unlocked-path.js";
 
 describe("unlocked-path", () => {
 	it("toUnlockedPath converts .vars to .unlocked.vars", () => {

@@ -86,18 +86,14 @@ describe("local overrides — edge cases", () => {
 	it("warns and discards env() from local file", () => {
 		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		resolveUseChain(resolve(fixtureDir, "local-warnings.vars"), { env: "dev" });
-		expect(warnSpy).toHaveBeenCalledWith(
-			expect.stringContaining("env() declaration ignored"),
-		);
+		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("env() declaration ignored"));
 		warnSpy.mockRestore();
 	});
 
 	it("warns and discards param from local file", () => {
 		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 		resolveUseChain(resolve(fixtureDir, "local-warnings.vars"), { env: "dev" });
-		expect(warnSpy).toHaveBeenCalledWith(
-			expect.stringContaining('param "region" ignored'),
-		);
+		expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('param "region" ignored'));
 		warnSpy.mockRestore();
 	});
 
