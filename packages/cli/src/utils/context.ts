@@ -13,8 +13,6 @@ import {
 } from "@dotvars/node";
 import { requestAgentApproval } from "./agent-auth.js";
 
-export type { KeyScope };
-
 export interface KeyResult {
 	key: Buffer;
 	scope: KeyScope;
