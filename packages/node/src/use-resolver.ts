@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { parse, resolveAll } from "@dotvars/core";
 import type { Check, Declaration, Import, Param, ResolvedVars } from "@dotvars/core";
-import { isUnlockedPath, toUnlockedPath } from "./unlocked-path.js";
+import { isLocalPath, isUnlockedPath, toLocalPath, toUnlockedPath } from "./unlocked-path.js";
 
 export interface UseResolveOptions {
 	env: string;
@@ -15,21 +15,69 @@ export function resolveUseChain(filePath: string, options: UseResolveOptions): R
 
 	const merged = resolveFile(absPath, visited);
 
+	// Merge local overrides (top-level only — imported files don't get local overlays)
+	const localOverrides = mergeLocalFile(absPath, merged);
+
 	const resolved = resolveAll(
-		merged.declarations,
+		localOverrides.declarations,
 		options.env,
 		options.params ?? {},
-		merged.envs,
-		merged.params,
+		localOverrides.envs,
+		localOverrides.params,
 	);
 
 	// Inject source files collected during the chain walk
-	resolved.sourceFiles = merged.sourceFiles;
+	resolved.sourceFiles = localOverrides.sourceFiles;
 
 	return resolved;
 }
 
 // ── Internal types ───────────────────────────────────────────────────────────
+
+function mergeLocalFile(basePath: string, base: MergedFile): MergedFile {
+	// Don't look for local files of local files
+	if (isLocalPath(basePath)) return base;
+
+	const localPath = toLocalPath(basePath);
+	if (!existsSync(localPath)) return base;
+
+	const content = readFileSync(localPath, "utf8");
+	const result = parse(content, localPath);
+	const localAst = result.ast;
+
+	// Warn and discard env() declarations from local file
+	if (localAst.envs.length > 0) {
+		console.warn(`⚠ ${localPath}: env() declaration ignored (inherited from base file)`);
+	}
+
+	// Warn and discard param declarations from local file
+	for (const param of localAst.params) {
+		console.warn(`⚠ ${localPath}: param "${param.name}" ignored (inherited from base file)`);
+	}
+
+	// Resolve the local file through the normal resolver (handles use imports)
+	const visited = new Set<string>();
+	const localMerged = resolveFile(localPath, visited);
+
+	// Local declarations shadow base declarations (same semantics as use shadowing)
+	const localNames = new Set(localMerged.declarations.map(getDeclName));
+	const mergedDecls: Declaration[] = [];
+
+	for (const decl of base.declarations) {
+		if (!localNames.has(getDeclName(decl))) {
+			mergedDecls.push(decl);
+		}
+	}
+	mergedDecls.push(...localMerged.declarations);
+
+	return {
+		envs: base.envs,
+		params: base.params,
+		declarations: mergedDecls,
+		checks: [...base.checks, ...localAst.checks],
+		sourceFiles: [...base.sourceFiles, ...localMerged.sourceFiles],
+	};
+}
 
 interface MergedFile {
 	envs: string[];

@@ -22,7 +22,7 @@ describe("use-resolver", () => {
 	it("resolves values for correct env", () => {
 		const result = resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "dev" });
 		const apiKey = result.vars.find((v) => v.name === "API_KEY");
-		expect(apiKey?.value).toBe("dev-key");
+		expect(apiKey?.value).toBe("my-local-key");
 
 		const logLevel = result.vars.find((v) => v.name === "LOG_LEVEL");
 		expect(logLevel?.value).toBe("debug");
@@ -46,5 +46,31 @@ describe("use-resolver", () => {
 		expect(() =>
 			resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "prod" }),
 		).not.toThrow();
+	});
+});
+
+describe("local overrides", () => {
+	it("shadows base variable with local override", () => {
+		const result = resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "dev" });
+		const apiKey = result.vars.find((v) => v.name === "API_KEY");
+		expect(apiKey?.value).toBe("my-local-key");
+	});
+
+	it("adds new variables from local file", () => {
+		const result = resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "dev" });
+		const debug = result.vars.find((v) => v.name === "DEBUG_MODE");
+		expect(debug?.value).toBe("true");
+	});
+
+	it("preserves base variables not overridden by local", () => {
+		const result = resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "dev" });
+		const appName = result.vars.find((v) => v.name === "APP_NAME");
+		expect(appName?.value).toBe("api");
+	});
+
+	it("includes local file in sourceFiles", () => {
+		const result = resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "dev" });
+		const hasLocal = result.sourceFiles.some((f) => f.endsWith("vars.local.vars"));
+		expect(hasLocal).toBe(true);
 	});
 });
