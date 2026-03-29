@@ -391,6 +391,50 @@ APP_NAME = "api-service"
 
 ---
 
+## Local Overrides
+
+Every developer on a team uses the same committed `.vars` file — but local setups differ. One person runs Postgres on `localhost`, another uses Docker. Instead of cluttering the shared config with everyone's personal values, create a `.local.vars` file:
+
+```
+config.vars              ← committed, shared by team
+config.local.vars        ← gitignored, your personal overrides
+```
+
+The local file uses the same `.vars` syntax and automatically layers on top of the base file. Local declarations shadow base declarations — same semantics as `use` imports.
+
+```vars title="config.local.vars"
+# I run everything in Docker
+DATABASE_URL : z.string().url() {
+  dev = "postgres://host.docker.internal:5433/myapp"
+}
+
+REDIS_URL : z.string().url() {
+  dev = "redis://host.docker.internal:6380"
+}
+
+# Local-only debug flag
+DEBUG_SQL = "true"
+```
+
+No flags needed — `vars run` picks it up automatically and shows a notice:
+
+```
+  Using local overrides from config.local.vars
+```
+
+### Rules
+
+- **Full syntax** — env blocks, groups, schemas, interpolation, `use` imports all work.
+- **New variables allowed** — local can add variables that don't exist in the base file.
+- **`env()` and `param` inherited from base** — if your local file declares them, they're ignored with a warning. The team's environment and parameter structure stays authoritative.
+- **Top-level only** — only the entry-point file gets a local overlay. Files reached via `use` imports don't automatically pick up their own `.local.vars`.
+- **Never encrypted** — local files are plaintext and gitignored. No PIN needed to edit them.
+- **Naming convention** — follows the `<name>.<modifier>.vars` pattern: `config.vars` → `config.local.vars`, same as `config.unlocked.vars`.
+
+`vars init` adds `*.local.vars` to your `.gitignore` automatically. The pre-commit hook blocks accidental commits of local files.
+
+---
+
 ## Level 10: Everything Together
 
 Here's what a real service config might look like using most of the features above.
@@ -507,3 +551,4 @@ The deterministic IV means the same value for the same variable in the same envi
 | `check "desc" { predicate }` | Validation rule |
 | `enc:v2:aes256gcm-det:iv:ct:tag` | Encrypted value (in locked file) |
 | `# comment` | Line or inline comment |
+| `config.local.vars` | Per-developer override file (gitignored, never encrypted) |

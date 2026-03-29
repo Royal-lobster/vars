@@ -17,8 +17,9 @@ You'll set a PIN to protect your encryption key. After that, you get:
 | `config.vars` | Your variables — encrypted at rest | Yes |
 | `.vars/key` | Encryption key (locked behind your PIN) | No (gitignored) |
 | `config.generated.ts` | TypeScript types (auto-generated) | Yes |
+| `config.local.vars` | Per-developer overrides (optional) | No (gitignored) |
 
-vars also updates your `.gitignore` and installs a pre-commit hook that prevents committing decrypted secrets.
+vars also updates your `.gitignore` and installs a pre-commit hook that prevents committing decrypted secrets or local override files.
 
 **Already have a `.env` file?** vars will detect it and offer to migrate your variables automatically.
 
@@ -128,6 +129,8 @@ When someone new joins:
 3. They run `vars show config.vars`, enter the PIN — done
 
 No `.env` file to find. No 1Password vault to configure. No Doppler invite to send.
+
+If they need different local values (e.g., a different database host), they create a `config.local.vars` — see [Local Overrides](/docs/file-format#local-overrides).
 
 ## CI/CD Setup
 
