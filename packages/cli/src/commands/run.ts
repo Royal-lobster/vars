@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import { isEncrypted } from "@dotvars/core";
 import { decrypt, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
@@ -36,8 +36,8 @@ export default defineCommand({
 		// Notify if local overrides are active
 		const localFile = resolved.sourceFiles.find((f) => f.endsWith(".local.vars"));
 		if (localFile) {
-			const relative = localFile.replace(`${process.cwd()}/`, "");
-			console.error(pc.dim(`  Using local overrides from ${relative}`));
+			const relativePath = relative(process.cwd(), localFile);
+			console.error(pc.dim(`  Using local overrides from ${relativePath}`));
 		}
 
 		// Validate env name against declared envs

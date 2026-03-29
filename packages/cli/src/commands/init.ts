@@ -139,8 +139,8 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 				? join(huskyDir, "pre-commit")
 				: join(gitHookDir, "pre-commit");
 
-			const HOOK_MARKER = "# vars: check for unlocked files";
-			const HOOK_SCRIPT = `\n${HOOK_MARKER}\nif git diff --cached --name-only 2>/dev/null | grep -q '\\.unlocked\\.vars$'; then\n  echo ""\n  echo "vars: Unlocked .vars files cannot be committed."\n  echo "  Run 'vars hide' to encrypt before committing."\n  echo ""\n  exit 1\nfi\n`;
+			const HOOK_MARKER = "# vars: check for unlocked/local files";
+			const HOOK_SCRIPT = `\n${HOOK_MARKER}\nif git diff --cached --name-only 2>/dev/null | grep -qE '\\.(unlocked|local)\\.vars$'; then\n  echo ""\n  echo "vars: Unlocked or local .vars files cannot be committed."\n  echo "  Run 'vars hide' to encrypt unlocked files."\n  echo "  Remove local override files from staging with 'git reset <file>'."\n  echo ""\n  exit 1\nfi\n`;
 
 			if (existsSync(hookPath)) {
 				const existing = readFileSync(hookPath, "utf8");
