@@ -4,11 +4,21 @@ description: Day-to-day workflow for adding, editing, and removing variables.
 icon: Settings
 ---
 
-`show`, edit, `hide`. That's it. `add`, `remove`, `set`, and `ls` exist for when you'd rather not open the file at all.
+## Decrypt & Encrypt
 
----
+The core loop: `show` to decrypt, edit the file, `hide` to encrypt.
 
-## show
+```bash
+# Unlock (config.vars → config.unlocked.vars)
+vars show
+
+# Edit config.unlocked.vars in your editor
+
+# Lock (config.unlocked.vars → config.vars)
+vars hide
+```
+
+### show
 
 ```bash
 vars show [file]
@@ -31,9 +41,7 @@ Before it decrypts, vars auto-fixes safety issues:
 vars show -f staging.vars
 ```
 
----
-
-## hide
+### hide
 
 ```bash
 vars hide
@@ -57,7 +65,12 @@ vars hide -f staging.vars
 
 ---
 
-## add
+## Quick Edits
+
+For when you'd rather not open the file at all.
+
+<Accordions type="single">
+<Accordion title="add — add a variable">
 
 ```bash
 vars add NAME
@@ -80,9 +93,8 @@ Names must be `UPPER_SNAKE_CASE`. Mark a variable as non-secret with the `public
 vars add STRIPE_KEY --schema "z.string().startsWith('sk_')"
 ```
 
----
-
-## remove
+</Accordion>
+<Accordion title="remove — delete a variable">
 
 ```bash
 vars remove NAME
@@ -101,9 +113,35 @@ Deletes the variable, every env value, and all metadata. Prompts for confirmatio
 vars remove OLD_API_URL --yes
 ```
 
----
+</Accordion>
+<Accordion title="set — update a value">
 
-## ls
+```bash
+vars set NAME --value "new-value"
+```
+
+Updates a variable's value without opening the file. Supports per-environment values with `--dev`, `--staging`, `--prod` flags. If the variable is flat and you set env-specific values, it auto-converts to an env block.
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--value <val>` | `-v` | Set value for all envs (or default) |
+| `--dev <val>` | | Set dev value |
+| `--staging <val>` | | Set staging value |
+| `--prod <val>` | | Set prod value |
+| `--file <path>` | `-f` | Use a different vars file |
+
+```bash
+# Update a single value
+vars set DATABASE_URL --dev "postgres://localhost/mydb"
+
+# Set different values per environment
+vars set API_URL --dev "http://localhost:3000" --prod "https://api.example.com"
+```
+
+</Accordion>
+<Accordion title="ls — list variables">
 
 ```bash
 vars ls
@@ -136,46 +174,5 @@ PORT             z.coerce.number()       default               optional
 |------|-------|-------------|
 | `--file <path>` | `-f` | Use a different vars file |
 
----
-
-## set
-
-```bash
-vars set NAME --value "new-value"
-```
-
-Updates a variable's value without opening the file. Supports per-environment values with `--dev`, `--staging`, `--prod` flags. If the variable is flat and you set env-specific values, it auto-converts to an env block.
-
-**Flags**
-
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--value <val>` | `-v` | Set value for all envs (or default) |
-| `--dev <val>` | | Set dev value |
-| `--staging <val>` | | Set staging value |
-| `--prod <val>` | | Set prod value |
-| `--file <path>` | `-f` | Use a different vars file |
-
-```bash
-# Update a single value
-vars set DATABASE_URL --dev "postgres://localhost/mydb"
-
-# Set different values per environment
-vars set API_URL --dev "http://localhost:3000" --prod "https://api.example.com"
-```
-
----
-
-## Day-to-day
-
-```bash
-# Unlock (config.vars → config.unlocked.vars)
-vars show
-
-# Edit config.unlocked.vars directly
-
-# Lock (config.unlocked.vars → config.vars)
-vars hide
-```
-
-Or skip the file entirely and use `add` and `remove`.
+</Accordion>
+</Accordions>

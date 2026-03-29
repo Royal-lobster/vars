@@ -4,7 +4,7 @@ description: Initialize a project, manage your encryption key, run health checks
 icon: KeyRound
 ---
 
-## `vars init`
+## init
 
 ```bash
 vars init
@@ -21,14 +21,12 @@ If a `.env` file exists, vars offers to import it. It reads the key-value pairs,
 
 If `config.vars` already exists but `.vars/key` is missing (e.g., a fresh clone), running `init` again detects the incomplete setup and creates the missing key file.
 
-### Flags
+**Flags**
 
-| Flag | Default | What it does |
-|------|---------|-------------|
-| `--file`, `-f` | `.env` | Path to the `.env` file to import |
-| `--env` | `dev` | Environment name for imported values |
-
-### Example
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--file <path>` | `-f` | Path to the `.env` file to import (default: `.env`) |
+| `--env <name>` | | Environment name for imported values (default: `dev`) |
 
 ```bash
 # Import from a non-default path, label values as "staging"
@@ -37,11 +35,12 @@ vars init --file .env.staging --env staging
 
 ---
 
-## `vars key`
+## Key Management
 
 Subcommands for managing your encryption key.
 
-### `vars key init`
+<Accordions type="single">
+<Accordion title="key init — generate a key file">
 
 ```bash
 vars key init
@@ -49,34 +48,51 @@ vars key init
 
 Generates a new `.vars/key` file. Run this on a fresh clone that already has a `config.vars` committed.
 
-### `vars key fingerprint`
-
-```bash
-vars key fingerprint
-```
-
-Prints a short fingerprint of the current key. Use it to verify that two machines share the same key without exposing the key itself.
-
-### `vars key export`
+</Accordion>
+<Accordion title="key export — export key for CI">
 
 ```bash
 vars key export
 ```
 
-Prints the base64-encoded master key to stdout. Requires the master PIN — owner PINs cannot export. Pipe it to a secure channel when sharing with a teammate or storing in CI.
+Prints the base64-encoded master key to stdout. Requires the master PIN — owner PINs cannot export. Use this to set the `VARS_KEY` environment variable in CI where there's no interactive PIN prompt.
 
 ```bash
-# Copy key to clipboard (macOS)
+# Copy key to clipboard, then paste into your CI secrets
 vars key export | pbcopy
 ```
 
+<Callout type="warn">This outputs your raw encryption key. Only use it to set CI secrets — never share it over Slack, email, or commit it to git.</Callout>
+
+</Accordion>
+<Accordion title="key rotate — re-encrypt with a new key">
+
+```bash
+vars key rotate
+```
+
+Generates a new encryption key, re-encrypts all values in every `*.vars` file, and replaces `.vars/key`. The old key is overwritten.
+
+Before rotating, export your current key as a backup:
+
+```bash
+vars key export > vars-key.bak
+vars key rotate
+```
+
+After rotating, re-export the key to update your CI secrets.
+
+</Accordion>
+</Accordions>
+
 ---
 
-## `vars pin`
+## Multi-PIN
 
-Subcommands for managing owner-scoped PINs. See [Multi-PIN](/docs/security/multi-pin) for the full explanation.
+Owner-scoped PINs for team access control. See [Multi-PIN](/docs/security/multi-pin) for the full explanation.
 
-### `vars pin create`
+<Accordions type="single">
+<Accordion title="pin create — create a scoped PIN">
 
 ```bash
 vars pin create <owner>
@@ -94,13 +110,20 @@ vars show   # enter backend-team PIN → only their fields decrypt
 
 Owner names may only contain letters, digits, hyphens, and underscores.
 
-### Revoking an owner PIN
+</Accordion>
+<Accordion title="Revoking an owner PIN">
 
 There is no `vars pin delete` command. To revoke an owner's access, remove their `owner=<name>` line from `.vars/key` and redistribute the key file. The key file is plain text — open it in any editor.
 
+</Accordion>
+</Accordions>
+
 ---
 
-## `vars doctor`
+## Diagnostics
+
+<Accordions type="single">
+<Accordion title="doctor — run health checks">
 
 ```bash
 vars doctor
@@ -108,22 +131,11 @@ vars doctor
 
 Runs health checks and prints a summary. Exits 1 if any check fails.
 
-### Checks
+**Files:** `config.vars` exists, `.vars/key` exists, codegen is up to date.
 
-Files:
-- `config.vars` exists
-- `.vars/key` exists
-- Codegen is up to date (generated file matches current schemas)
+**Security:** `.vars/key` is gitignored, pre-commit hook installed, all values encrypted.
 
-Security:
-- `.vars/key` is gitignored
-- Pre-commit hook installed
-- All values are encrypted
-
-Secrets Health:
-- No expiring or deprecated secrets (warns if `@expires` is within 30 days, or past due)
-
-### Example output
+**Secrets Health:** No expiring or deprecated secrets (warns if `@expires` is within 30 days).
 
 ```text
 ◆  Files
@@ -143,17 +155,14 @@ Secrets Health:
 
 Run it in CI to catch drift before it bites you in prod.
 
----
-
-## `vars completions`
+</Accordion>
+<Accordion title="completions — shell autocomplete">
 
 ```bash
 vars completions <shell>
 ```
 
 Writes a shell completion script to stdout. Redirect it to wherever your shell loads completions from.
-
-### Supported shells
 
 | Shell | Setup |
 |-------|-------|
@@ -162,3 +171,6 @@ Writes a shell completion script to stdout. Redirect it to wherever your shell l
 | `fish` | `vars completions fish > ~/.config/fish/completions/vars.fish` |
 
 Open a new shell after running and tab-completion works for all vars subcommands.
+
+</Accordion>
+</Accordions>

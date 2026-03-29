@@ -12,7 +12,10 @@ npm install -g dotvars
 
 This gives you the `vars` command globally. You can also use `npx dotvars` without installing.
 
-## 1. Initialize
+<Steps>
+<Step>
+
+### Initialize
 
 ```bash
 vars init
@@ -31,7 +34,10 @@ vars also updates your `.gitignore` and installs a pre-commit hook that prevents
 
 **Already have a `.env` file?** vars will detect it and offer to migrate your variables automatically.
 
-## 2. Decrypt and edit
+</Step>
+<Step>
+
+### Decrypt and edit
 
 ```bash
 vars show config.vars
@@ -59,7 +65,10 @@ DATABASE_URL : z.string().url() {
 - The `{ dev = ..., prod = ... }` block defines per-environment values
 - No schema? `APP_NAME = "my-app"` infers `z.string()` automatically
 
-## 3. Encrypt and commit
+</Step>
+<Step>
+
+### Encrypt and commit
 
 ```bash
 vars hide
@@ -87,7 +96,10 @@ git commit -m "add database config"
 
 The pre-commit hook will block the commit if any secrets are still decrypted — so you can't accidentally push plaintext.
 
-## 4. Run your app
+</Step>
+<Step>
+
+### Run your app
 
 ```bash
 vars run --env dev -- node server.js
@@ -105,7 +117,10 @@ vars decrypts secrets in memory (nothing written to disk) and injects them as en
 }
 ```
 
-## 5. Use the generated types
+</Step>
+<Step>
+
+### Use the generated types
 
 ```bash
 vars gen config.vars
@@ -127,6 +142,9 @@ vars.TYPO_VAR  // TS error: Property 'TYPO_VAR' does not exist
 ```
 
 The `#vars` import alias is set up by `vars init` in your `package.json`. The generated file has no runtime dependencies on vars — just Zod for validation.
+
+</Step>
+</Steps>
 
 ## Onboarding a teammate
 
@@ -164,7 +182,17 @@ steps:
 
 ## What's next?
 
-- [File format reference](/docs/file-format) — full syntax guide (groups, conditionals, check blocks, interpolation)
-- [CLI workflow](/docs/cli/setup-auth) — all commands
-- [Framework guides](/docs/frameworks) — Next.js, Vite, Astro, and more
-- [Encryption & security](/docs/encryption-security) — how the crypto works, threat model
+<Cards>
+  <Card href="/docs/file-format" title="File Format">
+    Full syntax guide — groups, conditionals, check blocks, interpolation.
+  </Card>
+  <Card href="/docs/cli" title="CLI Workflow">
+    All commands for managing secrets day to day.
+  </Card>
+  <Card href="/docs/frameworks" title="Framework Guides">
+    Next.js, Vite, Astro, and more.
+  </Card>
+  <Card href="/docs/security" title="Encryption & Security">
+    How the crypto works, threat model.
+  </Card>
+</Cards>

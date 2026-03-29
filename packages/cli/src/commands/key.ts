@@ -1,8 +1,7 @@
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as prompts from "@clack/prompts";
-import { createMasterKey, decryptMasterKey, encryptMasterKey, parseKeyFile } from "@dotvars/node";
+import { createMasterKey, encryptMasterKey } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findKeyFile, getProjectRoot, requireKey } from "../utils/context.js";
@@ -39,26 +38,7 @@ export default defineCommand({
 				console.log(pc.green("  ✓ Key created at .vars/key"));
 			},
 		}),
-		fingerprint: defineCommand({
-			meta: { name: "fingerprint", description: "Print key fingerprint" },
-			async run() {
-				const keyFile = findKeyFile(process.cwd());
-				if (!keyFile) {
-					console.error(pc.red("No key found"));
-					process.exit(1);
-				}
-				const content = readFileSync(keyFile, "utf8").trim();
-				const entries = parseKeyFile(content);
-				const masterEntry = entries.find((e) => e.scope === "master");
-				if (!masterEntry) {
-					console.error(pc.red("No master key entry found"));
-					process.exit(1);
-				}
-				const hash = createHash("sha256").update(masterEntry.raw).digest("hex").slice(0, 16);
-				console.log(`  ${hash}`);
-			},
-		}),
-		export: defineCommand({
+export: defineCommand({
 			meta: { name: "export", description: "Print base64 master key for CI" },
 			async run() {
 				if (!process.stdin.isTTY) {
