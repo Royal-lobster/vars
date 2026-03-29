@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import * as prompts from "@clack/prompts";
+import type { KeyScope } from "@dotvars/node";
 import { decryptMasterKey, getKeyFromEnv, parseKeyFile } from "@dotvars/node";
 import {
 	isLocalPath,
@@ -12,7 +13,7 @@ import {
 } from "@dotvars/node";
 import { requestAgentApproval } from "./agent-auth.js";
 
-export type KeyScope = "master" | { owner: string };
+export type { KeyScope };
 
 export interface KeyResult {
 	key: Buffer;

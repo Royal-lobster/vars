@@ -3,7 +3,7 @@ import { isEncrypted, parse, parseEncryptedToken } from "@dotvars/core";
 import { decrypt, deriveOwnerKey, encryptDeterministic } from "./crypto.js";
 import { isUnlockedPath, toLockedPath, toUnlockedPath } from "./unlocked-path.js";
 
-type KeyScope = "master" | { owner: string };
+export type KeyScope = "master" | { owner: string };
 
 export async function showFile(filePath: string, key: Buffer, scope?: KeyScope): Promise<string> {
 	const unlockedPath = isUnlockedPath(filePath) ? filePath : toUnlockedPath(filePath);
