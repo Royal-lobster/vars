@@ -15,8 +15,8 @@ import { requestAgentApproval } from "./agent-auth.js";
 export type KeyScope = "master" | { owner: string };
 
 export interface KeyResult {
-  key: Buffer;
-  scope: KeyScope;
+	key: Buffer;
+	scope: KeyScope;
 }
 
 export interface CliContext {

@@ -116,10 +116,12 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 			currentIsPublic = line.trimStart().startsWith("public") || publicVars.has(currentVar);
 		}
 
-		const currentOwner = currentVar ? ownerMap.get(currentVar) ?? null : null;
+		const currentOwner = currentVar ? (ownerMap.get(currentVar) ?? null) : null;
 		const inScope =
 			effectiveScope === "master" ||
-			(currentOwner !== null && typeof effectiveScope === "object" && currentOwner === effectiveScope.owner);
+			(currentOwner !== null &&
+				typeof effectiveScope === "object" &&
+				currentOwner === effectiveScope.owner);
 
 		// Schema-with-default lines
 		const schemaDefaultMatch = line.match(

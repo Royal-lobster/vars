@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+	type KeyEntry,
 	createMasterKey,
 	decryptMasterKey,
 	encryptMasterKey,
 	getKeyFromEnv,
 	parseKeyFile,
-	type KeyEntry,
 } from "../key-manager.js";
 
 describe("key-manager", () => {

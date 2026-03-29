@@ -1,5 +1,13 @@
 import { createCipheriv, createDecipheriv, createHmac, hkdf } from "node:crypto";
-import { ALGORITHM, ALG_NAME, IV_LENGTH, KEY_LENGTH, TAG_LENGTH, VERSION, parseEncryptedToken } from "@dotvars/core";
+import {
+	ALGORITHM,
+	ALG_NAME,
+	IV_LENGTH,
+	KEY_LENGTH,
+	TAG_LENGTH,
+	VERSION,
+	parseEncryptedToken,
+} from "@dotvars/core";
 
 export async function deriveOwnerKey(masterKey: Buffer, owner: string): Promise<Buffer> {
 	return new Promise((resolve, reject) => {
@@ -10,7 +18,12 @@ export async function deriveOwnerKey(masterKey: Buffer, owner: string): Promise<
 	});
 }
 
-export function encryptDeterministic(plaintext: string, key: Buffer, context: string, owner?: string): string {
+export function encryptDeterministic(
+	plaintext: string,
+	key: Buffer,
+	context: string,
+	owner?: string,
+): string {
 	const iv = deriveIV(key, context, plaintext);
 	const cipher = createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
 	const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);

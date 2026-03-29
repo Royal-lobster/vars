@@ -3,14 +3,18 @@ import { ALGORITHM, IV_LENGTH, KEY_LENGTH, TAG_LENGTH } from "@dotvars/core";
 
 export interface KeyEntry {
 	scope: string; // "master" or "owner:<name>"
-	raw: string;   // the full pin:v1:... line
+	raw: string; // the full pin:v1:... line
 }
 
 export async function createMasterKey(): Promise<Buffer> {
 	return randomBytes(KEY_LENGTH);
 }
 
-export async function encryptMasterKey(masterKey: Buffer, pin: string, owner?: string): Promise<string> {
+export async function encryptMasterKey(
+	masterKey: Buffer,
+	pin: string,
+	owner?: string,
+): Promise<string> {
 	const argon2 = await import("argon2");
 	const salt = randomBytes(16);
 	const wrappingKey = await argon2.default.hash(pin, {
@@ -73,7 +77,8 @@ export function parseKeyFile(content: string): KeyEntry[] {
 		.filter((line) => line.length > 0 && line.startsWith("pin:"))
 		.map((line) => {
 			const parts = line.split(":");
-			const isScoped = parts.length >= 8 && (parts[3] === "master" || parts[3].startsWith("owner="));
+			const isScoped =
+				parts.length >= 8 && (parts[3] === "master" || parts[3].startsWith("owner="));
 			let scope: string;
 			if (isScoped) {
 				scope = parts[3] === "master" ? "master" : parts[3].replace("owner=", "owner:");

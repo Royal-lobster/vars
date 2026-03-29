@@ -23,7 +23,12 @@ export function parseEncryptedToken(value: string): EncryptedTokenParts | null {
 	const rest = value.slice(PREFIX.length);
 	const parts = rest.split(":");
 	if (parts.length === 4 && parts[0].startsWith("owner=")) {
-		return { owner: parts[0].slice("owner=".length), iv: parts[1], ciphertext: parts[2], tag: parts[3] };
+		return {
+			owner: parts[0].slice("owner=".length),
+			iv: parts[1],
+			ciphertext: parts[2],
+			tag: parts[3],
+		};
 	}
 	if (parts.length === 3) {
 		return { owner: null, iv: parts[0], ciphertext: parts[1], tag: parts[2] };
