@@ -55,7 +55,14 @@ export default defineCommand({
 		const pairs: [string, string][] = [];
 		for (const v of resolved.vars) {
 			if (v.value === undefined) continue;
-			const val = isEncrypted(v.value) ? decrypt(v.value, key) : v.value;
+			let val = v.value;
+			if (isEncrypted(val)) {
+				try {
+					val = decrypt(val, key);
+				} catch {
+					continue;
+				}
+			}
 			pairs.push([v.flatName, val]);
 		}
 

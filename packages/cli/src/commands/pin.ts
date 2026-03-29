@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import * as prompts from "@clack/prompts";
+import { parse } from "@dotvars/core";
 import { deriveOwnerKey, encryptMasterKey, hideFile, parseKeyFile, showFile } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
@@ -30,6 +31,14 @@ export default defineCommand({
 				}
 
 				const owner = args.owner as string;
+
+				// Validate owner name (no colons or special chars that would corrupt token format)
+				if (!/^[A-Za-z0-9_-]+$/.test(owner)) {
+					console.error(
+						pc.red("  Owner name may only contain letters, digits, hyphens, and underscores."),
+					);
+					process.exit(1);
+				}
 
 				// Check if owner entry already exists
 				const keyContent = readFileSync(keyFile, "utf8").trim();
@@ -73,7 +82,13 @@ export default defineCommand({
 				let reEncrypted = 0;
 				for (const f of files) {
 					const content = readFileSync(f, "utf8");
-					if (content.includes(`owner = "${owner}"`)) {
+					const parsed = parse(content, f);
+					const hasOwner = parsed.ast.declarations.some((d) => {
+						if (d.kind === "variable") return d.metadata?.owner === owner;
+						if (d.kind === "group") return d.declarations.some((v) => v.metadata?.owner === owner);
+						return false;
+					});
+					if (hasOwner) {
 						const unlocked = await showFile(f, masterKey, "master");
 						await hideFile(unlocked, masterKey, "master");
 						reEncrypted++;

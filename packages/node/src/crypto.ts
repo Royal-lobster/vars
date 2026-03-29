@@ -11,10 +11,17 @@ import {
 
 export async function deriveOwnerKey(masterKey: Buffer, owner: string): Promise<Buffer> {
 	return new Promise((resolve, reject) => {
-		hkdf("sha256", masterKey, "", `owner:${owner}`, KEY_LENGTH, (err, derivedKey) => {
-			if (err) reject(err);
-			else resolve(Buffer.from(derivedKey));
-		});
+		hkdf(
+			"sha256",
+			masterKey,
+			"dotvars-owner-key-v1",
+			`owner:${owner}`,
+			KEY_LENGTH,
+			(err, derivedKey) => {
+				if (err) reject(err);
+				else resolve(Buffer.from(derivedKey));
+			},
+		);
 	});
 }
 

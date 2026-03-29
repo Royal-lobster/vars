@@ -64,7 +64,15 @@ export default defineCommand({
 		const envVars: Record<string, string> = {};
 		for (const v of resolved.vars) {
 			if (v.value === undefined) continue;
-			envVars[v.flatName] = isEncrypted(v.value) ? decrypt(v.value, key) : v.value;
+			let val = v.value;
+			if (isEncrypted(val)) {
+				try {
+					val = decrypt(val, key);
+				} catch {
+					continue;
+				}
+			}
+			envVars[v.flatName] = val;
 		}
 
 		// Find command after --

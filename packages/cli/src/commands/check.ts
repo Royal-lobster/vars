@@ -51,7 +51,11 @@ export default defineCommand({
 						}
 					}
 					if (key) {
-						value = decrypt(value, key);
+						try {
+							value = decrypt(value, key);
+						} catch {
+							continue;
+						}
 					} else {
 						continue;
 					}
@@ -79,7 +83,13 @@ export default defineCommand({
 				const varMap: Record<string, string | undefined> = {};
 				for (const v of resolved.vars) {
 					let val = v.value;
-					if (val && isEncrypted(val) && key) val = decrypt(val, key);
+					if (val && isEncrypted(val) && key) {
+						try {
+							val = decrypt(val, key);
+						} catch {
+							/* can't decrypt with this key — skip */
+						}
+					}
 					varMap[v.name] = val;
 					varMap[v.flatName] = val;
 				}

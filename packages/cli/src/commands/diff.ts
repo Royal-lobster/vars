@@ -39,8 +39,13 @@ export default defineCommand({
 						try {
 							({ key } = await requireKey(keyFile, "vars diff"));
 						} catch {}
-					if (key) val = decrypt(val, key);
-					else val = pc.dim("<encrypted>");
+					if (key) {
+						try {
+							val = decrypt(val, key);
+						} catch {
+							val = pc.dim("<encrypted>");
+						}
+					} else val = pc.dim("<encrypted>");
 				}
 				byEnv[env][v.flatName] = val;
 			}
