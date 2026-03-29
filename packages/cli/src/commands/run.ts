@@ -33,6 +33,13 @@ export default defineCommand({
 		// Resolve all variables (no key needed — just parsing)
 		const resolved = resolveUseChain(file, { env, params });
 
+		// Notify if local overrides are active
+		const localFile = resolved.sourceFiles.find((f) => f.endsWith(".local.vars"));
+		if (localFile) {
+			const relative = localFile.replace(process.cwd() + "/", "");
+			console.error(pc.dim(`  Using local overrides from ${relative}`));
+		}
+
 		// Validate env name against declared envs
 		if (resolved.envs.length > 0 && !resolved.envs.includes(env)) {
 			console.error(
