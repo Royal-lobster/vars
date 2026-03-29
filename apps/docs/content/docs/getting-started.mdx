@@ -105,7 +105,7 @@ The pre-commit hook will block the commit if any secrets are still decrypted —
 vars run --env dev -- node server.js
 ```
 
-vars decrypts secrets in memory (nothing written to disk) and injects them as environment variables before handing off to your process. Works with any command:
+vars decrypts secrets in memory (nothing hits disk) and injects them as environment variables into your process. Works with any command:
 
 ```json
 {
@@ -154,7 +154,7 @@ When someone new joins:
 2. You share the PIN with them (verbally, or via a secure channel)
 3. They run `vars show config.vars`, enter the PIN — done
 
-No `.env` file to find. No 1Password vault to configure. No Doppler invite to send.
+No `.env` file to track down, no 1Password vault to set up, no Doppler invite to send.
 
 If they need different local values (e.g., a different database host), they create a `config.local.vars` — see [Local Overrides](/docs/local-overrides).
 

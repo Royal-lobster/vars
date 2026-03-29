@@ -47,7 +47,7 @@ The `--` separator is required. Everything after it is the command vars runs.
 vars gen <file>
 ```
 
-Generates a typed TypeScript file with accessor functions for every variable in a `config.vars` file. No key needed — `gen` works on locked files by reading schemas without decrypting values. Import the generated file instead of reading `process.env` directly and you get autocomplete and type safety.
+Generates a typed TypeScript file with accessor functions for every variable in a `config.vars` file. No key needed — `gen` reads schemas without decrypting values. Import the generated file instead of reading `process.env` directly and you get autocomplete and type safety.
 
 ```bash
 # Generate types for the default config.vars
@@ -135,7 +135,7 @@ export const vars = {
 }
 ```
 
-**Use this for:** Edge functions, Vite client bundles, any context where `process.env` is not available. Requires the encryption key at gen time. Regenerate per environment at build time.
+Useful for edge functions, Vite client bundles, or anywhere `process.env` is not available. Requires the encryption key at gen time. Regenerate per environment at build time.
 
 <Callout type="warn">The static file contains decrypted secrets. Only use it for server-side builds, never commit it to git. Add it to `.gitignore`.</Callout>
 
@@ -150,7 +150,7 @@ export const vars = {
 vars check [file]
 ```
 
-Validates every env against your Zod schemas, runs any `check` blocks defined in the file, and reports expired or deprecated variables. No `--env` flag means all envs get checked.
+Validates every env against your Zod schemas, runs any `check` blocks defined in the file, and reports expired or deprecated variables. Without `--env`, all envs are checked.
 
 ```bash
 # Validate all envs in config.vars
@@ -172,7 +172,7 @@ It checks:
 - `check` blocks defined inline in the vars file
 - `@refine` cross-variable validations
 
-Exits 1 on errors. Encrypted values that can't be decrypted in the current context are skipped.
+Exits 1 on errors. Encrypted values that can't be decrypted are skipped.
 
 **Flags**
 
@@ -194,7 +194,7 @@ Exits 1 on errors. Encrypted values that can't be decrypted in the current conte
 vars export --env <env> --format <format>
 ```
 
-Decrypts `config.vars` for a given environment and writes the resolved values in the requested format to stdout.
+Decrypts `config.vars` for a given environment and writes the values in the requested format to stdout.
 
 **Formats**
 

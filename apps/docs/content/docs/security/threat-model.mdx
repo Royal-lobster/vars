@@ -8,8 +8,8 @@ description: What vars protects against — and what it doesn't.
 - **Accidental commits** — the `.vars` file only contains encrypted blobs for secrets. You can commit it safely.
 - **Log leaks** — `Redacted<T>` keeps secrets out of structured logs, error reporters, and `console.log` dumps.
 - **Unauthorized file access** — if someone gets your `.vars` file (leaked backup, overly-permissive S3 bucket), they get ciphertext. Useless without the PIN or `VARS_KEY`.
-- **Lateral access within a team** — owner PINs ensure the frontend team can't decrypt backend secrets, even with access to the same repo and key file. Different keys, not just different permissions.
-- **Automated tools and AI agents** — tools with file-system access can read the file, but can't decrypt it. The PIN prompt blocks them.
+- **Lateral access within a team** — owner PINs mean the frontend team can't decrypt backend secrets, even with access to the same repo and key file. Different keys, not just different permissions.
+- **Automated tools and AI agents** — a tool with file-system access can read the file but can't decrypt it. The PIN prompt blocks it.
 
 ## What vars doesn't protect against
 

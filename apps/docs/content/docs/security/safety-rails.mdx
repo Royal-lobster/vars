@@ -1,6 +1,6 @@
 ---
 title: Safety Rails
-description: The guardrails that prevent secrets from leaking — public keyword, pre-commit hook, and Redacted types.
+description: How vars prevents secrets from leaking with the public keyword, pre-commit hook, and Redacted types.
 ---
 
 The encryption model is only useful if secrets never accidentally leave the encrypted state. vars has three safety rails to prevent that.
@@ -18,7 +18,7 @@ If it's not `public`, it's encrypted. There's no way to accidentally leave a sec
 
 Public variables generate plain TypeScript types (`string`, `number`) instead of `Redacted<string>`, so the type system also reflects the security boundary.
 
-## Pre-commit hook — last line of defense
+## Pre-commit hook
 
 `vars init` installs a git pre-commit hook that blocks commits containing `.unlocked.vars` files:
 
@@ -42,7 +42,7 @@ console.log(`${key}`);     // <redacted>
 JSON.stringify({ key });   // {"key":"<redacted>"}
 ```
 
-`toString()`, `toJSON()`, and Node.js's `util.inspect` all return `"<redacted>"`. The value stays hidden from logs, error reporters, and serializers without any extra work.
+`toString()`, `toJSON()`, and Node.js's `util.inspect` all return `"<redacted>"`. The value stays hidden from logs, error reporters, and serializers.
 
 To get the real value, call `unwrap()`:
 
@@ -50,7 +50,7 @@ To get the real value, call `unwrap()`:
 const actualKey = key.unwrap(); // "sk_live_abc123"
 ```
 
-`unwrap()` shows up in code review as the exact spot where a secret is deliberately exposed — easy to find, easy to audit.
+`unwrap()` marks the exact spot where a secret is deliberately exposed, which makes it easy to grep for during code review.
 
 Numbers and booleans are not wrapped — they can't leak meaningful information through `toString()`. The `Redacted` class is inlined in the generated `.ts` file with no runtime dependency.
 

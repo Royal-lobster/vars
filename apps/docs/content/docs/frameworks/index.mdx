@@ -1,6 +1,6 @@
 ---
 title: Framework Guides
-description: vars works with any framework — wrap your scripts and go.
+description: vars works with any framework. Wrap your scripts and go.
 icon: Blocks
 ---
 
@@ -17,20 +17,20 @@ Wrap your dev and build scripts with `vars run`:
 }
 ```
 
-`vars run` decrypts your config, validates schemas, and injects variables into `process.env` before your framework starts. No plugins, no adapters.
+`vars run` decrypts your config, validates schemas, and injects variables into `process.env` before your framework starts.
 
 ## Server vs Client
 
 **Server-side** (API routes, SSR, Node.js): `process.env` works directly. Import `vars` from `#vars` for type safety.
 
-**Client-side** (browser bundles): Frameworks don't pass `process.env` to the browser. Two options:
+**Client-side** (browser bundles): Frameworks don't pass `process.env` to the browser. You have two options:
 
-1. **Static generation** — bake values into the generated file at build time:
+1. **Static generation** - bake values into the generated file at build time:
    ```bash
    VARS_KEY=$KEY vars gen config.vars --platform static --env dev
    ```
 
-2. **Framework bridge** — use your framework's native env passthrough (details in each framework guide below)
+2. **Framework bridge** - use your framework's native env passthrough (details in each guide below)
 
 ## Choose your framework
 

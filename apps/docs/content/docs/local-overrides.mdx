@@ -71,13 +71,13 @@ The merge order is:
 2. Base file's own declarations shadow imports
 3. **`.local.vars` declarations shadow everything above**
 
-No flags, no config — just create the file and it works.
+Just create the file and it works.
 
 ## Rules
 
 ### Full syntax
 
-Local files support the complete [`.vars` file format](/docs/file-format): env blocks, groups, schemas, interpolation, `use` imports, and conditionals. No restrictions.
+Local files support the complete [`.vars` file format](/docs/file-format): env blocks, groups, schemas, interpolation, `use` imports, and conditionals.
 
 ### New variables allowed
 
@@ -92,7 +92,7 @@ The base file is authoritative for structural declarations. If your local file d
 ⚠ config.local.vars: param "region" ignored (inherited from base file)
 ```
 
-This prevents local files from accidentally changing the environment or parameter structure the team agreed on.
+Otherwise a local file could change the environment or parameter structure the team agreed on.
 
 ### Top-level only
 
@@ -102,7 +102,7 @@ If you need to override something from an imported file, just redeclare it in yo
 
 ### Never encrypted
 
-Local files are always plaintext and always gitignored. No PIN needed to create or edit them. They're your personal scratchpad.
+Local files are always plaintext and always gitignored. No PIN needed to create or edit them.
 
 ### Naming convention
 

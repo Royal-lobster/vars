@@ -26,7 +26,7 @@ vars show [file]
 
 Decrypts a `config.vars` file and renames it to `config.unlocked.vars`. The encrypted values are replaced with their plaintext. Edit the file directly, then run `hide`.
 
-Before it decrypts, vars auto-fixes safety issues:
+Before decrypting, vars checks for common problems:
 
 - Warns if `.vars/key` is missing
 - Warns if the pre-commit hook isn't installed
@@ -49,7 +49,7 @@ vars hide
 
 Encrypts ALL unlocked `.unlocked.vars` files. Scans for any `*.unlocked.vars` file in the current project and encrypts each one, renaming it back to `.vars`. You don't need to specify a file.
 
-Encryption is all-or-nothing per file — if any value fails, that file stays untouched. No partial writes, no corrupted state.
+Encryption is all-or-nothing per file. If any value fails, that file stays untouched.
 
 If schemas changed since the last `gen` run, `hide` regenerates the TypeScript types automatically.
 
@@ -76,11 +76,11 @@ For when you'd rather not open the file at all.
 vars add NAME
 ```
 
-Adds a variable without opening the file. vars prompts you for a Zod schema, then asks for a value per environment (`default`, `dev`, `staging`, `prod`). Skip any env you don't need yet.
+Adds a variable without opening the file. vars prompts for a Zod schema, then asks for a value per environment (`default`, `dev`, `staging`, `prod`). Skip any env you don't need yet.
 
 The variable is encrypted and written straight into `config.vars`.
 
-Names must be `UPPER_SNAKE_CASE`. Mark a variable as non-secret with the `public` keyword prefix — public variables are stored in plaintext and do not require a key to read.
+Names must be `UPPER_SNAKE_CASE`. Prefix a variable with `public` to store it in plaintext; public variables don't require a key to read.
 
 **Flags**
 
@@ -100,7 +100,7 @@ vars add STRIPE_KEY --schema "z.string().startsWith('sk_')"
 vars remove NAME
 ```
 
-Deletes the variable, every env value, and all metadata. Prompts for confirmation first.
+Deletes the variable, its env values, and all metadata. Prompts for confirmation first.
 
 **Flags**
 
@@ -120,7 +120,7 @@ vars remove OLD_API_URL --yes
 vars set NAME --value "new-value"
 ```
 
-Updates a variable's value without opening the file. Supports per-environment values with `--dev`, `--staging`, `--prod` flags. If the variable is flat and you set env-specific values, it auto-converts to an env block.
+Updates a variable's value without opening the file. Use `--dev`, `--staging`, `--prod` to set per-environment values. If the variable is flat and you set env-specific values, it converts to an env block.
 
 **Flags**
 
@@ -147,7 +147,7 @@ vars set API_URL --dev "http://localhost:3000" --prod "https://api.example.com"
 vars ls
 ```
 
-Without a file argument: prints an overview of all `*.vars` files in the project with their lock state and variable count.
+Without a file argument: lists all `*.vars` files in the project with their lock state and variable count.
 
 ```text
 FILE              STATE     VARS
@@ -155,7 +155,7 @@ config.vars       locked    12
 staging.vars      unlocked   5
 ```
 
-With a file argument: prints a table of every variable in that file — schema, which envs have values, required vs optional, and any metadata (description, owner, expiry, deprecation). Deprecated vars show with strikethrough.
+With a file argument: shows each variable's schema, which envs have values, required/optional status, and metadata (description, owner, expiry, deprecation). Deprecated vars show with strikethrough.
 
 ```bash
 vars ls config.vars

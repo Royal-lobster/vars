@@ -1,6 +1,6 @@
 ---
 title: Vite / React
-description: Using vars with Vite — server-side SSR and client-side bundles.
+description: Using vars with Vite for server-side SSR and client-side bundles.
 icon: SiVite
 ---
 
@@ -17,11 +17,11 @@ icon: SiVite
 
 ## Server-Side (SSR)
 
-`process.env` works directly in SSR code. Import from `#vars` for type safety.
+`process.env` works in SSR code. Import from `#vars` for type safety.
 
 ## Client-Side
 
-Vite uses `import.meta.env` in the browser, not `process.env`. You need one of these approaches:
+Vite uses `import.meta.env` in the browser, not `process.env`. Two options:
 
 ### Option 1: Static generation (recommended)
 

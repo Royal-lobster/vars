@@ -1,9 +1,9 @@
 ---
 title: Multi-PIN
-description: Owner-scoped PINs with cryptographic isolation — give each team access to only their secrets.
+description: Owner-scoped PINs that give each team access to only their secrets.
 ---
 
-Not everyone on the team needs access to every secret. vars lets you create **owner PINs** — scoped credentials that can only decrypt fields tagged with a specific owner.
+Not everyone on the team needs access to every secret. vars lets you create owner PINs, which can only decrypt fields tagged with a specific owner.
 
 ---
 
@@ -30,11 +30,11 @@ vars pin create backend-team
 
 The CLI:
 
-1. Derives a **sub-key** from the master key using HKDF (a standard key derivation function)
+1. Derives a sub-key from the master key using HKDF
 2. Wraps that sub-key with the new owner PIN
 3. Re-encrypts all fields tagged `(owner = "backend-team")` with the derived sub-key
 
-The result is **cryptographic isolation** — the backend team's PIN literally cannot decrypt the frontend team's fields, or any unowned fields. It's not access control enforced by the CLI; it's different keys.
+The backend team's PIN cannot decrypt the frontend team's fields, or any unowned fields. This isn't access control enforced by the CLI; it's different keys.
 
 ---
 
@@ -50,13 +50,13 @@ enc:v2:aes256gcm-det:<iv>:<ciphertext>:<tag>
 enc:v2:aes256gcm-det:owner=backend-team:<iv>:<ciphertext>:<tag>
 ```
 
-This lets the CLI skip fields it can't decrypt without even trying — no trial-and-error.
+The CLI uses this to skip fields it can't decrypt without trying.
 
 ---
 
 ## Partial show/hide
 
-When a backend team member runs `vars show` with their PIN, they get a **partially decrypted** file:
+When a backend team member runs `vars show` with their PIN, they get a partially decrypted file:
 
 ```vars
 # Their fields — decrypted
@@ -86,7 +86,7 @@ To give the backend team access, copy `.vars/key` and delete the lines they shou
 pin:v1:aes256gcm:owner=backend-team:<salt>:<iv>:<ct>:<tag>
 ```
 
-Give them this key file and the PIN. No CLI command needed — it's a text file.
+Give them this key file and the PIN. No CLI command needed.
 
 ---
 
@@ -98,7 +98,7 @@ Fields without `(owner = "...")` metadata are encrypted with the master key. Onl
 
 ## Master PIN still decrypts everything
 
-The master PIN holds the master key, which can derive any owner sub-key on the fly. It always has full access. Owner PINs are strictly scoped.
+The master PIN holds the master key, which can derive any owner sub-key. It always has full access. Owner PINs can only decrypt their own fields.
 
 ---
 
