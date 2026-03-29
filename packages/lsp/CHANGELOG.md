@@ -1,5 +1,12 @@
 # @dotvars/lsp
 
+## 0.3.1
+
+### Patch Changes
+
+- Updated dependencies [[`d152c96`](https://github.com/Royal-lobster/vars/commit/d152c962fd6216f2456baf24095ab291015078e7)]:
+  - @dotvars/core@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

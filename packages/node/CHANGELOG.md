@@ -1,5 +1,16 @@
 # @dotvars/node
 
+## 0.4.0
+
+### Minor Changes
+
+- [`d152c96`](https://github.com/Royal-lobster/vars/commit/d152c962fd6216f2456baf24095ab291015078e7) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Add multi-pin system with owner-scoped encryption. Owner PINs use HKDF-derived sub-keys for cryptographic isolation — each owner can only decrypt fields tagged with their name.
+
+### Patch Changes
+
+- Updated dependencies [[`d152c96`](https://github.com/Royal-lobster/vars/commit/d152c962fd6216f2456baf24095ab291015078e7)]:
+  - @dotvars/core@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes
