@@ -14,9 +14,18 @@ export const metadata = {
 	openGraph: {
 		siteName: "vars",
 		type: "website",
+		images: [
+			{
+				url: "/og-image.png",
+				width: 1200,
+				height: 630,
+				alt: "vars — Encrypted Environment Variables",
+			},
+		],
 	},
 	twitter: {
 		card: "summary_large_image",
+		images: ["/og-image.png"],
 	},
 };
 
