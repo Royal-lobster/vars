@@ -3,7 +3,6 @@
 	"icon": "Shield",
 	"defaultOpen": true,
 	"pages": [
-		"index",
 		"how-encryption-works",
 		"pins-and-keys",
 		"multi-pin",
