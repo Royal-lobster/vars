@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { resolveUseChain } from "../use-resolver.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -72,5 +72,39 @@ describe("local overrides", () => {
 		const result = resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "dev" });
 		const hasLocal = result.sourceFiles.some((f) => f.endsWith("vars.local.vars"));
 		expect(hasLocal).toBe(true);
+	});
+});
+
+describe("local overrides — edge cases", () => {
+	it("works fine when no local file exists", () => {
+		// shared/infra.vars has no .local.vars sibling
+		const result = resolveUseChain(resolve(fixtureDir, "shared/infra.vars"), { env: "dev" });
+		const logLevel = result.vars.find((v) => v.name === "LOG_LEVEL");
+		expect(logLevel?.value).toBe("debug");
+	});
+
+	it("warns and discards env() from local file", () => {
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		resolveUseChain(resolve(fixtureDir, "local-warnings.vars"), { env: "dev" });
+		expect(warnSpy).toHaveBeenCalledWith(
+			expect.stringContaining("env() declaration ignored"),
+		);
+		warnSpy.mockRestore();
+	});
+
+	it("warns and discards param from local file", () => {
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		resolveUseChain(resolve(fixtureDir, "local-warnings.vars"), { env: "dev" });
+		expect(warnSpy).toHaveBeenCalledWith(
+			expect.stringContaining('param "region" ignored'),
+		);
+		warnSpy.mockRestore();
+	});
+
+	it("uses env() from base even when local declares different envs", () => {
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const result = resolveUseChain(resolve(fixtureDir, "local-warnings.vars"), { env: "dev" });
+		expect(result.envs).toEqual(["dev", "prod"]);
+		warnSpy.mockRestore();
 	});
 });
