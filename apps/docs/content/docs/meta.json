@@ -8,7 +8,6 @@
 		"local-overrides",
 		"cli",
 		"frameworks",
-		"---",
 		"security"
 	]
 }
