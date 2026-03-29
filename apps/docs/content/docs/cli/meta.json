@@ -1,6 +1,6 @@
 {
-	"title": "CLI",
+	"title": "CLI Workflow",
 	"icon": "Terminal",
 	"defaultOpen": true,
-	"pages": ["setup-auth", "managing-variables", "running-apps", "platform-integration"]
+	"pages": ["setup-auth", "managing-variables", "running-apps"]
 }

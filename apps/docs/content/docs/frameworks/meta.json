@@ -1,5 +1,5 @@
 {
-	"title": "Frameworks",
+	"title": "Framework Guides",
 	"icon": "Blocks",
 	"defaultOpen": false,
 	"pages": ["nextjs", "vite", "sveltekit", "astro", "remix", "express", "cloudflare"]

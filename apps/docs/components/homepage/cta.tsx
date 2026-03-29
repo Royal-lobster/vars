@@ -41,7 +41,7 @@ export function CTA() {
 					>
 						Get Started →
 					</Link>
-					<CopyCommand command="npx dotvars init" />
+					<CopyCommand command="npm i -g dotvars" />
 				</div>
 
 				{/* Framework icons */}

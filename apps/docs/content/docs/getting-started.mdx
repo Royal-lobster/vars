@@ -4,10 +4,18 @@ description: From zero to encrypted, typed env vars in under 5 minutes.
 icon: Rocket
 ---
 
+## Install
+
+```bash
+npm install -g dotvars
+```
+
+This gives you the `vars` command globally. You can also use `npx dotvars` without installing.
+
 ## 1. Initialize
 
 ```bash
-npx dotvars init
+vars init
 ```
 
 You'll set a PIN to protect your encryption key. After that, you get:
@@ -26,7 +34,7 @@ vars also updates your `.gitignore` and installs a pre-commit hook that prevents
 ## 2. Decrypt and edit
 
 ```bash
-npx dotvars show config.vars
+vars show config.vars
 ```
 
 Enter your PIN. The file decrypts in-place — open it in your editor and add variables:
@@ -54,7 +62,7 @@ DATABASE_URL : z.string().url() {
 ## 3. Encrypt and commit
 
 ```bash
-npx dotvars hide
+vars hide
 ```
 
 Enter your PIN. All secret values get encrypted. Public values stay readable:
@@ -82,7 +90,7 @@ The pre-commit hook will block the commit if any secrets are still decrypted —
 ## 4. Run your app
 
 ```bash
-npx dotvars run --env dev -- node server.js
+vars run --env dev -- node server.js
 ```
 
 vars decrypts secrets in memory (nothing written to disk) and injects them as environment variables before handing off to your process. Works with any command:
@@ -100,7 +108,7 @@ vars decrypts secrets in memory (nothing written to disk) and injects them as en
 ## 5. Use the generated types
 
 ```bash
-npx dotvars gen config.vars
+vars gen config.vars
 ```
 
 This generates `config.generated.ts` with typed exports. Import them anywhere:
@@ -143,7 +151,6 @@ vars key export
 # Set it in your CI platform (GitHub Actions, GitLab CI, etc.)
 # Then use vars normally — no PIN prompt needed
 VARS_KEY=<base64-key> vars run --env prod -- npm run build
-VARS_KEY=<base64-key> vars export --env prod > .env.prod
 ```
 
 ```yaml
@@ -158,6 +165,6 @@ steps:
 ## What's next?
 
 - [File format reference](/docs/file-format) — full syntax guide (groups, conditionals, check blocks, interpolation)
-- [CLI reference](/docs/cli/setup-auth) — all commands
-- [Framework integration](/docs/frameworks) — Next.js, Vite, Astro, and more
+- [CLI workflow](/docs/cli/setup-auth) — all commands
+- [Framework guides](/docs/frameworks) — Next.js, Vite, Astro, and more
 - [Encryption & security](/docs/encryption-security) — how the crypto works, threat model

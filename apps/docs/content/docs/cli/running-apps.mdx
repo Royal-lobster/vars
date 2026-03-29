@@ -4,27 +4,27 @@ description: Inject secrets, generate typed accessors, and validate your env.
 icon: Play
 ---
 
-`run`, `gen`, `check`. Three commands, most of what you'll actually use day to day.
+`run`, `gen`, `check`. The commands you'll use day to day.
 
 ---
 
 ## run
 
 ```bash
-npx dotvars run --env <env> [--param key=val] -- <command> [args...]
+vars run --env <env> [--param key=val] -- <command> [args...]
 ```
 
 Decrypts `config.vars` for the given env and injects the values into a child process. Nothing touches disk. Secrets exist only in that process and are gone when it exits.
 
 ```bash
 # Start your dev server with dev secrets
-npx dotvars run --env dev -- npm run dev
+vars run --env dev -- npm run dev
 
 # Run a script with prod secrets
-npx dotvars run --env prod -- node scripts/migrate.js
+vars run --env prod -- node scripts/migrate.js
 
 # Override a single value at runtime
-npx dotvars run --env prod --param DATABASE_URL=postgres://localhost/mydb -- node scripts/migrate.js
+vars run --env prod --param DATABASE_URL=postgres://localhost/mydb -- node scripts/migrate.js
 ```
 
 vars also sets `VARS_ENV` in the child's environment so your app knows which env it's running under.
@@ -44,20 +44,20 @@ The `--` separator is required. Everything after it is the command vars runs.
 ## gen
 
 ```bash
-npx dotvars gen <file>
+vars gen <file>
 ```
 
 Generates a typed TypeScript file with accessor functions for every variable in a `config.vars` file. No key needed — `gen` works on locked files by reading schemas without decrypting values. Import the generated file instead of reading `process.env` directly and you get autocomplete and type safety.
 
 ```bash
 # Generate types for the default config.vars
-npx dotvars gen config.vars
+vars gen config.vars
 
 # Generate for all entry points at once
-npx dotvars gen --all
+vars gen --all
 
 # Write to a custom output path
-npx dotvars gen config.vars --output src/lib/env.ts
+vars gen config.vars --output src/lib/env.ts
 ```
 
 **Flags**
@@ -74,9 +74,10 @@ npx dotvars gen config.vars --output src/lib/env.ts
 
 ## Platform Targets
 
-By default, `vars gen` creates code that reads from `process.env` (Node.js). For other platforms, use the `--platform` flag:
+By default, `vars gen` creates code that reads from `process.env` (Node.js). For other platforms, use the `--platform` flag.
 
-### Node.js (default)
+<Accordions type="single">
+<Accordion title="Node.js (default)">
 
 ```bash
 vars gen config.vars
@@ -86,7 +87,8 @@ Generated code: `export const vars = parseVars(process.env)`
 
 Works with: Next.js, Express, Hono (Node), Fastify, any Node.js server.
 
-### Cloudflare Workers
+</Accordion>
+<Accordion title="Cloudflare Workers">
 
 ```bash
 vars gen config.vars --platform cloudflare
@@ -107,7 +109,8 @@ app.get('/', (c) => {
 })
 ```
 
-### Deno
+</Accordion>
+<Accordion title="Deno">
 
 ```bash
 vars gen config.vars --platform deno
@@ -115,7 +118,8 @@ vars gen config.vars --platform deno
 
 Generated code: `export const vars = parseVars(Deno.env.toObject())`
 
-### Static (inlined values)
+</Accordion>
+<Accordion title="Static (inlined values)">
 
 ```bash
 VARS_KEY=$KEY vars gen config.vars --platform static --env prod
@@ -133,27 +137,30 @@ export const vars = {
 
 **Use this for:** Edge functions, Vite client bundles, any context where `process.env` is not available. Requires the encryption key at gen time. Regenerate per environment at build time.
 
-**Important:** The static file contains decrypted secrets. Only use it for server-side builds, never commit it to git. Add it to `.gitignore`.
+<Callout type="warn">The static file contains decrypted secrets. Only use it for server-side builds, never commit it to git. Add it to `.gitignore`.</Callout>
+
+</Accordion>
+</Accordions>
 
 ---
 
 ## check
 
 ```bash
-npx dotvars check [file]
+vars check [file]
 ```
 
 Validates every env against your Zod schemas, runs any `check` blocks defined in the file, and reports expired or deprecated variables. No `--env` flag means all envs get checked.
 
 ```bash
 # Validate all envs in config.vars
-npx dotvars check config.vars
+vars check config.vars
 
 # Validate staging only
-npx dotvars check config.vars --env staging
+vars check config.vars --env staging
 
 # Validate all vars files in the project
-npx dotvars check --all
+vars check --all
 ```
 
 It checks:
@@ -173,4 +180,44 @@ Exits 1 on errors. Encrypted values that can't be decrypted in the current conte
 |------|-------|-------------|
 | `--env <name>` | | Validate a specific environment only |
 | `--all` | | Check all vars files in the project |
+| `--file <path>` | `-f` | Use a different vars file |
+
+---
+
+## export
+
+<Callout type="warn" title="Prefer vars run over export">
+  `vars run` injects secrets in memory without writing anything to disk. `export` writes plaintext to stdout or a file — use it only when a tool strictly requires a `.env` file or manifest and can't be wrapped with `vars run`.
+</Callout>
+
+```bash
+vars export --env <env> --format <format>
+```
+
+Decrypts `config.vars` for a given environment and writes the resolved values in the requested format to stdout.
+
+**Formats**
+
+| Format | Output |
+|--------|--------|
+| `dotenv` | Standard `.env` key=value pairs |
+| `json` | JSON object of key/value pairs |
+| `k8s-secret` | Kubernetes `Secret` manifest (base64-encoded values) |
+
+**Examples**
+
+```bash
+# Only when a tool requires a .env file on disk
+vars export --env prod --format dotenv > .env.production
+
+# Generate a Kubernetes secret manifest
+vars export --env prod --format k8s-secret > secret.yaml
+```
+
+**Flags**
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--env <name>` | | Environment to export (required) |
+| `--format <fmt>` | | Output format: `dotenv`, `json`, `k8s-secret` (required) |
 | `--file <path>` | `-f` | Use a different vars file |

@@ -3,21 +3,21 @@ const STEPS = [
 		title: "Init",
 		description:
 			"One command. Set a PIN. Auto-detects your framework and migrates existing .env files.",
-		command: "npx dotvars init",
+		command: "vars init",
 		detail: "Installs a pre-commit hook that blocks plaintext secrets from being committed.",
 	},
 	{
 		title: "Edit",
 		description:
 			"Decrypt with vars show, add variables with Zod schemas. VS Code gives you autocomplete and validation.",
-		command: "npx dotvars show",
+		command: "vars show",
 		detail: "z.string().url(), z.number().min(1024) — same Zod you already know.",
 	},
 	{
 		title: "Lock",
 		description:
 			"Run vars hide. Every secret value encrypted individually. Structure stays readable.",
-		command: "npx dotvars hide",
+		command: "vars hide",
 		detail: "Safe to commit. Variable names and schemas are visible, only values are locked.",
 	},
 	{
@@ -31,7 +31,7 @@ const STEPS = [
 		title: "Deploy",
 		description:
 			"Set VARS_KEY in CI once. Generates typed exports with Redacted<T> — typos become compile errors.",
-		command: "npx dotvars run --env prod -- npm start",
+		command: "vars run --env prod -- npm start",
 		detail: "One secret in your dashboard replaces every env var you used to paste.",
 	},
 ];

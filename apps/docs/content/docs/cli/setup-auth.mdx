@@ -7,7 +7,7 @@ icon: KeyRound
 ## `vars init`
 
 ```bash
-npx dotvars init
+vars init
 ```
 
 Sets up a new vars project. vars:
@@ -32,7 +32,7 @@ If `config.vars` already exists but `.vars/key` is missing (e.g., a fresh clone)
 
 ```bash
 # Import from a non-default path, label values as "staging"
-npx dotvars init --file .env.staging --env staging
+vars init --file .env.staging --env staging
 ```
 
 ---
@@ -44,7 +44,7 @@ Subcommands for managing your encryption key.
 ### `vars key init`
 
 ```bash
-npx dotvars key init
+vars key init
 ```
 
 Generates a new `.vars/key` file. Run this on a fresh clone that already has a `config.vars` committed.
@@ -52,7 +52,7 @@ Generates a new `.vars/key` file. Run this on a fresh clone that already has a `
 ### `vars key fingerprint`
 
 ```bash
-npx dotvars key fingerprint
+vars key fingerprint
 ```
 
 Prints a short fingerprint of the current key. Use it to verify that two machines share the same key without exposing the key itself.
@@ -60,14 +60,14 @@ Prints a short fingerprint of the current key. Use it to verify that two machine
 ### `vars key export`
 
 ```bash
-npx dotvars key export
+vars key export
 ```
 
 Prints the base64-encoded master key to stdout. Requires the master PIN — owner PINs cannot export. Pipe it to a secure channel when sharing with a teammate or storing in CI.
 
 ```bash
 # Copy key to clipboard (macOS)
-npx dotvars key export | pbcopy
+vars key export | pbcopy
 ```
 
 ---
@@ -79,17 +79,17 @@ Subcommands for managing owner-scoped PINs. See [Multi-PIN](/docs/security/multi
 ### `vars pin create`
 
 ```bash
-npx dotvars pin create <owner>
+vars pin create <owner>
 ```
 
 Creates a scoped PIN for an owner. Requires the master PIN. The CLI derives a sub-key from the master key, wraps it with the new PIN, and re-encrypts all fields tagged with that owner.
 
 ```bash
 # Create a PIN for the backend team
-npx dotvars pin create backend-team
+vars pin create backend-team
 
 # The backend team can now use their PIN with show/hide
-npx dotvars show   # enter backend-team PIN → only their fields decrypt
+vars show   # enter backend-team PIN → only their fields decrypt
 ```
 
 Owner names may only contain letters, digits, hyphens, and underscores.
@@ -103,7 +103,7 @@ There is no `vars pin delete` command. To revoke an owner's access, remove their
 ## `vars doctor`
 
 ```bash
-npx dotvars doctor
+vars doctor
 ```
 
 Runs health checks and prints a summary. Exits 1 if any check fails.
@@ -148,7 +148,7 @@ Run it in CI to catch drift before it bites you in prod.
 ## `vars completions`
 
 ```bash
-npx dotvars completions <shell>
+vars completions <shell>
 ```
 
 Writes a shell completion script to stdout. Redirect it to wherever your shell loads completions from.
@@ -157,8 +157,8 @@ Writes a shell completion script to stdout. Redirect it to wherever your shell l
 
 | Shell | Setup |
 |-------|-------|
-| `bash` | `npx dotvars completions bash >> ~/.bash_completion` |
-| `zsh` | `npx dotvars completions zsh > ~/.zsh/completions/_vars` |
-| `fish` | `npx dotvars completions fish > ~/.config/fish/completions/vars.fish` |
+| `bash` | `vars completions bash >> ~/.bash_completion` |
+| `zsh` | `vars completions zsh > ~/.zsh/completions/_vars` |
+| `fish` | `vars completions fish > ~/.config/fish/completions/vars.fish` |
 
 Open a new shell after running and tab-completion works for all vars subcommands.

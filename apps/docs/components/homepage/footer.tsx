@@ -10,7 +10,7 @@ const COLUMNS = [
 	},
 	{
 		title: "Integrations",
-		links: [{ label: "Framework Integration", href: "/docs/frameworks" }],
+		links: [{ label: "Framework Guides", href: "/docs/frameworks" }],
 	},
 	{
 		title: "Community",

@@ -23,7 +23,7 @@ env:
   VARS_KEY: \${{ secrets.VARS_KEY }}
 
 steps:
-  - run: npx dotvars run --env prod -- npm start
+  - run: vars run --env prod -- npm start
   # ✔ 12 secrets decrypted and injected`;
 
 const codeBlockStyle =

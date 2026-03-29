@@ -11,7 +11,7 @@ icon: Settings
 ## show
 
 ```bash
-npx dotvars show [file]
+vars show [file]
 ```
 
 Decrypts a `config.vars` file and renames it to `config.unlocked.vars`. The encrypted values are replaced with their plaintext. Edit the file directly, then run `hide`.
@@ -28,7 +28,7 @@ Before it decrypts, vars auto-fixes safety issues:
 | `--file <path>` | `-f` | Target a specific `.vars` file |
 
 ```bash
-npx dotvars show -f staging.vars
+vars show -f staging.vars
 ```
 
 ---
@@ -36,7 +36,7 @@ npx dotvars show -f staging.vars
 ## hide
 
 ```bash
-npx dotvars hide
+vars hide
 ```
 
 Encrypts ALL unlocked `.unlocked.vars` files. Scans for any `*.unlocked.vars` file in the current project and encrypts each one, renaming it back to `.vars`. You don't need to specify a file.
@@ -52,7 +52,7 @@ If schemas changed since the last `gen` run, `hide` regenerates the TypeScript t
 | `--file <path>` | `-f` | Target a specific file only |
 
 ```bash
-npx dotvars hide -f staging.vars
+vars hide -f staging.vars
 ```
 
 ---
@@ -60,7 +60,7 @@ npx dotvars hide -f staging.vars
 ## add
 
 ```bash
-npx dotvars add NAME
+vars add NAME
 ```
 
 Adds a variable without opening the file. vars prompts you for a Zod schema, then asks for a value per environment (`default`, `dev`, `staging`, `prod`). Skip any env you don't need yet.
@@ -77,7 +77,7 @@ Names must be `UPPER_SNAKE_CASE`. Mark a variable as non-secret with the `public
 | `--file <path>` | `-f` | Use a different vars file |
 
 ```bash
-npx dotvars add STRIPE_KEY --schema "z.string().startsWith('sk_')"
+vars add STRIPE_KEY --schema "z.string().startsWith('sk_')"
 ```
 
 ---
@@ -85,7 +85,7 @@ npx dotvars add STRIPE_KEY --schema "z.string().startsWith('sk_')"
 ## remove
 
 ```bash
-npx dotvars remove NAME
+vars remove NAME
 ```
 
 Deletes the variable, every env value, and all metadata. Prompts for confirmation first.
@@ -98,7 +98,7 @@ Deletes the variable, every env value, and all metadata. Prompts for confirmatio
 | `--file <path>` | `-f` | Use a different vars file |
 
 ```bash
-npx dotvars remove OLD_API_URL --yes
+vars remove OLD_API_URL --yes
 ```
 
 ---
@@ -106,7 +106,7 @@ npx dotvars remove OLD_API_URL --yes
 ## ls
 
 ```bash
-npx dotvars ls
+vars ls
 ```
 
 Without a file argument: prints an overview of all `*.vars` files in the project with their lock state and variable count.
@@ -120,7 +120,7 @@ staging.vars      unlocked   5
 With a file argument: prints a table of every variable in that file — schema, which envs have values, required vs optional, and any metadata (description, owner, expiry, deprecation). Deprecated vars show with strikethrough.
 
 ```bash
-npx dotvars ls config.vars
+vars ls config.vars
 ```
 
 ```text
@@ -141,7 +141,7 @@ PORT             z.coerce.number()       default               optional
 ## set
 
 ```bash
-npx dotvars set NAME --value "new-value"
+vars set NAME --value "new-value"
 ```
 
 Updates a variable's value without opening the file. Supports per-environment values with `--dev`, `--staging`, `--prod` flags. If the variable is flat and you set env-specific values, it auto-converts to an env block.
@@ -158,10 +158,10 @@ Updates a variable's value without opening the file. Supports per-environment va
 
 ```bash
 # Update a single value
-npx dotvars set DATABASE_URL --dev "postgres://localhost/mydb"
+vars set DATABASE_URL --dev "postgres://localhost/mydb"
 
 # Set different values per environment
-npx dotvars set API_URL --dev "http://localhost:3000" --prod "https://api.example.com"
+vars set API_URL --dev "http://localhost:3000" --prod "https://api.example.com"
 ```
 
 ---
@@ -170,12 +170,12 @@ npx dotvars set API_URL --dev "http://localhost:3000" --prod "https://api.exampl
 
 ```bash
 # Unlock (config.vars → config.unlocked.vars)
-npx dotvars show
+vars show
 
 # Edit config.unlocked.vars directly
 
 # Lock (config.unlocked.vars → config.vars)
-npx dotvars hide
+vars hide
 ```
 
 Or skip the file entirely and use `add` and `remove`.
