@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import * as prompts from "@clack/prompts";
-import { createMasterKey, encryptMasterKey, hideFile, showFile } from "@dotvars/node";
+import { createMasterKey, encryptMasterKey, hideFile, parseKeyFile, showFile } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findAllVarsFiles, findKeyFile, getProjectRoot, requireKey } from "../utils/context.js";
@@ -16,6 +16,16 @@ export default defineCommand({
 		const keyFile = findKeyFile(process.cwd());
 		if (!keyFile) {
 			console.error(pc.red("No key found"));
+			process.exit(1);
+		}
+
+		// Block rotation when owner entries exist (owner sub-keys would be orphaned)
+		const keyContent = readFileSync(keyFile, "utf8").trim();
+		const entries = parseKeyFile(keyContent);
+		const ownerEntries = entries.filter((e) => e.scope !== "master");
+		if (ownerEntries.length > 0) {
+			console.error(pc.red("  Cannot rotate: owner PIN entries exist in .vars/key"));
+			console.error(pc.dim("  Remove owner entries first, then re-create them after rotation."));
 			process.exit(1);
 		}
 

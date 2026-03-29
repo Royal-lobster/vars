@@ -2,10 +2,10 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as prompts from "@clack/prompts";
-import { createMasterKey, decryptMasterKey, encryptMasterKey } from "@dotvars/node";
+import { createMasterKey, decryptMasterKey, encryptMasterKey, parseKeyFile } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findKeyFile, getProjectRoot } from "../utils/context.js";
+import { findKeyFile, getProjectRoot, requireKey } from "../utils/context.js";
 
 export default defineCommand({
 	meta: { name: "key", description: "Manage encryption keys" },
@@ -47,8 +47,14 @@ export default defineCommand({
 					console.error(pc.red("No key found"));
 					process.exit(1);
 				}
-				const encoded = readFileSync(keyFile, "utf8").trim();
-				const hash = createHash("sha256").update(encoded).digest("hex").slice(0, 16);
+				const content = readFileSync(keyFile, "utf8").trim();
+				const entries = parseKeyFile(content);
+				const masterEntry = entries.find((e) => e.scope === "master");
+				if (!masterEntry) {
+					console.error(pc.red("No master key entry found"));
+					process.exit(1);
+				}
+				const hash = createHash("sha256").update(masterEntry.raw).digest("hex").slice(0, 16);
 				console.log(`  ${hash}`);
 			},
 		}),
@@ -64,10 +70,11 @@ export default defineCommand({
 					console.error(pc.red("No key found"));
 					process.exit(1);
 				}
-				const encoded = readFileSync(keyFile, "utf8").trim();
-				const pin = await prompts.password({ message: "Enter PIN:" });
-				if (prompts.isCancel(pin)) process.exit(0);
-				const key = await decryptMasterKey(encoded, pin as string);
+				const { key, scope } = await requireKey(keyFile, "vars key export");
+				if (scope !== "master") {
+					console.error(pc.red("  Only the master PIN can export the key."));
+					process.exit(1);
+				}
 				console.log(key.toString("base64"));
 			},
 		}),
