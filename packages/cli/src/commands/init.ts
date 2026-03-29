@@ -119,11 +119,13 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 
 		// 5. Update .gitignore
 		const gitignorePath = join(root, ".gitignore");
-		const varsIgnoreEntries = "\n# vars\n.vars/key\n.vars/key.*\n*.unlocked.vars\n";
+		const varsIgnoreEntries = "\n# vars\n.vars/key\n.vars/key.*\n*.unlocked.vars\n*.local.vars\n";
 		if (existsSync(gitignorePath)) {
 			const existing = readFileSync(gitignorePath, "utf8");
 			if (!existing.includes("*.unlocked.vars")) {
 				appendFileSync(gitignorePath, varsIgnoreEntries);
+			} else if (!existing.includes("*.local.vars")) {
+				appendFileSync(gitignorePath, "*.local.vars\n");
 			}
 		} else {
 			writeFileSync(gitignorePath, `${varsIgnoreEntries.trim()}\n`);
