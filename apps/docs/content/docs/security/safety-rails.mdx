@@ -1,0 +1,61 @@
+---
+title: Safety Rails
+description: The guardrails that prevent secrets from leaking — public keyword, pre-commit hook, and Redacted types.
+---
+
+The encryption model is only useful if secrets never accidentally leave the encrypted state. vars has three safety rails to prevent that.
+
+## `public` keyword — opt-in plaintext
+
+By default, every value is encrypted. The `public` keyword explicitly marks a variable as safe to commit in plaintext:
+
+```vars
+public APP_NAME = "my-app"
+public PORT : z.number().int() = 3000
+```
+
+If it's not `public`, it's encrypted. There's no way to accidentally leave a secret unencrypted — you have to deliberately opt out.
+
+Public variables generate plain TypeScript types (`string`, `number`) instead of `Redacted<string>`, so the type system also reflects the security boundary.
+
+## Pre-commit hook — last line of defense
+
+`vars init` installs a git pre-commit hook that blocks commits containing `.unlocked.vars` files:
+
+```
+error: .vars file is unlocked — run `vars hide` first
+```
+
+The hook doesn't auto-encrypt — that would require the PIN, which requires a human. Instead, it stops the commit and tells you what to do. This is intentional: the PIN prompt is the gatekeeper between automated tools and your secrets.
+
+If the hook is missing, `vars doctor` will detect and offer to reinstall it.
+
+## `Redacted<T>` — runtime leak prevention
+
+When vars hands decrypted values to your TypeScript code, secret strings come wrapped in `Redacted<T>`:
+
+```ts
+const key = new Redacted("sk_live_abc123");
+
+console.log(key);          // <redacted>
+console.log(`${key}`);     // <redacted>
+JSON.stringify({ key });   // {"key":"<redacted>"}
+```
+
+`toString()`, `toJSON()`, and Node.js's `util.inspect` all return `"<redacted>"`. The value stays hidden from logs, error reporters, and serializers without any extra work.
+
+To get the real value, call `unwrap()`:
+
+```ts
+const actualKey = key.unwrap(); // "sk_live_abc123"
+```
+
+`unwrap()` shows up in code review as the exact spot where a secret is deliberately exposed — easy to find, easy to audit.
+
+Numbers and booleans are not wrapped — they can't leak meaningful information through `toString()`. The `Redacted` class is inlined in the generated `.ts` file with no runtime dependency.
+
+## The show/hide cycle
+
+Secrets are only ever decrypted temporarily. `vars show` creates a `.unlocked.vars` working copy; `vars hide` encrypts it back. The `.unlocked.vars` file is gitignored, so even if you forget to hide, the pre-commit hook catches it.
+
+For the full CLI reference, see [Setup & Auth](/docs/cli/setup-auth).

@@ -82,32 +82,3 @@ The same key + variable name + environment + plaintext always produces the same 
 
 The nonce reuse is safe because the nonce is derived from the plaintext itself: identical nonces always correspond to identical plaintexts. It is standard AES-256-GCM — not AES-GCM-SIV — with HMAC-derived nonces instead of random nonces. The `-det` suffix in the algorithm name indicates deterministic nonce derivation.
 
----
-
-## The `Redacted<T>` type
-
-When vars decrypts values and hands them to your TypeScript code, secret string values come wrapped in `Redacted<T>`.
-
-You can't accidentally log a secret:
-
-```ts
-const key = new Redacted("sk_live_abc123");
-
-console.log(key);          // <redacted>
-console.log(`${key}`);     // <redacted>
-JSON.stringify({ key });   // {"key":"<redacted>"}
-```
-
-`toString()`, `toJSON()`, and Node.js's `util.inspect` all return `"<redacted>"`. The value stays hidden from logs, error reporters, and serializers without any extra work.
-
-To get the real value, call `unwrap()`:
-
-```ts
-const actualKey = key.unwrap(); // "sk_live_abc123"
-```
-
-`unwrap()` shows up in code review as the exact spot where a secret is deliberately exposed — easy to find, easy to audit.
-
-Numbers and booleans are not wrapped in `Redacted` — they cannot leak meaningful information through `toString()` or `console.log`, and wrapping them would break arithmetic and comparison operators. The encryption-at-rest protection still applies to number/boolean secrets in the `.vars` file.
-
-The `Redacted` class is inlined in the generated `.ts` file. Your application has no runtime dependency on any vars package.
