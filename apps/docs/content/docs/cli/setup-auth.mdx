@@ -74,7 +74,7 @@ npx dotvars key export | pbcopy
 
 ## `vars pin`
 
-Subcommands for managing owner-scoped PINs. See [Multi-PIN: owner-scoped access](/docs/encryption-security#multi-pin-owner-scoped-access) for the full explanation.
+Subcommands for managing owner-scoped PINs. See [Multi-PIN](/docs/security/multi-pin) for the full explanation.
 
 ### `vars pin create`
 
@@ -93,6 +93,10 @@ npx dotvars show   # enter backend-team PIN → only their fields decrypt
 ```
 
 Owner names may only contain letters, digits, hyphens, and underscores.
+
+### Revoking an owner PIN
+
+There is no `vars pin delete` command. To revoke an owner's access, remove their `owner=<name>` line from `.vars/key` and redistribute the key file. The key file is plain text — open it in any editor.
 
 ---
 
