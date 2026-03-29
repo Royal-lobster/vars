@@ -53,14 +53,14 @@ SECRET : z.string() {
 		writeFileSync(filePath, content);
 
 		// Hide (encrypt)
-		hideFile(filePath, key);
+		await hideFile(filePath, key);
 		const encrypted = readFileSync(filePath, "utf8");
 		expect(encrypted).not.toContain("dev-secret-value");
 		expect(encrypted).not.toContain("prod-secret-value");
 		expect(encrypted).toContain('APP_NAME = "test-app"'); // public unchanged
 
 		// Show (decrypt) — now renames to .unlocked.vars
-		const unlockedPath = showFile(filePath, key);
+		const unlockedPath = await showFile(filePath, key);
 		const decrypted = readFileSync(unlockedPath, "utf8");
 		expect(decrypted).toContain("dev-secret-value");
 		expect(decrypted).toContain("prod-secret-value");
@@ -82,12 +82,12 @@ SECRET : z.string() {
 		writeFileSync(filePath, content);
 
 		// First hide
-		hideFile(filePath, key);
+		await hideFile(filePath, key);
 		const first = readFileSync(filePath, "utf8");
 
 		// Show + hide again (no changes) — showFile renames to .unlocked.vars
-		const unlocked = showFile(filePath, key);
-		hideFile(unlocked, key);
+		const unlocked = await showFile(filePath, key);
+		await hideFile(unlocked, key);
 		const second = readFileSync(filePath, "utf8");
 
 		// Deterministic: identical output

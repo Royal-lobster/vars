@@ -21,10 +21,10 @@ export default defineCommand({
 		}
 
 		const keyFile = findKeyFile(process.cwd());
-		const { key } = await requireKey(keyFile, "vars hide");
+		const { key, scope } = await requireKey(keyFile, "vars hide");
 
 		for (const f of unlocked) {
-			const lockedPath = hideFile(f, key);
+			const lockedPath = await hideFile(f, key, scope);
 			console.log(pc.green(`  ✓ Encrypted → ${lockedPath}`));
 		}
 	},

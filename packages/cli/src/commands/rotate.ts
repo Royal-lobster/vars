@@ -40,8 +40,8 @@ export default defineCommand({
 		for (const f of files) {
 			const content = readFileSync(f, "utf8");
 			if (content.includes("enc:v2:")) {
-				showFile(f, oldKey);
-				hideFile(f, newKey);
+				await showFile(f, oldKey, "master");
+				await hideFile(f, newKey, "master");
 				console.log(pc.green(`  ✓ Re-encrypted ${f}`));
 			}
 		}
