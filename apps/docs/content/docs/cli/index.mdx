@@ -12,21 +12,17 @@ icon: Terminal
 | `vars gen <file>` | Generate TypeScript types from a .vars file |
 | `vars show [file]` | Decrypt a .vars file in-place for editing |
 | `vars hide` | Encrypt all unlocked .vars files |
-| `vars toggle [file]` | Flip between locked/unlocked state |
 | `vars run --env <env> -- cmd` | Run a command with decrypted env vars injected |
 | `vars check [-f file]` | Validate schemas and run check blocks |
 | `vars add <name>` | Interactively add a variable |
 | `vars remove <name>` | Remove a variable from a .vars file |
 | `vars ls` | List all .vars files with lock state and var count |
 | `vars ls <file>` | List variables in a file with metadata |
-| `vars diff --env a,b` | Compare values across environments |
-| `vars coverage [-f file]` | Show which envs have values for each variable |
 | `vars export --env <env>` | Export as dotenv, json, or k8s-secret format |
 | `vars key init` | Create a new encryption key |
 | `vars key rotate` | Rotate the encryption key |
 | `vars key fingerprint` | Print the key fingerprint |
 | `vars key export` | Print base64 master key for CI |
-| `vars hook` | Install the pre-commit hook |
 | `vars doctor` | Diagnose your vars setup |
 
 ## Environment
@@ -37,7 +33,7 @@ icon: Terminal
 
 ## Guides
 
-- [Setup & Auth](/docs/cli/setup-auth) — init, key management, hook, doctor
-- [Managing Variables](/docs/cli/managing-variables) — show, hide, toggle, add, remove, ls
+- [Setup & Auth](/docs/cli/setup-auth) — init, key management, doctor
+- [Managing Variables](/docs/cli/managing-variables) — show, hide, add, remove, ls
 - [Running Apps](/docs/cli/running-apps) — run, gen, check, platform targets
 - [Platform Integration](/docs/cli/platform-integration) — export, rotate, CI/CD setup

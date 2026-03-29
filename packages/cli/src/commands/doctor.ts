@@ -5,7 +5,8 @@ import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findAllVarsFiles, findKeyFile, getProjectRoot } from "../utils/context.js";
 import { checkExpiry, formatExpiryMessage } from "../utils/expiry.js";
-import { HOOK_MARKER } from "./hook.js";
+
+const HOOK_MARKER = "# vars: check for unlocked files";
 
 export default defineCommand({
 	meta: { name: "doctor", description: "Diagnose vars setup" },
@@ -60,9 +61,9 @@ export default defineCommand({
 		if (hookStatus === "current") {
 			console.log(pc.green("  ✓ Pre-commit hook installed"));
 		} else if (hookStatus === "outdated") {
-			console.log(pc.yellow("  ⚠ Pre-commit hook outdated — run `vars hook` to update"));
+			console.log(pc.yellow("  ⚠ Pre-commit hook outdated — run `vars init` to update"));
 		} else {
-			console.log(pc.yellow("  ⚠ No pre-commit hook. Run `vars hook`"));
+			console.log(pc.yellow("  ⚠ No pre-commit hook. Run `vars init`"));
 		}
 
 		// Check .vars files

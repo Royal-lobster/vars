@@ -120,11 +120,9 @@ vars.DATABASE_URL.unwrap() // actual value (explicit opt-in)
 vars init              # initialize project
 vars gen <file>        # generate TypeScript types
 vars show / hide       # decrypt / encrypt
-vars toggle            # flip lock state
 vars run --env <env>   # run with injected env vars
 vars check             # validate schemas + checks
 vars ls                # list files and variables
-vars diff --env a,b    # compare environments
 vars export --env prod # export as dotenv/json/k8s-secret
 vars key init          # create encryption key
 vars doctor            # diagnose setup

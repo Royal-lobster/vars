@@ -4,7 +4,7 @@ description: Day-to-day workflow for adding, editing, and removing variables.
 icon: Settings
 ---
 
-`show`, edit, `hide`. That's it. `add`, `remove`, `set`, `ls`, `diff`, `coverage`, and `toggle` exist for when you'd rather not open the file at all.
+`show`, edit, `hide`. That's it. `add`, `remove`, `set`, and `ls` exist for when you'd rather not open the file at all.
 
 ---
 
@@ -54,22 +54,6 @@ If schemas changed since the last `gen` run, `hide` regenerates the TypeScript t
 ```bash
 npx dotvars hide -f staging.vars
 ```
-
----
-
-## toggle
-
-```bash
-npx dotvars toggle [file]
-```
-
-Checks the current lock state of the file (by extension) and runs the right command. File is `.unlocked.vars`? Hides it. File is `.vars`? Shows it. Same command either way.
-
-**Flags**
-
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--file <path>` | `-f` | Target a specific `.vars` file |
 
 ---
 
@@ -178,51 +162,6 @@ npx dotvars set DATABASE_URL --dev "postgres://localhost/mydb"
 
 # Set different values per environment
 npx dotvars set API_URL --dev "http://localhost:3000" --prod "https://api.example.com"
-```
-
----
-
-## diff
-
-```bash
-npx dotvars diff --env dev,prod [file]
-```
-
-Compares resolved values across two or more environments side-by-side. Values that are identical across all compared envs are dimmed. Encrypted values are decrypted for comparison (prompts for PIN).
-
-```bash
-npx dotvars diff --env dev,staging,prod
-```
-
-```text
-Variable                       dev                            prod
----------------------------------------------------------------------
-APP_NAME                       my-app                         my-app
-DATABASE_URL                   postgres://localhost/db         postgres://prod-host/db
-```
-
----
-
-## coverage
-
-```bash
-npx dotvars coverage
-```
-
-Shows a matrix of which variables have values defined for each environment. Useful for spotting gaps — a missing `prod` value that'll crash your deploy.
-
-**Flags**
-
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--file <path>` | `-f` | Use a different vars file |
-
-```text
-Variable                       dev      staging  prod
-------------------------------------------------------
-DATABASE_URL                     ✓        ✓        ✓
-STRIPE_KEY                       ✓        ✗        ✓
-NEW_FEATURE_FLAG                 ✓        ✗        ✗
 ```
 
 ---
