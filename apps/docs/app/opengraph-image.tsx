@@ -142,9 +142,7 @@ export default function OGImage() {
 							lineHeight: 1.3,
 						}}
 					>
-						Encrypted environment variables,
-						<br />
-						schema-validated at runtime.
+						Encrypted environment variables, schema-validated at runtime.
 					</span>
 				</div>
 
@@ -159,7 +157,7 @@ export default function OGImage() {
 						borderRadius: "10px",
 						border: "1px solid rgba(34,197,94,0.15)",
 						background: "rgba(34,197,94,0.04)",
-						width: "fit-content",
+						maxWidth: "400px",
 					}}
 				>
 					<span
@@ -190,8 +188,7 @@ export default function OGImage() {
 				style={{
 					position: "absolute",
 					right: "60px",
-					top: "50%",
-					transform: "translateY(-50%)",
+					top: "90px",
 					display: "flex",
 					flexDirection: "column",
 					width: "360px",
