@@ -1,0 +1,28 @@
+---
+title: CI & Automation
+description: Using vars in CI environments and keeping AI agents out.
+---
+
+## `VARS_KEY` for CI
+
+CI environments cannot enter a PIN interactively. Instead, set the `VARS_KEY` environment variable to the base64-encoded master key:
+
+```bash
+# Export your master key (run this locally, put the output in your CI secrets)
+vars key export
+
+# In CI (GitHub Actions, etc.)
+VARS_KEY=<base64-master-key> vars run --env prod -- node server.js
+```
+
+`VARS_KEY` bypasses the PIN prompt. Treat it like a root credential — store it in your CI secrets manager, rotate it with `vars key rotate`, and never commit it.
+
+---
+
+## AI safety: PIN as human gatekeeper
+
+The PIN prompt goes to a TTY — a real interactive terminal. Automated tools don't have one.
+
+If an AI agent, CI script, or background process tries to run a vars command that needs decryption, it hits the PIN prompt and hangs. There is no flag to skip it and no env var to bypass it (other than `VARS_KEY`, which is explicitly set by a human for CI). The prompt is the lock.
+
+File-system access alone is not enough. An AI with tool use, a misconfigured backup, a leaked dotfiles repo — anything that gets your `.vars` file — just sees encrypted blobs and a structure that tells it the names and schemas of your variables, but not their values.

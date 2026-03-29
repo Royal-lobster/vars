@@ -1,0 +1,40 @@
+---
+title: Overview
+description: How vars keeps your secrets safe — the single-file encryption model.
+---
+
+Your `.vars` file is safe to commit. That's the whole point. Here's how it works.
+
+---
+
+## SOPS-style inline encryption
+
+vars uses a single-file model: there is no separate vault file and no unlocked copy to manage. Secret values are encrypted **inline** — the file structure (variable names, schemas, metadata, comments, `use` directives, `check` blocks) is always plaintext, and only the values are encrypted.
+
+**Committed state (`config.vars`):**
+
+```vars
+env(dev, staging, prod)
+
+public APP_NAME = "my-app"
+STRIPE_KEY : z.string() {
+  dev     = "sk_example_placeholder"
+  staging = enc:v2:aes256gcm-det:jkl...:mno...:pqr...
+  prod    = enc:v2:aes256gcm-det:abc...:def...:ghi...
+}
+```
+
+**Working state after `vars show` (`config.unlocked.vars`):**
+
+```vars
+env(dev, staging, prod)
+
+public APP_NAME = "my-app"
+STRIPE_KEY : z.string() {
+  dev     = "sk_example_placeholder"
+  staging = "sk_test_sTgKyExAmPlE32ChArAcTeRs"
+  prod    = "sk_live_aBcDeFgHiJkLmNoPqRsTuVwX"
+}
+```
+
+`vars show` decrypts and renames `config.vars` → `config.unlocked.vars`. `vars hide` encrypts and renames back. The file extension is the primary indicator of lock state.

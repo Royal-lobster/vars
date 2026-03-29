@@ -1,0 +1,77 @@
+---
+title: How Encryption Works
+description: AES-256-GCM with deterministic IVs — the crypto behind vars.
+---
+
+## AES-256-GCM
+
+Every secret value is encrypted independently with AES-256-GCM.
+
+AES-256-GCM: 256-bit key (very hard to brute-force), GCM mode (Galois/Counter Mode — it adds a tamper-proof authentication tag so corrupted or modified data is rejected, not silently accepted).
+
+Each encrypted value looks like:
+
+```text
+enc:v2:aes256gcm-det:<iv>:<ciphertext>:<tag>
+enc:v2:aes256gcm-det:owner=<name>:<iv>:<ciphertext>:<tag>
+```
+
+| Segment | What it is |
+|---|---|
+| `enc` | Literal marker |
+| `v2` | Format version |
+| `aes256gcm-det` | AES-256-GCM with HMAC-derived deterministic IV |
+| `owner=<name>` | Optional — which owner's key encrypted this value |
+| `<iv>` | 12-byte initialization vector |
+| `<ciphertext>` | The encrypted value |
+| `<tag>` | 16-byte authentication tag |
+
+The auth tag catches tampering. If anyone modifies the ciphertext — even one byte — decryption throws an error. You find out immediately, not after your app boots with corrupted data.
+
+---
+
+## Deterministic IVs — zero diff on unchanged values
+
+v2 uses **HMAC-derived deterministic IVs** instead of random IVs:
+
+```
+IV = HMAC-SHA256(key, "VAR_NAME@env:" + plaintext)[0:12]
+```
+
+The same key + variable name + environment + plaintext always produces the same IV, and therefore the same ciphertext. This means:
+
+- **Zero diff on re-encryption** — if a value hasn't changed, running `vars hide` again produces identical ciphertext. Your git diff shows only the values that actually changed.
+- **`git blame` is preserved** — unchanged lines keep their original commit attribution.
+- **Merge conflicts only happen on real conflicts** — two branches that both encrypt the same unchanged value produce the same bytes, so git's merge has nothing to conflict on.
+
+The nonce reuse is safe because the nonce is derived from the plaintext itself: identical nonces always correspond to identical plaintexts. It is standard AES-256-GCM — not AES-GCM-SIV — with HMAC-derived nonces instead of random nonces. The `-det` suffix in the algorithm name indicates deterministic nonce derivation.
+
+---
+
+## The `Redacted<T>` type
+
+When vars decrypts values and hands them to your TypeScript code, secret string values come wrapped in `Redacted<T>`.
+
+You can't accidentally log a secret:
+
+```ts
+const key = new Redacted("sk_live_abc123");
+
+console.log(key);          // <redacted>
+console.log(`${key}`);     // <redacted>
+JSON.stringify({ key });   // {"key":"<redacted>"}
+```
+
+`toString()`, `toJSON()`, and Node.js's `util.inspect` all return `"<redacted>"`. The value stays hidden from logs, error reporters, and serializers without any extra work.
+
+To get the real value, call `unwrap()`:
+
+```ts
+const actualKey = key.unwrap(); // "sk_live_abc123"
+```
+
+`unwrap()` shows up in code review as the exact spot where a secret is deliberately exposed — easy to find, easy to audit.
+
+Numbers and booleans are not wrapped in `Redacted` — they cannot leak meaningful information through `toString()` or `console.log`, and wrapping them would break arithmetic and comparison operators. The encryption-at-rest protection still applies to number/boolean secrets in the `.vars` file.
+
+The `Redacted` class is inlined in the generated `.ts` file. Your application has no runtime dependency on any vars package.
