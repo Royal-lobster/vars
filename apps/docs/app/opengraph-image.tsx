@@ -13,57 +13,20 @@ export default function OGImage() {
 				width: "100%",
 				height: "100%",
 				display: "flex",
-				position: "relative",
-				overflow: "hidden",
-				background: "#050505",
+				background: "linear-gradient(135deg, #050505 0%, #0a1a0f 50%, #050505 100%)",
+				padding: "72px 80px",
+				flexDirection: "row",
+				justifyContent: "space-between",
+				alignItems: "center",
 			}}
 		>
-			{/* Background gradient mesh */}
-			<div
-				style={{
-					position: "absolute",
-					inset: 0,
-					background:
-						"radial-gradient(ellipse 80% 60% at 50% 120%, rgba(34,197,94,0.14) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 70% -10%, rgba(22,163,74,0.08) 0%, transparent 50%), radial-gradient(ellipse 40% 40% at 10% 50%, rgba(34,197,94,0.04) 0%, transparent 50%)",
-					display: "flex",
-				}}
-			/>
-
-			{/* Subtle dot grid */}
-			<div
-				style={{
-					position: "absolute",
-					inset: 0,
-					backgroundImage: "radial-gradient(rgba(34,197,94,0.07) 1px, transparent 1px)",
-					backgroundSize: "32px 32px",
-					display: "flex",
-				}}
-			/>
-
-			{/* Horizontal accent line */}
-			<div
-				style={{
-					position: "absolute",
-					top: "50%",
-					left: 0,
-					right: 0,
-					height: "1px",
-					background:
-						"linear-gradient(90deg, transparent 5%, rgba(34,197,94,0.1) 30%, rgba(34,197,94,0.06) 70%, transparent 95%)",
-					display: "flex",
-				}}
-			/>
-
-			{/* Main content — left-aligned layout */}
+			{/* Left side — branding */}
 			<div
 				style={{
 					display: "flex",
 					flexDirection: "column",
-					justifyContent: "center",
-					padding: "72px 80px",
-					gap: "32px",
-					zIndex: 1,
-					width: "100%",
+					gap: "28px",
+					maxWidth: "560px",
 				}}
 			>
 				{/* Logo mark */}
@@ -97,7 +60,6 @@ export default function OGImage() {
 					>
 						<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
 						<path d="M7 11V7a5 5 0 0 1 10 0v4" />
-						<circle cx="12" cy="16" r="1" fill="#22c55e" />
 					</svg>
 					<span
 						style={{
@@ -113,38 +75,32 @@ export default function OGImage() {
 				</div>
 
 				{/* Title */}
-				<div
+				<span
 					style={{
-						display: "flex",
-						flexDirection: "column",
-						gap: "16px",
+						fontSize: "96px",
+						fontWeight: 800,
+						color: "white",
+						letterSpacing: "-4px",
+						fontFamily: "sans-serif",
+						lineHeight: 0.9,
 					}}
 				>
-					<span
-						style={{
-							fontSize: "96px",
-							fontWeight: 800,
-							color: "white",
-							letterSpacing: "-4px",
-							fontFamily: "sans-serif",
-							lineHeight: 0.9,
-						}}
-					>
-						vars
-					</span>
-					<span
-						style={{
-							fontSize: "28px",
-							color: "rgba(255,255,255,0.45)",
-							fontFamily: "sans-serif",
-							fontWeight: 400,
-							letterSpacing: "-0.3px",
-							lineHeight: 1.3,
-						}}
-					>
-						Encrypted environment variables, schema-validated at runtime.
-					</span>
-				</div>
+					vars
+				</span>
+
+				{/* Subtitle */}
+				<span
+					style={{
+						fontSize: "28px",
+						color: "rgba(255,255,255,0.45)",
+						fontFamily: "sans-serif",
+						fontWeight: 400,
+						letterSpacing: "-0.3px",
+						lineHeight: 1.3,
+					}}
+				>
+					Encrypted environment variables, schema-validated at runtime.
+				</span>
 
 				{/* Terminal command pill */}
 				<div
@@ -152,12 +108,10 @@ export default function OGImage() {
 						display: "flex",
 						alignItems: "center",
 						gap: "10px",
-						marginTop: "8px",
 						padding: "12px 24px",
 						borderRadius: "10px",
 						border: "1px solid rgba(34,197,94,0.15)",
-						background: "rgba(34,197,94,0.04)",
-						maxWidth: "400px",
+						background: "rgba(34,197,94,0.06)",
 					}}
 				>
 					<span
@@ -183,20 +137,16 @@ export default function OGImage() {
 				</div>
 			</div>
 
-			{/* Right side decorative element — floating .vars file */}
+			{/* Right side — .vars file preview */}
 			<div
 				style={{
-					position: "absolute",
-					right: "60px",
-					top: "90px",
 					display: "flex",
 					flexDirection: "column",
 					width: "360px",
 					borderRadius: "14px",
 					border: "1px solid rgba(34,197,94,0.12)",
-					background: "linear-gradient(160deg, rgba(20,20,20,0.95) 0%, rgba(10,15,10,0.9) 100%)",
+					background: "rgba(20,20,20,0.95)",
 					overflow: "hidden",
-					boxShadow: "0 0 80px rgba(34,197,94,0.06), 0 25px 50px rgba(0,0,0,0.5)",
 				}}
 			>
 				{/* File header */}
@@ -209,19 +159,13 @@ export default function OGImage() {
 						gap: "8px",
 					}}
 				>
-					<div
-						style={{
-							display: "flex",
-							gap: "6px",
-						}}
-					>
+					<div style={{ display: "flex", gap: "6px" }}>
 						<div
 							style={{
 								width: "10px",
 								height: "10px",
 								borderRadius: "50%",
 								background: "rgba(255,255,255,0.08)",
-								display: "flex",
 							}}
 						/>
 						<div
@@ -230,7 +174,6 @@ export default function OGImage() {
 								height: "10px",
 								borderRadius: "50%",
 								background: "rgba(255,255,255,0.08)",
-								display: "flex",
 							}}
 						/>
 						<div
@@ -239,7 +182,6 @@ export default function OGImage() {
 								height: "10px",
 								borderRadius: "50%",
 								background: "rgba(255,255,255,0.08)",
-								display: "flex",
 							}}
 						/>
 					</div>
@@ -283,7 +225,6 @@ export default function OGImage() {
 							height: "1px",
 							background: "rgba(255,255,255,0.04)",
 							margin: "6px 0",
-							display: "flex",
 						}}
 					/>
 					<span style={{ color: "rgba(255,255,255,0.25)" }}># API Keys</span>
@@ -298,39 +239,6 @@ export default function OGImage() {
 						<span style={{ color: "rgba(187,247,208,0.6)" }}>enc:aes256:Wn4...</span>
 					</div>
 				</div>
-			</div>
-
-			{/* Bottom domain watermark */}
-			<div
-				style={{
-					position: "absolute",
-					bottom: "28px",
-					left: "80px",
-					display: "flex",
-					alignItems: "center",
-					gap: "8px",
-				}}
-			>
-				<div
-					style={{
-						width: "6px",
-						height: "6px",
-						borderRadius: "50%",
-						background: "#22c55e",
-						display: "flex",
-					}}
-				/>
-				<span
-					style={{
-						fontSize: "15px",
-						fontFamily: "sans-serif",
-						color: "rgba(255,255,255,0.25)",
-						fontWeight: 500,
-						letterSpacing: "0.5px",
-					}}
-				>
-					vars.dev
-				</span>
 			</div>
 		</div>,
 		{ ...size },
