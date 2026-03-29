@@ -11,4 +11,4 @@ export {
 } from "./key-manager.js";
 export { showFile, hideFile } from "./show-hide.js";
 export { storeKey, retrieveKey, clearKey } from "./keychain.js";
-export { toUnlockedPath, toLockedPath, isUnlockedPath, toCanonicalPath } from "./unlocked-path.js";
+export { toUnlockedPath, toLockedPath, isUnlockedPath, toCanonicalPath, toLocalPath, isLocalPath } from "./unlocked-path.js";

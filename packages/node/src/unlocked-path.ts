@@ -17,3 +17,13 @@ export function isUnlockedPath(filePath: string): boolean {
 export function toCanonicalPath(filePath: string): string {
 	return isUnlockedPath(filePath) ? toLockedPath(filePath) : filePath;
 }
+
+/** Convert any .vars path (locked or unlocked) to its .local.vars counterpart */
+export function toLocalPath(filePath: string): string {
+	return toCanonicalPath(filePath).replace(/\.vars$/, ".local.vars");
+}
+
+/** Check if a path is a local override variant */
+export function isLocalPath(filePath: string): boolean {
+	return filePath.endsWith(".local.vars");
+}
