@@ -19,18 +19,30 @@ export default defineCommand({
 			process.exit(1);
 		}
 
-		// Block rotation when owner entries exist (owner sub-keys would be orphaned)
+		// Warn if owner entries exist — they'll be dropped and need re-creation
 		const keyContent = readFileSync(keyFile, "utf8").trim();
 		const entries = parseKeyFile(keyContent);
 		const ownerEntries = entries.filter((e) => e.scope !== "master");
 		if (ownerEntries.length > 0) {
-			console.error(pc.red("  Cannot rotate: owner PIN entries exist in .vars/key"));
-			console.error(pc.dim("  Remove owner entries first, then re-create them after rotation."));
-			process.exit(1);
+			const ownerNames = ownerEntries.map((e) => e.scope.replace("owner:", ""));
+			console.log(
+				pc.yellow(
+					`  ⚠ ${ownerEntries.length} owner PIN(s) will be invalidated: ${ownerNames.join(", ")}`,
+				),
+			);
+			console.log(
+				pc.dim("  You'll need to re-run `vars pin create` for each owner after rotation."),
+			);
+			const proceed = await prompts.confirm({ message: "Continue?" });
+			if (prompts.isCancel(proceed) || !proceed) process.exit(0);
 		}
 
-		// Decrypt with old key
-		const { key: oldKey } = await requireKey(keyFile, "vars rotate");
+		// Decrypt with old key (must be master)
+		const { key: oldKey, scope } = await requireKey(keyFile, "vars rotate");
+		if (scope !== "master") {
+			console.error(pc.red("  Only the master PIN can rotate keys."));
+			process.exit(1);
+		}
 
 		// Create new key + PIN
 		const pin = await prompts.password({ message: "Set new PIN:" });
