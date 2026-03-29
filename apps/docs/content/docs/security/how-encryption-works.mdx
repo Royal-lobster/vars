@@ -1,0 +1,84 @@
+---
+title: How Encryption Works
+description: AES-256-GCM with deterministic IVs — the crypto behind vars.
+---
+
+Your `.vars` file is safe to commit. That's the whole point. Here's how it works.
+
+## SOPS-style inline encryption
+
+vars uses a single-file model: there is no separate vault file and no unlocked copy to manage. Secret values are encrypted **inline** — the file structure (variable names, schemas, metadata, comments, `use` directives, `check` blocks) is always plaintext, and only the values are encrypted.
+
+**Committed state (`config.vars`):**
+
+```vars
+env(dev, staging, prod)
+
+public APP_NAME = "my-app"
+STRIPE_KEY : z.string() {
+  dev     = "sk_example_placeholder"
+  staging = enc:v2:aes256gcm-det:jkl...:mno...:pqr...
+  prod    = enc:v2:aes256gcm-det:abc...:def...:ghi...
+}
+```
+
+**Working state after `vars show` (`config.unlocked.vars`):**
+
+```vars
+env(dev, staging, prod)
+
+public APP_NAME = "my-app"
+STRIPE_KEY : z.string() {
+  dev     = "sk_example_placeholder"
+  staging = "sk_test_sTgKyExAmPlE32ChArAcTeRs"
+  prod    = "sk_live_aBcDeFgHiJkLmNoPqRsTuVwX"
+}
+```
+
+`vars show` decrypts and renames `config.vars` → `config.unlocked.vars`. `vars hide` encrypts and renames back. The file extension is the primary indicator of lock state.
+
+---
+
+## AES-256-GCM
+
+Every secret value is encrypted independently with AES-256-GCM.
+
+AES-256-GCM: 256-bit key (very hard to brute-force), GCM mode (Galois/Counter Mode — it adds a tamper-proof authentication tag so corrupted or modified data is rejected, not silently accepted).
+
+Each encrypted value looks like:
+
+```text
+enc:v2:aes256gcm-det:<iv>:<ciphertext>:<tag>
+enc:v2:aes256gcm-det:owner=<name>:<iv>:<ciphertext>:<tag>
+```
+
+| Segment | What it is |
+|---|---|
+| `enc` | Literal marker |
+| `v2` | Format version |
+| `aes256gcm-det` | AES-256-GCM with HMAC-derived deterministic IV |
+| `owner=<name>` | Optional — which owner's key encrypted this value |
+| `<iv>` | 12-byte initialization vector |
+| `<ciphertext>` | The encrypted value |
+| `<tag>` | 16-byte authentication tag |
+
+The auth tag catches tampering. If anyone modifies the ciphertext — even one byte — decryption throws an error. You find out immediately, not after your app boots with corrupted data.
+
+---
+
+## Deterministic IVs — zero diff on unchanged values
+
+v2 uses **HMAC-derived deterministic IVs** instead of random IVs:
+
+```
+IV = HMAC-SHA256(key, "VAR_NAME@env:" + plaintext)[0:12]
+```
+
+The same key + variable name + environment + plaintext always produces the same IV, and therefore the same ciphertext. This means:
+
+- **Zero diff on re-encryption** — if a value hasn't changed, running `vars hide` again produces identical ciphertext. Your git diff shows only the values that actually changed.
+- **`git blame` is preserved** — unchanged lines keep their original commit attribution.
+- **Merge conflicts only happen on real conflicts** — two branches that both encrypt the same unchanged value produce the same bytes, so git's merge has nothing to conflict on.
+
+The nonce reuse is safe because the nonce is derived from the plaintext itself: identical nonces always correspond to identical plaintexts. It is standard AES-256-GCM — not AES-GCM-SIV — with HMAC-derived nonces instead of random nonces. The `-det` suffix in the algorithm name indicates deterministic nonce derivation.
+
