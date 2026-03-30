@@ -8,8 +8,7 @@ dist/
 .turbo/
 
 # vars runtime files
-.vars.key
-.vars.key.*
+.varskey
 .env
 .env.*
 .vars.swp
@@ -19,6 +18,9 @@ dist/
 
 # Claude
 .claude/
+
+# Superpowers
+docs/superpowers/*
 
 # Superset
 .superset/

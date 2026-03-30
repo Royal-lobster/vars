@@ -26,7 +26,7 @@ You'll set a PIN to protect your encryption key. After that, you get:
 | File | What it is | Committed to git? |
 |------|-----------|-------------------|
 | `config.vars` | Your variables — encrypted at rest | Yes |
-| `.vars/key` | Encryption key (locked behind your PIN) | No (gitignored) |
+| `.varskey` | Encryption key (locked behind your PIN) | No (gitignored) |
 | `config.generated.ts` | TypeScript types (auto-generated) | Yes |
 | `config.local.vars` | Per-developer overrides (optional) | No (gitignored) |
 

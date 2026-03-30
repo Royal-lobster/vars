@@ -98,11 +98,11 @@ export function findUnlockedVarsFiles(rootDir: string): string[] {
 	return findAllVarsFiles(rootDir).filter((f) => isUnlockedPath(f));
 }
 
-/** Find .vars/key file, walking up from startDir */
+/** Find .varskey file, walking up from startDir */
 export function findKeyFile(startDir: string): string | null {
 	let dir = resolve(startDir);
 	while (true) {
-		const keyPath = join(dir, ".vars", "key");
+		const keyPath = join(dir, ".varskey");
 		if (existsSync(keyPath)) return keyPath;
 		const parent = dirname(dir);
 		if (parent === dir) return null;

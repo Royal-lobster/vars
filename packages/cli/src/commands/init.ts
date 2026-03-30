@@ -22,11 +22,10 @@ export default defineCommand({
 	args: {},
 	async run() {
 		const root = getProjectRoot();
-		const varsDir = join(root, ".vars");
-		const keyPath = join(varsDir, "key");
+		const keyPath = join(root, ".varskey");
 
 		if (existsSync(keyPath)) {
-			console.log(pc.yellow("  vars is already initialized (.vars/key exists)"));
+			console.log(pc.yellow("  vars is already initialized (.varskey exists)"));
 			return;
 		}
 
@@ -49,7 +48,6 @@ export default defineCommand({
 		}
 
 		// 2. Create key
-		if (!existsSync(varsDir)) mkdirSync(varsDir, { recursive: true });
 		const masterKey = await createMasterKey();
 		const encryptedKey = await encryptMasterKey(masterKey, pin as string);
 		writeFileSync(keyPath, `${encryptedKey}\n`);
@@ -119,7 +117,7 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 
 		// 5. Update .gitignore
 		const gitignorePath = join(root, ".gitignore");
-		const varsIgnoreEntries = "\n# vars\n.vars/key\n.vars/key.*\n*.unlocked.vars\n*.local.vars\n";
+		const varsIgnoreEntries = "\n# vars\n.varskey\n*.unlocked.vars\n*.local.vars\n";
 		if (existsSync(gitignorePath)) {
 			const existing = readFileSync(gitignorePath, "utf8");
 			if (!existing.includes("*.unlocked.vars")) {
@@ -139,8 +137,8 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 				? join(huskyDir, "pre-commit")
 				: join(gitHookDir, "pre-commit");
 
-			const HOOK_MARKER = "# vars: check for unlocked/local files";
-			const HOOK_SCRIPT = `\n${HOOK_MARKER}\nif git diff --cached --name-only 2>/dev/null | grep -qE '\\.(unlocked|local)\\.vars$'; then\n  echo ""\n  echo "vars: Unlocked or local .vars files cannot be committed."\n  echo "  Run 'vars hide' to encrypt unlocked files."\n  echo "  Remove local override files from staging with 'git reset <file>'."\n  echo ""\n  exit 1\nfi\n`;
+			const HOOK_MARKER = "# vars: check for unlocked/local/key files";
+			const HOOK_SCRIPT = `\n${HOOK_MARKER}\nif git diff --cached --name-only 2>/dev/null | grep -qE '\\.(unlocked|local)\\.vars$'; then\n  echo ""\n  echo "vars: Unlocked or local .vars files cannot be committed."\n  echo "  Run 'vars hide' to encrypt unlocked files."\n  echo "  Remove local override files from staging with 'git reset <file>'."\n  echo ""\n  exit 1\nfi\nif git diff --cached --name-only 2>/dev/null | grep -qE '(^|/)\\.varskey$'; then\n  echo ""\n  echo "vars: .varskey contains your encryption key and must not be committed."\n  echo "  Run 'git reset .varskey' to unstage it."\n  echo ""\n  exit 1\nfi\n`;
 
 			if (existsSync(hookPath)) {
 				const existing = readFileSync(hookPath, "utf8");

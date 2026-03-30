@@ -71,6 +71,6 @@ export default defineCommand({
 		// Save new key
 		const encryptedKey = await encryptMasterKey(newKey, pin as string);
 		writeFileSync(keyFile, `${encryptedKey}\n`);
-		console.log(pc.green("\n  ✓ Key rotated. Share the new .vars/key + PIN with teammates."));
+		console.log(pc.green("\n  ✓ Key rotated. Share the new .varskey + PIN with teammates."));
 	},
 });

@@ -13,13 +13,13 @@ vars init
 Sets up a new vars project:
 
 1. Creates `config.vars`, the encrypted secrets file (safe to commit)
-2. Creates `.vars/key`, the master encryption key (gitignored)
+2. Creates `.varskey`, the master encryption key (gitignored)
 3. Updates `.gitignore` to exclude key and swap files
 4. Adds `#vars` import to `package.json` scripts
 
 If a `.env` file exists, vars offers to import it. It reads the key-value pairs, guesses Zod schemas from the values, and encrypts everything before writing.
 
-If `config.vars` already exists but `.vars/key` is missing (e.g., a fresh clone), running `init` again detects the incomplete setup and creates the missing key file.
+If `config.vars` already exists but `.varskey` is missing (e.g., a fresh clone), running `init` again detects the incomplete setup and creates the missing key file.
 
 **Flags**
 
@@ -46,7 +46,7 @@ Subcommands for managing your encryption key.
 vars key init
 ```
 
-Generates a new `.vars/key` file. Run this on a fresh clone that already has a `config.vars` committed.
+Generates a new `.varskey` file. Run this on a fresh clone that already has a `config.vars` committed.
 
 </Accordion>
 <Accordion title="key export — export key for CI">
@@ -71,7 +71,7 @@ vars key export | pbcopy
 vars key rotate
 ```
 
-Generates a new encryption key, re-encrypts values in every `*.vars` file, and replaces `.vars/key`. The old key is overwritten.
+Generates a new encryption key, re-encrypts values in every `*.vars` file, and replaces `.varskey`. The old key is overwritten.
 
 Before rotating, export your current key as a backup:
 
@@ -113,7 +113,7 @@ Owner names may only contain letters, digits, hyphens, and underscores.
 </Accordion>
 <Accordion title="Revoking an owner PIN">
 
-There is no `vars pin delete` command. To revoke an owner's access, remove their `owner=<name>` line from `.vars/key` and redistribute the key file. The key file is plain text, so any editor works.
+There is no `vars pin delete` command. To revoke an owner's access, remove their `owner=<name>` line from `.varskey` and redistribute the key file. The key file is plain text, so any editor works.
 
 </Accordion>
 </Accordions>
@@ -131,21 +131,21 @@ vars doctor
 
 Runs health checks and prints a summary. Exits 1 if any check fails.
 
-**Files:** `config.vars` exists, `.vars/key` exists, codegen is up to date.
+**Files:** `config.vars` exists, `.varskey` exists, codegen is up to date.
 
-**Security:** `.vars/key` is gitignored, pre-commit hook installed, all values encrypted.
+**Security:** `.varskey` is gitignored, pre-commit hook installed, all values encrypted.
 
 **Secrets Health:** No expiring or deprecated secrets (warns if `@expires` is within 30 days).
 
 ```text
 ◆  Files
 │  ✓ config.vars found
-│  ✓ .vars/key found
+│  ✓ .varskey found
 │  △ codegen up to date
 │      Run vars gen to regenerate
 
 ◆  Security
-│  ✓ .vars/key is gitignored
+│  ✓ .varskey is gitignored
 │  △ Pre-commit hook installed
 │      Run vars init to install
 
