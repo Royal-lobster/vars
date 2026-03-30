@@ -1,5 +1,15 @@
 # dotvars
 
+## 0.4.2
+
+### Patch Changes
+
+- [#60](https://github.com/Royal-lobster/vars/pull/60) [`c95863a`](https://github.com/Royal-lobster/vars/commit/c95863a15b223cabe66764b200e4620ba5cb70ce) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Rename key file from `.vars/key` to `.varskey` and add pre-commit hook to block committing it
+
+- Updated dependencies [[`c95863a`](https://github.com/Royal-lobster/vars/commit/c95863a15b223cabe66764b200e4620ba5cb70ce)]:
+  - @dotvars/core@0.4.1
+  - @dotvars/node@0.4.1
+
 ## 0.4.1
 
 ### Patch Changes
