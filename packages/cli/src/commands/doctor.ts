@@ -28,10 +28,10 @@ export default defineCommand({
 		const gitignorePath = join(root, ".gitignore");
 		if (existsSync(gitignorePath)) {
 			const content = readFileSync(gitignorePath, "utf8");
-			if (content.includes(".vars/key")) {
-				console.log(pc.green("  ✓ .vars/key in .gitignore"));
+			if (content.includes(".varskey")) {
+				console.log(pc.green("  ✓ .varskey in .gitignore"));
 			} else {
-				console.log(pc.red("  ✗ .vars/key not in .gitignore"));
+				console.log(pc.red("  ✗ .varskey not in .gitignore"));
 				issues++;
 			}
 		} else {

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as prompts from "@clack/prompts";
 import { createMasterKey, encryptMasterKey } from "@dotvars/node";
@@ -17,13 +17,11 @@ export default defineCommand({
 					process.exit(1);
 				}
 				const root = getProjectRoot();
-				const varsDir = join(root, ".vars");
-				const keyPath = join(varsDir, "key");
+				const keyPath = join(root, ".varskey");
 				if (existsSync(keyPath)) {
-					console.log(pc.yellow("  Key already exists at .vars/key"));
+					console.log(pc.yellow("  Key already exists at .varskey"));
 					return;
 				}
-				if (!existsSync(varsDir)) mkdirSync(varsDir, { recursive: true });
 				const pin = await prompts.password({ message: "Set a PIN:" });
 				if (prompts.isCancel(pin)) process.exit(0);
 				const confirm = await prompts.password({ message: "Confirm PIN:" });
@@ -35,7 +33,7 @@ export default defineCommand({
 				const key = await createMasterKey();
 				const encrypted = await encryptMasterKey(key, pin as string);
 				writeFileSync(keyPath, `${encrypted}\n`);
-				console.log(pc.green("  ✓ Key created at .vars/key"));
+				console.log(pc.green("  ✓ Key created at .varskey"));
 			},
 		}),
 		export: defineCommand({

@@ -8,7 +8,7 @@ description: How the two-layer PIN/key model protects your master key.
 When you run `vars init`, two things are created:
 
 1. A **master key** — 32 bytes of random data. This is what actually encrypts your values.
-2. An **encrypted copy of that master key** — stored in `.vars/key` (gitignored), locked behind your PIN.
+2. An **encrypted copy of that master key** — stored in `.varskey` (gitignored), locked behind your PIN.
 
 The PIN is never stored anywhere. It goes through **Argon2id** — a memory-hard, brute-force-resistant KDF — to derive a wrapping key. That wrapping key decrypts the master key, the master key decrypts your values, and then the wrapping key is discarded.
 
@@ -22,7 +22,7 @@ This two-layer design means changing your PIN only re-encrypts the 32-byte maste
 
 ## The key file
 
-`.vars/key` stores one line per PIN:
+`.varskey` stores one line per PIN:
 
 ```text
 pin:v1:aes256gcm:master:<salt>:<iv>:<ct>:<tag>

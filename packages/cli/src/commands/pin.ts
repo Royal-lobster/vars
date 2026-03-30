@@ -45,7 +45,7 @@ export default defineCommand({
 				const entries = parseKeyFile(keyContent);
 				const existing = entries.find((e) => e.scope === `owner:${owner}`);
 				if (existing) {
-					console.error(pc.red(`  PIN for owner "${owner}" already exists in .vars/key`));
+					console.error(pc.red(`  PIN for owner "${owner}" already exists in .varskey`));
 					process.exit(1);
 				}
 
