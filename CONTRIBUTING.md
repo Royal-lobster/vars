@@ -2,11 +2,20 @@
 
 Thanks for contributing to `vars`.
 
-## Before You Start
+## Repository Layout
 
-- Read the docs in `README.md` and the docs site to understand the product surface.
-- Check existing issues and pull requests before starting duplicate work.
-- Keep changes focused. Small, reviewable pull requests are easier to land.
+This repo is a `pnpm` workspace with apps in `apps/` and published packages in `packages/`.
+
+Current workspace layout:
+
+- `apps/docs`: the docs site
+- `packages/core`: parser, resolver, validation, and code generation logic
+- `packages/node`: Node-specific runtime, crypto, key management, and file handling
+- `packages/cli`: the `vars` / `dotvars` CLI
+- `packages/lsp`: language server support for `.vars` files
+- `packages/vscode`: the VS Code extension
+
+If you are making a change, try to keep it scoped to the package or app that owns the behavior.
 
 ## Local Setup
 
@@ -20,6 +29,17 @@ Install dependencies:
 ```bash
 pnpm install
 ```
+
+## Tooling
+
+- `pnpm` manages the workspace and runs scripts
+- `turbo` orchestrates cross-package tasks like build, test, and typecheck
+- `biome` handles formatting and linting
+- `typescript` is used across the repo
+- `vitest` is used in package test suites
+
+Workspace definitions live in `pnpm-workspace.yaml`.
+Task orchestration is configured in `turbo.json`.
 
 ## Common Commands
 
@@ -37,13 +57,14 @@ pnpm format:fix
 pnpm lint:fix
 ```
 
-## Development Workflow
+If you only need to work in one package or app, you can run commands from that workspace directory as well.
 
-1. Create a branch for your change.
-2. Make the smallest change that solves the problem.
-3. Add or update tests when behavior changes.
-4. Run the relevant checks locally before opening a pull request.
-5. Open a pull request with a clear summary, rationale, and testing notes.
+## Contribution Notes
+
+- Read `README.md` and the docs site first to understand the product surface.
+- Keep changes focused. Small pull requests are easier to review and ship.
+- Add or update tests when behavior changes.
+- Run the relevant local checks before opening a pull request.
 
 ## Pull Request Guidelines
 
