@@ -24,4 +24,4 @@ Project maintainers may remove comments, issues, pull requests, or contributions
 
 ## Reporting
 
-If you experience or witness unacceptable behavior, contact the maintainer privately through GitHub.
+If you experience or witness unacceptable behavior, contact the maintainer at `contact[at]srujangurram[dot]me`.

@@ -10,7 +10,7 @@
 
 - Bug reports: open a GitHub issue with reproduction steps
 - Feature requests: open a GitHub issue describing the use case
-- Security issues: follow `SECURITY.md` and do not post details publicly
+- Security issues: email `contact[at]srujangurram[dot]me` and do not post details publicly
 
 ## What To Include
 
