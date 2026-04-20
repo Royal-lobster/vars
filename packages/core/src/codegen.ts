@@ -1,9 +1,12 @@
 import { createHash } from "node:crypto";
 import { isEncrypted } from "./crypto-constants.js";
+import { generateServerless } from "./serverless-codegen.js";
 import type { ResolvedVar, ResolvedVars } from "./types.js";
 
 export interface CodegenOptions {
-	platform?: "node" | "cloudflare" | "deno" | "static";
+	platform?: "node" | "serverless" | "deno" | "static";
+	/** For platform=serverless: the full per-env ResolvedVars map. If omitted, errors. */
+	byEnv?: Record<string, import("./types.js").ResolvedVars>;
 }
 
 // ── Type inference ────────────────────────────────
@@ -388,6 +391,17 @@ export const REDACTED_CLASS = `class Redacted<T> {
 export function generateTypeScript(resolved: ResolvedVars, options?: CodegenOptions): string {
 	const platform = options?.platform ?? "node";
 
+	if (platform === "serverless") {
+		if (!options?.byEnv) {
+			throw new Error("generateTypeScript: platform=serverless requires options.byEnv");
+		}
+		return generateServerless(options.byEnv);
+	}
+
+	if (platform !== "node" && platform !== "deno" && platform !== "static") {
+		throw new Error(`unknown platform: ${platform}`);
+	}
+
 	// Compute source hash
 	const hashInput = resolved.sourceFiles.sort().join("|");
 	const sourceHash = createHash("sha256").update(hashInput).digest("hex").slice(0, 8);
@@ -436,11 +450,6 @@ export function generateTypeScript(resolved: ResolvedVars, options?: CodegenOpti
 			parts.push("export const vars: Vars = parseVars(process.env);");
 			parts.push("");
 			parts.push(generateClientVarsExport(grouped));
-		} else if (platform === "cloudflare") {
-			parts.push("export function getVars(env: Record<string, string>): Vars {");
-			parts.push("  return parseVars(env);");
-			parts.push("}");
-			// clientVars doesn't make sense for Cloudflare (no module-level vars object)
 		} else if (platform === "deno") {
 			parts.push("export const vars: Vars = parseVars(Deno.env.toObject());");
 			parts.push("");
