@@ -1,0 +1,52 @@
+---
+title: Vercel
+description: One VARS_KEY, runtime decrypt on Vercel Functions and Edge.
+icon: SiVercel
+---
+
+## Setup
+
+```bash
+vars gen config.vars --platform serverless
+```
+
+Ciphertexts for every env are embedded in the generated module. `getVars(env)` decrypts at runtime using Web Crypto and memoizes per-invocation isolate.
+
+## Usage
+
+```typescript
+// app/api/health/route.ts
+import { getVars } from '#vars'
+
+export async function GET() {
+  const vars = await getVars(process.env)
+  return Response.json({
+    app: vars.APP_NAME,
+    db: vars.DATABASE_URL.unwrap(),
+  })
+}
+```
+
+Works identically for Edge Functions, Serverless Functions, Middleware, and Server Components.
+
+## Secrets
+
+In the Vercel dashboard:
+
+1. **Project → Settings → Environment Variables**
+2. Add `VARS_KEY` (**Sensitive**) with the output of `vars key export`.
+3. Add `VARS_ENV` (plaintext) with the env name — e.g. `prod` for Production, `dev` for Preview/Development.
+
+That's it. Only two entries per environment, no per-secret configuration.
+
+## Local dev
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- next dev"
+  }
+}
+```
+
+`vars run` exports `VARS_KEY` + `VARS_ENV` into `process.env` for your dev server.
