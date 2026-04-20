@@ -1,20 +1,18 @@
 ---
 title: Cloudflare Workers
-description: Using vars with Cloudflare Workers, env bindings, and the getVars pattern.
+description: One VARS_KEY secret. Ciphertexts bundled. Runtime decrypt via Web Crypto.
 icon: SiCloudflare
 ---
 
 ## Setup
 
-Generate a Workers-compatible module:
-
 ```bash
-vars gen config.vars --platform cloudflare
+vars gen config.vars --platform serverless
 ```
 
-This generates a `getVars(env)` function instead of reading from `process.env`.
+This embeds per-env ciphertexts in the generated module and emits an async `getVars(env)` that decrypts at runtime.
 
-## Usage
+## Worker code
 
 ```typescript
 import { getVars } from '#vars'
@@ -22,36 +20,50 @@ import { Hono } from 'hono'
 
 const app = new Hono()
 
-app.get('/', (c) => {
-  const vars = getVars(c.env)
-  return c.json({ app: vars.APP_NAME })
+app.get('/', async (c) => {
+  const vars = await getVars(c.env)
+  return c.json({ app: vars.APP_NAME, db: vars.DATABASE_URL.unwrap() })
 })
 
 export default app
 ```
 
-For vanilla Workers:
+`getVars` is async (Web Crypto is async-only). The result is memoized per-isolate — subsequent calls in the same isolate return instantly.
 
-```typescript
-import { getVars } from '#vars'
+## Wrangler config
 
-export default {
-  async fetch(request: Request, env: Record<string, string>) {
-    const vars = getVars(env)
-    return new Response(vars.APP_NAME)
+```toml
+name = "my-worker"
+main = "src/index.ts"
+
+[env.production]
+vars = { VARS_ENV = "prod" }
+
+[env.preview]
+vars = { VARS_ENV = "dev" }
+```
+
+Then set the single runtime secret once per env:
+
+```bash
+wrangler secret put VARS_KEY --env production
+# paste the output of: vars key export
+wrangler secret put VARS_KEY --env preview
+```
+
+That's the complete deploy-time config. No per-secret `wrangler secret put`.
+
+## Local dev
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- wrangler dev"
   }
 }
 ```
 
-## Deploying
-
-Export your vars and set them in wrangler:
-
-```bash
-vars export --env prod --format json
-```
-
-Copy the values to `wrangler.toml` or set them via the Cloudflare dashboard.
+`vars run` decrypts using your local `VARS_KEY` / PIN and injects into `process.env`; `wrangler dev` forwards env to the Worker's local `env` binding.
 
 ## Example config.vars
 
@@ -71,4 +83,12 @@ DATABASE_URL : z.string().url() {
 }
 ```
 
-Note: Workers don't use `PORT` — remove it from your config for Workers projects.
+## Migrating from `--platform cloudflare`
+
+`--platform cloudflare` was removed because it required pushing every secret to Cloudflare via `wrangler secret put`, defeating the "one key" value proposition.
+
+1. `wrangler secret put VARS_KEY --env production` (once per env).
+2. Add `[env.production] vars = { VARS_ENV = "prod" }` to `wrangler.toml`.
+3. `vars gen config.vars --platform serverless`.
+4. Update call sites to `await getVars(env)`.
+5. Remove any per-secret `wrangler secret put` entries now managed by `vars`.
