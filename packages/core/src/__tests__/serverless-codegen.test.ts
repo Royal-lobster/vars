@@ -72,5 +72,7 @@ describe("generateServerless — getVars shape", () => {
 		expect(code).toContain('throw new Error("vars: VARS_KEY not set');
 		expect(code).toContain('throw new Error("vars: VARS_ENV not set');
 		expect(code).toContain("schema.parse");
+		expect(code).toContain("inflight.catch(");
+		expect(code).toContain("cache = null");
 	});
 });

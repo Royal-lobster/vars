@@ -43,6 +43,7 @@ export function generateServerless(byEnv: Record<string, ResolvedVars>): string 
 	lines.push("");
 	lines.push(EMBEDDED_CRYPTO_HELPERS);
 
+	// TODO(task-5): replace with real body
 	lines.push("\nfunction wrapRedacted(parsed: any): Vars { return parsed as Vars; }");
 
 	const envUnion = envNames.map((e) => JSON.stringify(e)).join(" | ");
@@ -54,7 +55,7 @@ export async function getVars(
   envOverride?: ${envUnion},
 ): Promise<Vars> {
   if (cache) return cache;
-  cache = (async () => {
+  const inflight = (async () => {
     const targetEnv = envOverride ?? (env.VARS_ENV as ${envUnion} | undefined);
     if (!targetEnv) throw new Error("vars: VARS_ENV not set and no override passed");
     if (!(targetEnv in CIPHERTEXTS)) throw new Error("vars: unknown env \\\"" + targetEnv + "\\\"");
@@ -67,7 +68,11 @@ export async function getVars(
     const parsed = schema.parse(raw);
     return wrapRedacted(parsed);
   })();
-  return cache;
+  cache = inflight;
+  inflight.catch(() => {
+    if (cache === inflight) cache = null;
+  });
+  return inflight;
 }
 `);
 
