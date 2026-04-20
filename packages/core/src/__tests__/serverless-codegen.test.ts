@@ -110,5 +110,6 @@ describe("generateServerless — schema + Redacted", () => {
 		expect(code).toContain("PORT: z.coerce.number()");
 		expect(code).toContain("DB: z.string().url()");
 		expect(code).toContain("new Redacted(parsed.DB");
+		expect(code).toContain("PORT: parsed.PORT as number");
 	});
 });

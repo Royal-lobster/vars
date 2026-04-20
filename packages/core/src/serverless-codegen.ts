@@ -110,7 +110,7 @@ function generateWrapRedacted(grouped: GroupedVars): string {
 		if (inf.needsRedacted) {
 			lines.push(`    ${v.name}: new Redacted(parsed.${v.name} as string),`);
 		} else {
-			lines.push(`    ${v.name}: parsed.${v.name},`);
+			lines.push(`    ${v.name}: parsed.${v.name} as ${inf.base},`);
 		}
 	}
 
