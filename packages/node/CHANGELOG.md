@@ -1,5 +1,12 @@
 # @dotvars/node
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies [[`c95863a`](https://github.com/Royal-lobster/vars/commit/c95863a15b223cabe66764b200e4620ba5cb70ce)]:
+  - @dotvars/core@0.4.1
+
 ## 0.4.0
 
 ### Minor Changes
