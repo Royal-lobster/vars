@@ -42,3 +42,18 @@ describe("generateServerless — validation", () => {
 		expect(() => generateServerless({})).toThrow("generateServerless: no envs provided");
 	});
 });
+
+describe("generateServerless — embedded crypto helpers", () => {
+	it("emits base64, HKDF, and AES-GCM decrypt helpers", () => {
+		const byEnv = {
+			dev: vars("enc:v2:aes256gcm-det:aa:bb:cc"),
+		};
+		const code = generateServerless(byEnv);
+		expect(code).toMatch(/function base64ToBytes/);
+		expect(code).toMatch(/function hkdfSha256/);
+		expect(code).toMatch(/async function decryptToken/);
+		expect(code).toContain("crypto.subtle.importKey");
+		expect(code).toContain("AES-GCM");
+		expect(code).toContain("dotvars-owner-key-v1"); // HKDF salt must match @vars/node
+	});
+});
