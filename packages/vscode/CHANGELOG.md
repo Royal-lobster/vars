@@ -1,5 +1,12 @@
 # dotvars-vscode
 
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @dotvars/lsp@0.3.3
+
 ## 0.1.3
 
 ### Patch Changes
