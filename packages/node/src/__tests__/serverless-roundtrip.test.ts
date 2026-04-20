@@ -1,10 +1,12 @@
+import { randomBytes } from "node:crypto";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { generateTypeScript } from "@dotvars/core";
+import { type ResolvedVars, generateTypeScript } from "@dotvars/core";
 import { afterEach, describe, expect, it } from "vitest";
+import { decrypt, deriveOwnerKey, encryptDeterministic } from "../crypto.js";
 import { createMasterKey } from "../key-manager.js";
 import { resolveAllEnvs } from "../resolve-multi-env.js";
 import { hideFile } from "../show-hide.js";
@@ -17,6 +19,22 @@ const coreRequire = createRequire(require.resolve("@dotvars/core"));
 const zodDir = dirname(coreRequire.resolve("zod/package.json"));
 
 const hasSubtle = !!(globalThis as { crypto?: { subtle?: unknown } }).crypto?.subtle;
+
+async function loadServerlessCode(code: string, dir: string): Promise<any> {
+	const esbuild = await import("esbuild");
+	const outPath = join(dir, `vars-${randomBytes(4).toString("hex")}.mjs`);
+	await esbuild.build({
+		stdin: { contents: code, loader: "ts", resolveDir: zodDir },
+		bundle: true,
+		format: "esm",
+		platform: "node",
+		target: "node18",
+		outfile: outPath,
+		write: true,
+		logLevel: "silent",
+	});
+	return import(pathToFileURL(outPath).href);
+}
 
 describe("serverless round-trip", () => {
 	const tmpDirs: string[] = [];
@@ -43,30 +61,56 @@ describe("serverless round-trip", () => {
 			const ref = byEnv.prod;
 			const code = generateTypeScript(ref, { platform: "serverless", byEnv });
 
-			const esbuild = await import("esbuild");
-			const outPath = join(dir, "vars.mjs");
-			await esbuild.build({
-				stdin: {
-					contents: code,
-					loader: "ts",
-					resolveDir: zodDir,
-				},
-				bundle: true,
-				format: "esm",
-				platform: "node",
-				target: "node18",
-				outfile: outPath,
-				write: true,
-				logLevel: "silent",
-			});
-
-			const mod = await import(pathToFileURL(outPath).href);
+			const mod = await loadServerlessCode(code, dir);
 			const vars = await mod.getVars({
 				VARS_KEY: key.toString("base64"),
 				VARS_ENV: "prod",
 			});
 			expect(vars.APP_NAME).toBe("my-app");
 			expect(vars.DATABASE_URL.unwrap()).toBe("postgres://prod");
+		},
+	);
+
+	it.skipIf(!hasSubtle)(
+		"owner-scoped HKDF subkey matches @dotvars/node Node-crypto path",
+		async () => {
+			const dir = mkdtempSync(join(tmpdir(), "vars-rt-"));
+			tmpDirs.push(dir);
+
+			const master = await createMasterKey();
+			const owner = "alice";
+			const subkey = await deriveOwnerKey(master, owner);
+			const token = encryptDeterministic("my-secret", subkey, "ctx", owner);
+
+			// Sanity: the Node-side decrypt round-trips with the derived subkey.
+			expect(decrypt(token, subkey)).toBe("my-secret");
+
+			const byEnv: Record<string, ResolvedVars> = {
+				dev: {
+					vars: [
+						{
+							name: "X",
+							flatName: "X",
+							public: false,
+							schema: "z.string()",
+							value: token,
+							metadata: null,
+						},
+					],
+					checks: [],
+					envs: [],
+					params: [],
+					sourceFiles: ["/tmp/fake.vars"],
+				},
+			};
+
+			const code = generateTypeScript(byEnv.dev, { platform: "serverless", byEnv });
+			const mod = await loadServerlessCode(code, dir);
+			const vars = await mod.getVars({
+				VARS_KEY: master.toString("base64"),
+				VARS_ENV: "dev",
+			});
+			expect(vars.X.unwrap()).toBe("my-secret");
 		},
 	);
 });
