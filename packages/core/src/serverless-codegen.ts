@@ -1,5 +1,14 @@
 import type { ResolvedVars } from "./types.js";
 
+/**
+ * Build the serverless `#vars` module source.
+ *
+ * Assumes every env in `byEnv` declares the same set of variables. The first
+ * env is used as the structural reference for both public vars (whose values
+ * are expected to be identical across envs) and the list of secret names.
+ * Divergent variable sets across envs will silently produce a bundle that
+ * references only the reference env's vars.
+ */
 export function generateServerless(byEnv: Record<string, ResolvedVars>): string {
 	const envNames = Object.keys(byEnv);
 	if (envNames.length === 0) throw new Error("generateServerless: no envs provided");

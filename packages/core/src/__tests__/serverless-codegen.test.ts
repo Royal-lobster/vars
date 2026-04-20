@@ -36,3 +36,9 @@ describe("generateServerless — ciphertext collection", () => {
 		expect(code).toContain('APP_NAME: "my-app"');
 	});
 });
+
+describe("generateServerless — validation", () => {
+	it("throws when byEnv is empty", () => {
+		expect(() => generateServerless({})).toThrow("generateServerless: no envs provided");
+	});
+});
