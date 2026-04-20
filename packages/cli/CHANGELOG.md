@@ -1,5 +1,31 @@
 # dotvars
 
+## 1.0.0
+
+### Major Changes
+
+- [#64](https://github.com/Royal-lobster/vars/pull/64) [`3a519a8`](https://github.com/Royal-lobster/vars/commit/3a519a852431fcfa0172c39ef5dcb08cef556a62) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Add `--platform serverless` runtime decrypt.
+
+  Ciphertexts are now embedded in the generated `#vars` module and decrypted at runtime via `globalThis.crypto.subtle` using `env.VARS_KEY`. Works on Cloudflare Workers, Vercel Functions + Edge, Netlify Functions, Deno Deploy, Bun, and any runtime with Web Crypto (Node ≥19).
+
+  **Breaking:**
+
+  - `--platform cloudflare` was removed. Regenerate with `--platform serverless`.
+  - `getVars` is now `async`: `const vars = await getVars(env)`.
+
+  **Migration:**
+
+  1. `wrangler secret put VARS_KEY` (or the Vercel / Netlify / Deno Deploy dashboard equivalent); set `VARS_ENV`.
+  2. `vars gen config.vars --platform serverless`.
+  3. Update call sites to `await getVars(env)`.
+  4. Remove per-secret `wrangler secret put` / platform-dashboard entries now managed by `vars`.
+
+### Patch Changes
+
+- Updated dependencies [[`3a519a8`](https://github.com/Royal-lobster/vars/commit/3a519a852431fcfa0172c39ef5dcb08cef556a62)]:
+  - @dotvars/core@1.0.0
+  - @dotvars/node@0.5.0
+
 ## 0.4.2
 
 ### Patch Changes
