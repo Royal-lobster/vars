@@ -8,13 +8,13 @@ export interface CodegenOptions {
 
 // ── Type inference ────────────────────────────────
 
-interface InferredType {
+export interface InferredType {
 	base: string; // "string" | "number" | "boolean" | '"a" | "b"' | etc.
 	optional: boolean;
 	needsRedacted: boolean; // true only for secret strings
 }
 
-function inferType(v: ResolvedVar): InferredType {
+export function inferType(v: ResolvedVar): InferredType {
 	const s = v.schema;
 	const optional = s.includes(".optional()");
 
@@ -66,12 +66,12 @@ function renderType(inf: InferredType): string {
 
 // ── Grouping ──────────────────────────────────────
 
-interface GroupedVars {
+export interface GroupedVars {
 	topLevel: ResolvedVar[];
 	groups: Map<string, ResolvedVar[]>;
 }
 
-function groupVars(vars: ResolvedVar[]): GroupedVars {
+export function groupVars(vars: ResolvedVar[]): GroupedVars {
 	const topLevel: ResolvedVar[] = [];
 	const groups = new Map<string, ResolvedVar[]>();
 
@@ -89,7 +89,7 @@ function groupVars(vars: ResolvedVar[]): GroupedVars {
 
 // ── Schema block ──────────────────────────────────
 
-function generateSchemaBlock(grouped: GroupedVars): string {
+export function generateSchemaBlock(grouped: GroupedVars): string {
 	const lines: string[] = [];
 	lines.push("const schema = z.object({");
 
@@ -111,7 +111,7 @@ function generateSchemaBlock(grouped: GroupedVars): string {
 
 // ── Vars type block ───────────────────────────────
 
-function generateVarsType(grouped: GroupedVars): string {
+export function generateVarsType(grouped: GroupedVars): string {
 	const lines: string[] = [];
 	lines.push("export type Vars = {");
 
@@ -364,7 +364,7 @@ function generateClientVarsExport(grouped: GroupedVars): string {
 
 // ── Inline Redacted class ─────────────────────────
 
-const REDACTED_CLASS = `class Redacted<T> {
+export const REDACTED_CLASS = `class Redacted<T> {
   #value: T;
   constructor(value: T) {
     this.#value = value;

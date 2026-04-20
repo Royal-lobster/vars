@@ -76,3 +76,39 @@ describe("generateServerless — getVars shape", () => {
 		expect(code).toContain("cache = null");
 	});
 });
+
+describe("generateServerless — schema + Redacted", () => {
+	it("emits the same schema block and Redacted wrapping as node codegen", () => {
+		const byEnv = {
+			dev: {
+				vars: [
+					{
+						name: "PORT",
+						flatName: "PORT",
+						public: true,
+						schema: "z.coerce.number()",
+						value: "3000",
+						metadata: null,
+					},
+					{
+						name: "DB",
+						flatName: "DB",
+						public: false,
+						schema: "z.string().url()",
+						value: "enc:v2:aes256gcm-det:a:b:c",
+						metadata: null,
+					},
+				],
+				checks: [],
+				envs: [],
+				params: [],
+				sourceFiles: [],
+			},
+		};
+		const code = generateServerless(byEnv as any);
+		expect(code).toContain("const schema = z.object(");
+		expect(code).toContain("PORT: z.coerce.number()");
+		expect(code).toContain("DB: z.string().url()");
+		expect(code).toContain("new Redacted(parsed.DB");
+	});
+});
