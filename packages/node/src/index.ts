@@ -2,6 +2,7 @@
 export { readVarsFile } from "./file-reader.js";
 export { resolveUseChain } from "./use-resolver.js";
 export type { UseResolveOptions } from "./use-resolver.js";
+export { resolveAllEnvs } from "./resolve-multi-env.js";
 export { encryptDeterministic, decrypt, deriveOwnerKey } from "./crypto.js";
 export {
 	createMasterKey,
