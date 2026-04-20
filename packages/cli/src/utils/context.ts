@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import * as prompts from "@clack/prompts";
 import type { KeyScope } from "@dotvars/node";
@@ -173,8 +173,34 @@ export function resolveEnv(env: string): string {
 	return aliases[env] ?? env;
 }
 
-/** Get the git root directory */
+/** Find the nearest project root, walking up from startDir.
+ *  Prefers the closest ancestor containing package.json (the current package in a
+ *  monorepo), falling back to the git root, then to startDir/cwd.
+ *
+ *  The walk is bounded by the git root so we don't pick up an unrelated
+ *  package.json that happens to sit above the repository (e.g. a personal
+ *  `~/package.json`). */
 export function getProjectRoot(startDir?: string): string {
+	const resolved = resolve(startDir ?? process.cwd());
+	// Normalize through the real filesystem path so the boundary comparison
+	// below matches git's own (symlink-resolved) output on macOS/Linux.
+	const start = existsSync(resolved) ? realpathSync(resolved) : resolved;
+	const gitRoot = getGitRoot(start);
+	let dir = start;
+	while (true) {
+		if (existsSync(join(dir, "package.json"))) return dir;
+		if (gitRoot && dir === gitRoot) break;
+		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+	if (gitRoot) return gitRoot;
+	return start;
+}
+
+/** Get the git repository root for git-scoped operations (e.g. hooks).
+ *  Returns null if not in a git repository. */
+export function getGitRoot(startDir?: string): string | null {
 	try {
 		return execSync("git rev-parse --show-toplevel", {
 			cwd: startDir ?? process.cwd(),
@@ -182,6 +208,6 @@ export function getProjectRoot(startDir?: string): string {
 			stdio: ["pipe", "pipe", "pipe"],
 		}).trim();
 	} catch {
-		return startDir ?? process.cwd();
+		return null;
 	}
 }

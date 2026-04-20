@@ -52,6 +52,14 @@ export function activate(context: ExtensionContext): void {
 				return;
 			}
 
+			// Prefer the active .vars file's directory so the CLI scopes to the
+			// correct package in a monorepo; fall back to the workspace root.
+			const activeUri = window.activeTextEditor?.document.uri;
+			const cwd =
+				activeUri && activeUri.scheme === "file" && activeUri.fsPath.endsWith(".vars")
+					? path.dirname(activeUri.fsPath)
+					: workspaceFolder.uri.fsPath;
+
 			const pin = await window.showInputBox({
 				prompt: "Enter your vars PIN",
 				password: true,
@@ -61,7 +69,7 @@ export function activate(context: ExtensionContext): void {
 			if (!pin) return;
 
 			try {
-				await runVarsWithPin(cmd, pin, workspaceFolder.uri.fsPath);
+				await runVarsWithPin(cmd, pin, cwd);
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
 				if (msg.includes("Invalid PIN")) {

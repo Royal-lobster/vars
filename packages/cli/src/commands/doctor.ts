@@ -3,10 +3,9 @@ import { join } from "node:path";
 import { isUnlockedPath, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findAllVarsFiles, findKeyFile, getProjectRoot } from "../utils/context.js";
+import { findAllVarsFiles, findKeyFile, getGitRoot, getProjectRoot } from "../utils/context.js";
 import { checkExpiry, formatExpiryMessage } from "../utils/expiry.js";
-
-const HOOK_MARKER = "# vars: check for unlocked files";
+import { HOOK_MARKER, OLD_HOOK_MARKERS } from "../utils/pre-commit-hook.js";
 
 export default defineCommand({
 	meta: { name: "doctor", description: "Diagnose vars setup" },
@@ -39,12 +38,11 @@ export default defineCommand({
 			issues++;
 		}
 
-		// Check pre-commit hook
-		const hookPaths = [
-			join(root, ".husky", "pre-commit"),
-			join(root, ".git", "hooks", "pre-commit"),
-		];
-		const OLD_HOOK_MARKER = "@vars-state";
+		// Check pre-commit hook — lives at git root since .git/hooks is repo-wide
+		const gitRoot = getGitRoot(root);
+		const hookPaths = gitRoot
+			? [join(gitRoot, ".husky", "pre-commit"), join(gitRoot, ".git", "hooks", "pre-commit")]
+			: [];
 		let hookStatus: "current" | "outdated" | "missing" = "missing";
 		for (const p of hookPaths) {
 			if (!existsSync(p)) continue;
@@ -53,7 +51,7 @@ export default defineCommand({
 				hookStatus = "current";
 				break;
 			}
-			if (content.includes(OLD_HOOK_MARKER)) {
+			if (OLD_HOOK_MARKERS.some((m) => content.includes(m))) {
 				hookStatus = "outdated";
 				break;
 			}

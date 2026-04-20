@@ -13,9 +13,10 @@ import { createMasterKey, encryptMasterKey, resolveUseChain, toUnlockedPath } fr
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { buildHeaderComment } from "../utils/build-header-comment.js";
-import { getProjectRoot } from "../utils/context.js";
+import { getGitRoot, getProjectRoot } from "../utils/context.js";
 import { ALL_PUBLIC_PREFIXES, detectFramework } from "../utils/detect-framework.js";
 import { migrateFromEnv } from "../utils/migrate-from-env.js";
+import { HOOK_MARKER, HOOK_SCRIPT, resolveHookPath } from "../utils/pre-commit-hook.js";
 
 export default defineCommand({
 	meta: { name: "init", description: "Initialize vars in the current project" },
@@ -98,12 +99,17 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 				const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
 				const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
 				if (!allDeps.zod) {
-					// Detect package manager
-					const pm = existsSync(join(root, "pnpm-lock.yaml"))
+					// Detect package manager — in a monorepo the lock file sits at
+					// the git/workspace root, not the current package.
+					const lockDirs = [root, getGitRoot(root)].filter(
+						(d): d is string => typeof d === "string",
+					);
+					const hasLock = (name: string) => lockDirs.some((d) => existsSync(join(d, name)));
+					const pm = hasLock("pnpm-lock.yaml")
 						? "pnpm"
-						: existsSync(join(root, "yarn.lock"))
+						: hasLock("yarn.lock")
 							? "yarn"
-							: existsSync(join(root, "bun.lockb")) || existsSync(join(root, "bun.lock"))
+							: hasLock("bun.lockb") || hasLock("bun.lock")
 								? "bun"
 								: "npm";
 					console.log(pc.dim("  Installing zod..."));
@@ -129,17 +135,11 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 			writeFileSync(gitignorePath, `${varsIgnoreEntries.trim()}\n`);
 		}
 
-		// 6. Install pre-commit hook
+		// 6. Install pre-commit hook (always at git root — .git/hooks is repo-wide)
 		try {
-			const huskyDir = join(root, ".husky");
-			const gitHookDir = join(root, ".git", "hooks");
-			const hookPath = existsSync(huskyDir)
-				? join(huskyDir, "pre-commit")
-				: join(gitHookDir, "pre-commit");
-
-			const HOOK_MARKER = "# vars: check for unlocked/local/key files";
-			const HOOK_SCRIPT = `\n${HOOK_MARKER}\nif git diff --cached --name-only 2>/dev/null | grep -qE '\\.(unlocked|local)\\.vars$'; then\n  echo ""\n  echo "vars: Unlocked or local .vars files cannot be committed."\n  echo "  Run 'vars hide' to encrypt unlocked files."\n  echo "  Remove local override files from staging with 'git reset <file>'."\n  echo ""\n  exit 1\nfi\nif git diff --cached --name-only 2>/dev/null | grep -qE '(^|/)\\.varskey$'; then\n  echo ""\n  echo "vars: .varskey contains your encryption key and must not be committed."\n  echo "  Run 'git reset .varskey' to unstage it."\n  echo ""\n  exit 1\nfi\n`;
-
+			const gitRoot = getGitRoot(root);
+			if (!gitRoot) throw new Error("not a git repo");
+			const hookPath = resolveHookPath(gitRoot);
 			if (existsSync(hookPath)) {
 				const existing = readFileSync(hookPath, "utf8");
 				if (!existing.includes(HOOK_MARKER)) {
