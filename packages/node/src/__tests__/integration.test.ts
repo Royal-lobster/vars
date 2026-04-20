@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { evaluateCheck, generateTypeScript, parse, validateValue } from "@dotvars/core";
 import { describe, expect, it } from "vitest";
 import { createMasterKey } from "../key-manager.js";
+import { resolveAllEnvs } from "../resolve-multi-env.js";
 import { hideFile, showFile } from "../show-hide.js";
 import { resolveUseChain } from "../use-resolver.js";
 
@@ -102,9 +103,11 @@ SECRET : z.string() {
 		const nodeCode = generateTypeScript(resolved, { platform: "node" });
 		expect(nodeCode).toContain("process.env");
 
-		const cfCode = generateTypeScript(resolved, { platform: "cloudflare" });
-		expect(cfCode).toContain("getVars");
-		expect(cfCode).not.toContain("process.env");
+		const byEnv = resolveAllEnvs(resolve(fixtureDir, "services/api/vars.vars"));
+		const serverlessCode = generateTypeScript(resolved, { platform: "serverless", byEnv });
+		expect(serverlessCode).toContain("export async function getVars");
+		expect(serverlessCode).toContain("CIPHERTEXTS");
+		expect(serverlessCode).not.toContain("process.env");
 
 		const denoCode = generateTypeScript(resolved, { platform: "deno" });
 		expect(denoCode).toContain("Deno.env");
