@@ -37,6 +37,16 @@ describe("generateServerless — ciphertext collection", () => {
 	});
 });
 
+describe("generateServerless — platform marker", () => {
+	it("emits the @vars-platform: serverless marker", () => {
+		const byEnv = {
+			dev: vars("enc:v2:aes256gcm-det:aa:bb:cc"),
+		};
+		const code = generateServerless(byEnv);
+		expect(code).toContain("// @vars-platform: serverless");
+	});
+});
+
 describe("generateServerless — validation", () => {
 	it("throws when byEnv is empty", () => {
 		expect(() => generateServerless({})).toThrow("generateServerless: no envs provided");
