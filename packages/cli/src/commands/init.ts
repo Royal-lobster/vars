@@ -16,6 +16,7 @@ import { buildHeaderComment } from "../utils/build-header-comment.js";
 import { getGitRoot, getProjectRoot } from "../utils/context.js";
 import { ALL_PUBLIC_PREFIXES, detectFramework } from "../utils/detect-framework.js";
 import { migrateFromEnv } from "../utils/migrate-from-env.js";
+import { HOOK_MARKER, HOOK_SCRIPT, resolveHookPath } from "../utils/pre-commit-hook.js";
 
 export default defineCommand({
 	meta: { name: "init", description: "Initialize vars in the current project" },
@@ -133,15 +134,7 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 		try {
 			const gitRoot = getGitRoot(root);
 			if (!gitRoot) throw new Error("not a git repo");
-			const huskyDir = join(gitRoot, ".husky");
-			const gitHookDir = join(gitRoot, ".git", "hooks");
-			const hookPath = existsSync(huskyDir)
-				? join(huskyDir, "pre-commit")
-				: join(gitHookDir, "pre-commit");
-
-			const HOOK_MARKER = "# vars: check for unlocked/local/key files";
-			const HOOK_SCRIPT = `\n${HOOK_MARKER}\nif git diff --cached --name-only 2>/dev/null | grep -qE '\\.(unlocked|local)\\.vars$'; then\n  echo ""\n  echo "vars: Unlocked or local .vars files cannot be committed."\n  echo "  Run 'vars hide' to encrypt unlocked files."\n  echo "  Remove local override files from staging with 'git reset <file>'."\n  echo ""\n  exit 1\nfi\nif git diff --cached --name-only 2>/dev/null | grep -qE '(^|/)\\.varskey$'; then\n  echo ""\n  echo "vars: .varskey contains your encryption key and must not be committed."\n  echo "  Run 'git reset .varskey' to unstage it."\n  echo ""\n  exit 1\nfi\n`;
-
+			const hookPath = resolveHookPath(gitRoot);
 			if (existsSync(hookPath)) {
 				const existing = readFileSync(hookPath, "utf8");
 				if (!existing.includes(HOOK_MARKER)) {
