@@ -27,6 +27,29 @@ export async function GET() {
 }
 ```
 
+## Server-side on Vercel (or any serverless target)
+
+For production deployments to Vercel, Netlify, or other serverless runtimes, regenerate with the serverless platform so ciphertexts ship in the bundle and decrypt at runtime from a single `VARS_KEY`:
+
+```bash
+vars gen config.vars --platform serverless
+```
+
+Then switch to the async `getVars(env)` entry point:
+
+```typescript
+import { getVars } from '#vars'
+
+export async function GET() {
+  const vars = await getVars(process.env)
+  return Response.json({ db: vars.DATABASE_URL.unwrap() })
+}
+```
+
+Set only `VARS_KEY` + `VARS_ENV` in the platform dashboard — no per-secret entries. See the [Vercel guide](/docs/frameworks/vercel) for the full deploy flow.
+
+Keep the default (non-serverless) build for local dev and for purely-static exports where runtime decryption isn't needed.
+
 ## Client Components
 
 Next.js automatically inlines `NEXT_PUBLIC_*` variables from `process.env` into client bundles at build time. No extra config needed.

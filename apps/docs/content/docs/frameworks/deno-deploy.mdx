@@ -1,0 +1,45 @@
+---
+title: Deno Deploy
+description: One VARS_KEY, runtime decrypt on Deno Deploy.
+icon: SiDeno
+---
+
+## Setup
+
+```bash
+vars gen config.vars --platform serverless
+```
+
+Deno has built-in Web Crypto, so the generated module runs without any polyfills.
+
+## Usage
+
+```typescript
+import { getVars } from '#vars'
+
+Deno.serve(async () => {
+  const vars = await getVars(Deno.env.toObject())
+  return new Response(`hello from ${vars.APP_NAME}`)
+})
+```
+
+## Secrets
+
+Deno Deploy → Project → **Settings → Environment Variables**:
+
+- `VARS_KEY` — the output of `vars key export`
+- `VARS_ENV` — the env name, e.g. `prod`
+
+No per-secret entries.
+
+## Local dev
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- deno run --allow-net --allow-env main.ts"
+  }
+}
+```
+
+`vars run` sets `VARS_KEY` and `VARS_ENV` in `process.env`; Deno picks them up via `Deno.env.toObject()`.

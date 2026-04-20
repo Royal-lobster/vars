@@ -1,0 +1,46 @@
+---
+title: Bun
+description: One VARS_KEY, runtime decrypt on Bun (self-hosted or containerized).
+icon: SiBun
+---
+
+## Setup
+
+```bash
+vars gen config.vars --platform serverless
+```
+
+Bun ships with Web Crypto — the generated module runs as-is.
+
+## Usage
+
+```typescript
+import { getVars } from '#vars'
+
+Bun.serve({
+  port: 3000,
+  async fetch() {
+    const vars = await getVars(process.env)
+    return new Response(`hello from ${vars.APP_NAME}`)
+  },
+})
+```
+
+## Secrets
+
+Bun runs under the process environment, so set `VARS_KEY` and `VARS_ENV` wherever you manage env vars:
+
+- **Shell**: `export VARS_KEY=...` / `export VARS_ENV=prod`
+- **systemd unit**: `Environment="VARS_KEY=..."`, `Environment="VARS_ENV=prod"`
+- **Docker**: `ENV VARS_ENV=prod` and inject `VARS_KEY` via `--env-file` or a secrets manager
+- **Kubernetes**: `Secret` for `VARS_KEY`, `ConfigMap` for `VARS_ENV`
+
+## Local dev
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- bun --hot src/index.ts"
+  }
+}
+```

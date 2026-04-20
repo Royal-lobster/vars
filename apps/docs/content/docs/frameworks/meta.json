@@ -2,5 +2,17 @@
 	"title": "Framework Guides",
 	"icon": "Blocks",
 	"defaultOpen": false,
-	"pages": ["nextjs", "vite", "sveltekit", "astro", "remix", "express", "cloudflare"]
+	"pages": [
+		"nextjs",
+		"vite",
+		"sveltekit",
+		"astro",
+		"remix",
+		"express",
+		"cloudflare",
+		"vercel",
+		"netlify",
+		"deno-deploy",
+		"bun"
+	]
 }

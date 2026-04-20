@@ -1,11 +1,36 @@
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import { isUnlockedPath, resolveUseChain } from "@dotvars/node";
+import { join, relative } from "node:path";
+import { isUnlockedPath, resolveUseChain, toCanonicalPath } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findAllVarsFiles, findKeyFile, getGitRoot, getProjectRoot } from "../utils/context.js";
 import { checkExpiry, formatExpiryMessage } from "../utils/expiry.js";
 import { HOOK_MARKER, OLD_HOOK_MARKERS } from "../utils/pre-commit-hook.js";
+
+/** Find serverless bundles whose sibling `.vars` exists but `VARS_KEY` is
+ *  not set in this shell — they'll fail to decrypt at runtime until the user
+ *  exports the key. Returns paths relative to `root`. Exported for testing. */
+export function findOrphanedServerlessBundles(root: string): string[] {
+	if (process.env.VARS_KEY) return [];
+	const files = findAllVarsFiles(root);
+	const hits: string[] = [];
+	for (const f of files) {
+		// Skip .unlocked.vars — the canonical .vars sibling (if any) will cover
+		// this path and we'd otherwise double-count when both exist.
+		if (isUnlockedPath(f)) continue;
+		const generatedPath = toCanonicalPath(f).replace(/\.vars$/, ".generated.ts");
+		if (!existsSync(generatedPath)) continue;
+		try {
+			const content = readFileSync(generatedPath, "utf8");
+			if (content.includes("@vars-platform: serverless")) {
+				hits.push(relative(root, generatedPath));
+			}
+		} catch {
+			/* skip files we can't read (perms, races) */
+		}
+	}
+	return hits;
+}
 
 export default defineCommand({
 	meta: { name: "doctor", description: "Diagnose vars setup" },
@@ -130,6 +155,18 @@ export default defineCommand({
 		}
 		if (expiryWarnings === 0 && files.length > 0) {
 			console.log(pc.green("  ✓ No secrets expiring soon"));
+		}
+
+		// Check for serverless bundles that need VARS_KEY in this shell.
+		if (keyFile) {
+			for (const rel of findOrphanedServerlessBundles(root)) {
+				console.log(
+					pc.yellow(
+						`  ⚠ serverless bundle detected in ${rel} but VARS_KEY is not set in this shell.`,
+					),
+				);
+				issues++;
+			}
 		}
 
 		if (issues === 0) {

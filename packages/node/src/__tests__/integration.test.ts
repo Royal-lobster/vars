@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { evaluateCheck, generateTypeScript, parse, validateValue } from "@dotvars/core";
 import { describe, expect, it } from "vitest";
 import { createMasterKey } from "../key-manager.js";
+import { resolveAllEnvs } from "../resolve-multi-env.js";
 import { hideFile, showFile } from "../show-hide.js";
 import { resolveUseChain } from "../use-resolver.js";
 
@@ -102,9 +103,15 @@ SECRET : z.string() {
 		const nodeCode = generateTypeScript(resolved, { platform: "node" });
 		expect(nodeCode).toContain("process.env");
 
-		const cfCode = generateTypeScript(resolved, { platform: "cloudflare" });
-		expect(cfCode).toContain("getVars");
-		expect(cfCode).not.toContain("process.env");
+		// Serverless rejects this fixture because `LOG_LEVEL` is a public var
+		// with per-env values (dev="debug", prod="info") — public vars are
+		// inlined once and cannot be selected at runtime. The divergence guard
+		// surfaces this as an error rather than silently serving the dev value
+		// under VARS_ENV=prod.
+		const byEnv = resolveAllEnvs(resolve(fixtureDir, "services/api/vars.vars"));
+		expect(() => generateTypeScript(resolved, { platform: "serverless", byEnv })).toThrow(
+			/public variable "LOG_LEVEL" has divergent values/,
+		);
 
 		const denoCode = generateTypeScript(resolved, { platform: "deno" });
 		expect(denoCode).toContain("Deno.env");

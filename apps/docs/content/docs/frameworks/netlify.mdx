@@ -1,0 +1,47 @@
+---
+title: Netlify
+description: One VARS_KEY, runtime decrypt on Netlify Functions and Edge.
+icon: SiNetlify
+---
+
+## Setup
+
+```bash
+vars gen config.vars --platform serverless
+```
+
+Ciphertexts for every env are embedded in the generated module. `getVars(env)` decrypts at runtime via Web Crypto.
+
+## Usage
+
+```typescript
+// netlify/functions/hello.ts
+import { getVars } from '#vars'
+
+export default async (request: Request, context: { env: Record<string, string> }) => {
+  const vars = await getVars(process.env)
+  return new Response(`hello from ${vars.APP_NAME}`)
+}
+```
+
+Netlify Edge Functions receive `Deno.env` rather than `process.env` — pass `Deno.env.toObject()` in that case.
+
+## Secrets
+
+In the Netlify dashboard:
+
+1. **Site → Site configuration → Environment variables**
+2. Add `VARS_KEY` (secret-flagged) with the output of `vars key export`.
+3. Add `VARS_ENV` with the env name per deploy context (Production / Deploy previews / Branch deploys).
+
+No per-secret entries needed.
+
+## Local dev
+
+```json
+{
+  "scripts": {
+    "dev": "vars run --env dev -- netlify dev"
+  }
+}
+```

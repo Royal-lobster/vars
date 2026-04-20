@@ -9,7 +9,7 @@ icon: Terminal
 | Command | Description |
 |---------|-------------|
 | `vars init` | Initialize vars in your project — creates config, key, gitignore, hook |
-| `vars gen <file>` | Generate TypeScript types from a .vars file |
+| `vars gen <file>` | Generate TypeScript types from a .vars file. `--platform node \| serverless \| deno \| static` selects the output shape. `cloudflare` was removed in the current major — use `serverless` instead. |
 | `vars show [file]` | Decrypt a .vars file in-place for editing |
 | `vars hide` | Encrypt all unlocked .vars files |
 | `vars run --env <env> -- cmd` | Run a command with decrypted env vars injected |

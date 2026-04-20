@@ -1,20 +1,23 @@
 import { createHash } from "node:crypto";
 import { isEncrypted } from "./crypto-constants.js";
+import { generateServerless } from "./serverless-codegen.js";
 import type { ResolvedVar, ResolvedVars } from "./types.js";
 
 export interface CodegenOptions {
-	platform?: "node" | "cloudflare" | "deno" | "static";
+	platform?: "node" | "serverless" | "deno" | "static";
+	/** For platform=serverless: the full per-env ResolvedVars map. If omitted, errors. */
+	byEnv?: Record<string, import("./types.js").ResolvedVars>;
 }
 
 // ── Type inference ────────────────────────────────
 
-interface InferredType {
+export interface InferredType {
 	base: string; // "string" | "number" | "boolean" | '"a" | "b"' | etc.
 	optional: boolean;
 	needsRedacted: boolean; // true only for secret strings
 }
 
-function inferType(v: ResolvedVar): InferredType {
+export function inferType(v: ResolvedVar): InferredType {
 	const s = v.schema;
 	const optional = s.includes(".optional()");
 
@@ -66,12 +69,12 @@ function renderType(inf: InferredType): string {
 
 // ── Grouping ──────────────────────────────────────
 
-interface GroupedVars {
+export interface GroupedVars {
 	topLevel: ResolvedVar[];
 	groups: Map<string, ResolvedVar[]>;
 }
 
-function groupVars(vars: ResolvedVar[]): GroupedVars {
+export function groupVars(vars: ResolvedVar[]): GroupedVars {
 	const topLevel: ResolvedVar[] = [];
 	const groups = new Map<string, ResolvedVar[]>();
 
@@ -89,7 +92,7 @@ function groupVars(vars: ResolvedVar[]): GroupedVars {
 
 // ── Schema block ──────────────────────────────────
 
-function generateSchemaBlock(grouped: GroupedVars): string {
+export function generateSchemaBlock(grouped: GroupedVars): string {
 	const lines: string[] = [];
 	lines.push("const schema = z.object({");
 
@@ -111,7 +114,7 @@ function generateSchemaBlock(grouped: GroupedVars): string {
 
 // ── Vars type block ───────────────────────────────
 
-function generateVarsType(grouped: GroupedVars): string {
+export function generateVarsType(grouped: GroupedVars): string {
 	const lines: string[] = [];
 	lines.push("export type Vars = {");
 
@@ -364,7 +367,7 @@ function generateClientVarsExport(grouped: GroupedVars): string {
 
 // ── Inline Redacted class ─────────────────────────
 
-const REDACTED_CLASS = `class Redacted<T> {
+export const REDACTED_CLASS = `class Redacted<T> {
   #value: T;
   constructor(value: T) {
     this.#value = value;
@@ -387,6 +390,13 @@ const REDACTED_CLASS = `class Redacted<T> {
 
 export function generateTypeScript(resolved: ResolvedVars, options?: CodegenOptions): string {
 	const platform = options?.platform ?? "node";
+
+	if (platform === "serverless") {
+		if (!options?.byEnv) {
+			throw new Error("generateTypeScript: platform=serverless requires options.byEnv");
+		}
+		return generateServerless(options.byEnv);
+	}
 
 	// Compute source hash
 	const hashInput = resolved.sourceFiles.sort().join("|");
@@ -436,15 +446,13 @@ export function generateTypeScript(resolved: ResolvedVars, options?: CodegenOpti
 			parts.push("export const vars: Vars = parseVars(process.env);");
 			parts.push("");
 			parts.push(generateClientVarsExport(grouped));
-		} else if (platform === "cloudflare") {
-			parts.push("export function getVars(env: Record<string, string>): Vars {");
-			parts.push("  return parseVars(env);");
-			parts.push("}");
-			// clientVars doesn't make sense for Cloudflare (no module-level vars object)
 		} else if (platform === "deno") {
 			parts.push("export const vars: Vars = parseVars(Deno.env.toObject());");
 			parts.push("");
 			parts.push(generateClientVarsExport(grouped));
+		} else {
+			const _exhaustive: never = platform;
+			throw new Error(`unknown platform: ${String(_exhaustive)}`);
 		}
 	}
 

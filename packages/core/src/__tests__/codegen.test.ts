@@ -129,13 +129,19 @@ describe("codegen", () => {
 		expect(code).toContain("process.env");
 	});
 
-	it("generates getVars function for cloudflare platform", () => {
-		const code = generateTypeScript(
-			makeResolved([{ name: "X", public: true, schema: "z.string()", value: "v" }]),
-			{ platform: "cloudflare" },
-		);
-		expect(code).toContain("getVars");
-		expect(code).not.toContain("process.env");
+	it("errors when cloudflare platform is requested (removed)", () => {
+		const resolved = makeResolved([{ name: "X", public: true, schema: "z.string()", value: "v" }]);
+		expect(() =>
+			generateTypeScript(resolved, { platform: "cloudflare" as unknown as "node" }),
+		).toThrow(/unknown platform/i);
+	});
+
+	it("platform=serverless generates async getVars from byEnv", () => {
+		const resolved = makeResolved([{ name: "X", public: true, schema: "z.string()", value: "v" }]);
+		const byEnv = { dev: resolved, prod: resolved };
+		const code = generateTypeScript(resolved, { platform: "serverless", byEnv });
+		expect(code).toContain("export async function getVars");
+		expect(code).toContain("CIPHERTEXTS");
 	});
 
 	it("generates Deno.env for deno platform", () => {
@@ -167,18 +173,6 @@ describe("codegen", () => {
 			]),
 		);
 		expect(code).toMatch(/OPT\??: string/);
-	});
-
-	it("does not generate broken clientVars for cloudflare platform", () => {
-		const code = generateTypeScript(
-			makeResolved([
-				{ name: "PUB", public: true, schema: "z.string()", value: "x" },
-				{ name: "SEC", public: false, schema: "z.string()", value: "y" },
-			]),
-			{ platform: "cloudflare" },
-		);
-		// Should not reference a non-existent vars constant
-		expect(code).not.toMatch(/const clientVars.*=.*\bvars\./);
 	});
 
 	it("uses correct non-stuttered flatName in parseVars for grouped vars", () => {

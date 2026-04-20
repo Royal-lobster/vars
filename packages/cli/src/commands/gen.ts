@@ -1,8 +1,7 @@
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { generateTypeScript } from "@dotvars/core";
-import { resolveUseChain } from "@dotvars/node";
-import { toCanonicalPath } from "@dotvars/node";
+import { resolveAllEnvs, resolveUseChain, toCanonicalPath } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findAllVarsFiles, findVarsFile, getProjectRoot } from "../utils/context.js";
@@ -15,11 +14,11 @@ export default defineCommand({
 		platform: {
 			type: "string",
 			default: "node",
-			description: "Target: node, cloudflare, deno, static",
+			description: "Target: node, serverless, deno, static",
 		},
 	},
 	async run({ args }) {
-		const platform = (args.platform ?? "node") as "node" | "cloudflare" | "deno" | "static";
+		const platform = (args.platform ?? "node") as "node" | "serverless" | "deno" | "static";
 
 		if (args.all) {
 			const root = getProjectRoot();
@@ -42,10 +41,29 @@ export default defineCommand({
 	},
 });
 
-function generateForFile(filePath: string, platform: string) {
+export function generateForFile(filePath: string, platform: string) {
+	if (platform === "cloudflare") {
+		console.error(
+			pc.red(
+				`  ✗ ${filePath}: --platform cloudflare was removed. Use --platform serverless (see https://vars.dev/docs/frameworks/cloudflare for the migration guide).`,
+			),
+		);
+		process.exit(1);
+	}
+
 	try {
-		const resolved = resolveUseChain(filePath, { env: "dev" });
-		const code = generateTypeScript(resolved, { platform: platform as any });
+		let code: string;
+		if (platform === "serverless") {
+			const byEnv = resolveAllEnvs(filePath);
+			const envNames = Object.keys(byEnv);
+			const ref = byEnv[envNames[0]];
+			code = generateTypeScript(ref, { platform: "serverless", byEnv });
+		} else {
+			const resolved = resolveUseChain(filePath, { env: "dev" });
+			code = generateTypeScript(resolved, {
+				platform: platform as "node" | "serverless" | "deno" | "static",
+			});
+		}
 		const outPath = toCanonicalPath(filePath).replace(/\.vars$/, ".generated.ts");
 		writeFileSync(outPath, code);
 		console.log(pc.green(`  ✓ ${outPath}`));

@@ -17,4 +17,4 @@ description: What vars protects against — and what it doesn't.
 - **Memory on a live system.** Once values are decrypted in memory for your running app, an attacker with OS-level access can read them. This is true of every secret manager, not just vars.
 - **PIN brute-forcing with offline access.** If an attacker copies your `.varskey` file, they can attempt to guess the PIN offline. Argon2id makes it slow and expensive, but a weak PIN is still a weak PIN.
 - **Supply chain attacks.** vars can't help if a dependency is exfiltrating `process.env` values after injection. Audit your dependencies.
-- **`VARS_KEY` exposure.** If your CI secrets are compromised and `VARS_KEY` leaks, rotate immediately with `vars key rotate`.
+- **`VARS_KEY` exposure.** If your CI secrets are compromised and `VARS_KEY` leaks, rotate immediately with `vars key rotate`. On a serverless bundle, an attacker who obtains both `VARS_KEY` and the deployed artifact can decrypt every secret in that artifact — same blast radius as pushing each secret individually into the platform dashboard, but concentrated on one key. Treat `VARS_KEY` with the same care you'd give a root deploy token.
