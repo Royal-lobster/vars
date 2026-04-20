@@ -43,6 +43,34 @@ export function generateServerless(byEnv: Record<string, ResolvedVars>): string 
 	lines.push("");
 	lines.push(EMBEDDED_CRYPTO_HELPERS);
 
+	lines.push("\nfunction wrapRedacted(parsed: any): Vars { return parsed as Vars; }");
+
+	const envUnion = envNames.map((e) => JSON.stringify(e)).join(" | ");
+	lines.push(`
+let cache: Promise<Vars> | null = null;
+
+export async function getVars(
+  env: { VARS_KEY?: string; VARS_ENV?: string } & Record<string, unknown>,
+  envOverride?: ${envUnion},
+): Promise<Vars> {
+  if (cache) return cache;
+  cache = (async () => {
+    const targetEnv = envOverride ?? (env.VARS_ENV as ${envUnion} | undefined);
+    if (!targetEnv) throw new Error("vars: VARS_ENV not set and no override passed");
+    if (!(targetEnv in CIPHERTEXTS)) throw new Error("vars: unknown env \\\"" + targetEnv + "\\\"");
+    if (!env.VARS_KEY) throw new Error("vars: VARS_KEY not set in runtime env");
+    const masterKey = base64ToBytes(env.VARS_KEY);
+    const raw: Record<string, unknown> = { ...PUBLIC_VARS };
+    for (const [name, token] of Object.entries(CIPHERTEXTS[targetEnv])) {
+      raw[name] = await decryptToken(token, masterKey);
+    }
+    const parsed = schema.parse(raw);
+    return wrapRedacted(parsed);
+  })();
+  return cache;
+}
+`);
+
 	return lines.join("\n");
 }
 

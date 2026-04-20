@@ -57,3 +57,20 @@ describe("generateServerless — embedded crypto helpers", () => {
 		expect(code).toContain("dotvars-owner-key-v1"); // HKDF salt must match @vars/node
 	});
 });
+
+describe("generateServerless — getVars shape", () => {
+	it("emits async getVars that memoizes and reads VARS_ENV by default", () => {
+		const byEnv = {
+			dev: vars("enc:v2:aes256gcm-det:aa:bb:cc"),
+			prod: vars("enc:v2:aes256gcm-det:dd:ee:ff"),
+		};
+		const code = generateServerless(byEnv);
+		expect(code).toContain("export async function getVars");
+		expect(code).toContain("env.VARS_ENV");
+		expect(code).toContain("env.VARS_KEY");
+		expect(code).toMatch(/let\s+cache:\s*Promise<Vars>\s*\|\s*null/);
+		expect(code).toContain('throw new Error("vars: VARS_KEY not set');
+		expect(code).toContain('throw new Error("vars: VARS_ENV not set');
+		expect(code).toContain("schema.parse");
+	});
+});
