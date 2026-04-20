@@ -114,3 +114,108 @@ describe("serverless round-trip", () => {
 		},
 	);
 });
+
+describe("serverless runtime errors", () => {
+	const tmpDirs: string[] = [];
+	afterEach(() => {
+		for (const d of tmpDirs) rmSync(d, { recursive: true, force: true });
+		tmpDirs.length = 0;
+	});
+
+	async function buildModule(dir: string): Promise<{ mod: any; key: Buffer }> {
+		const master = await createMasterKey();
+		const token = encryptDeterministic("payload", master, "ctx");
+		const byEnv: Record<string, ResolvedVars> = {
+			dev: {
+				vars: [
+					{
+						name: "S",
+						flatName: "S",
+						public: false,
+						schema: "z.string()",
+						value: token,
+						metadata: null,
+					},
+				],
+				checks: [],
+				envs: [],
+				params: [],
+				sourceFiles: ["/tmp/fake.vars"],
+			},
+		};
+		const code = generateTypeScript(byEnv.dev, { platform: "serverless", byEnv });
+		const mod = await loadServerlessCode(code, dir);
+		return { mod, key: master };
+	}
+
+	it.skipIf(!hasSubtle)("rejects when VARS_KEY is missing", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "vars-rt-"));
+		tmpDirs.push(dir);
+		const { mod } = await buildModule(dir);
+		await expect(mod.getVars({ VARS_ENV: "dev" })).rejects.toThrow(/VARS_KEY not set/);
+	});
+
+	it.skipIf(!hasSubtle)("rejects when VARS_ENV is missing and no override is passed", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "vars-rt-"));
+		tmpDirs.push(dir);
+		const { mod, key } = await buildModule(dir);
+		await expect(mod.getVars({ VARS_KEY: key.toString("base64") })).rejects.toThrow(
+			/VARS_ENV not set/,
+		);
+	});
+
+	it.skipIf(!hasSubtle)("rejects when override selects an unknown env", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "vars-rt-"));
+		tmpDirs.push(dir);
+		const { mod, key } = await buildModule(dir);
+		await expect(
+			// @ts-expect-error — exercising the runtime guard for an unknown env literal.
+			mod.getVars({ VARS_KEY: key.toString("base64"), VARS_ENV: "dev" }, "production"),
+		).rejects.toThrow(/unknown env/);
+	});
+
+	it.skipIf(!hasSubtle)("rejects when VARS_KEY is wrong", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "vars-rt-"));
+		tmpDirs.push(dir);
+		const { mod } = await buildModule(dir);
+		await expect(
+			mod.getVars({ VARS_KEY: Buffer.alloc(32).toString("base64"), VARS_ENV: "dev" }),
+		).rejects.toThrow(/decryption failed/);
+	});
+
+	it.skipIf(!hasSubtle)("rejects when a ciphertext has been tampered with", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "vars-rt-"));
+		tmpDirs.push(dir);
+
+		const master = await createMasterKey();
+		const token = encryptDeterministic("payload", master, "ctx");
+		// Snip the last few base64 characters off the tag portion so AES-GCM
+		// auth fails (or, if the slice spans part boundaries, the parser rejects
+		// the token as malformed — either outcome is spec-valid here).
+		const tampered = token.slice(0, -4);
+
+		const byEnv: Record<string, ResolvedVars> = {
+			dev: {
+				vars: [
+					{
+						name: "S",
+						flatName: "S",
+						public: false,
+						schema: "z.string()",
+						value: tampered,
+						metadata: null,
+					},
+				],
+				checks: [],
+				envs: [],
+				params: [],
+				sourceFiles: ["/tmp/fake.vars"],
+			},
+		};
+		const code = generateTypeScript(byEnv.dev, { platform: "serverless", byEnv });
+		const mod = await loadServerlessCode(code, dir);
+		await expect(
+			mod.getVars({ VARS_KEY: master.toString("base64"), VARS_ENV: "dev" }),
+		).rejects.toThrow(/decryption failed|malformed token/);
+	});
+});
