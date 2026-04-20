@@ -398,10 +398,6 @@ export function generateTypeScript(resolved: ResolvedVars, options?: CodegenOpti
 		return generateServerless(options.byEnv);
 	}
 
-	if (platform !== "node" && platform !== "deno" && platform !== "static") {
-		throw new Error(`unknown platform: ${platform}`);
-	}
-
 	// Compute source hash
 	const hashInput = resolved.sourceFiles.sort().join("|");
 	const sourceHash = createHash("sha256").update(hashInput).digest("hex").slice(0, 8);
@@ -454,6 +450,9 @@ export function generateTypeScript(resolved: ResolvedVars, options?: CodegenOpti
 			parts.push("export const vars: Vars = parseVars(Deno.env.toObject());");
 			parts.push("");
 			parts.push(generateClientVarsExport(grouped));
+		} else {
+			const _exhaustive: never = platform;
+			throw new Error(`unknown platform: ${String(_exhaustive)}`);
 		}
 	}
 
