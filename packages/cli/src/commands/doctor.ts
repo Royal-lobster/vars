@@ -3,12 +3,7 @@ import { join } from "node:path";
 import { isUnlockedPath, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import {
-	findAllVarsFiles,
-	findKeyFile,
-	getGitRoot,
-	getProjectRoot,
-} from "../utils/context.js";
+import { findAllVarsFiles, findKeyFile, getGitRoot, getProjectRoot } from "../utils/context.js";
 import { checkExpiry, formatExpiryMessage } from "../utils/expiry.js";
 import { HOOK_MARKER, OLD_HOOK_MARKERS } from "../utils/pre-commit-hook.js";
 
