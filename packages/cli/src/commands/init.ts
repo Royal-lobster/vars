@@ -99,12 +99,17 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 				const pkg = JSON.parse(readFileSync(pkgJsonPath, "utf8"));
 				const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
 				if (!allDeps.zod) {
-					// Detect package manager
-					const pm = existsSync(join(root, "pnpm-lock.yaml"))
+					// Detect package manager — in a monorepo the lock file sits at
+					// the git/workspace root, not the current package.
+					const lockDirs = [root, getGitRoot(root)].filter(
+						(d): d is string => typeof d === "string",
+					);
+					const hasLock = (name: string) => lockDirs.some((d) => existsSync(join(d, name)));
+					const pm = hasLock("pnpm-lock.yaml")
 						? "pnpm"
-						: existsSync(join(root, "yarn.lock"))
+						: hasLock("yarn.lock")
 							? "yarn"
-							: existsSync(join(root, "bun.lockb")) || existsSync(join(root, "bun.lock"))
+							: hasLock("bun.lockb") || hasLock("bun.lock")
 								? "bun"
 								: "npm";
 					console.log(pc.dim("  Installing zod..."));
