@@ -1,4 +1,5 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -7,7 +8,9 @@ import { getProjectRoot } from "../utils/context.js";
 function makeTmpDir(): string {
 	const dir = join(tmpdir(), `vars-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	mkdirSync(dir, { recursive: true });
-	return dir;
+	// Resolve symlinks (macOS /var → /private/var) so expectations match
+	// getProjectRoot's normalized output.
+	return realpathSync(dir);
 }
 
 describe("getProjectRoot", () => {
@@ -53,5 +56,18 @@ describe("getProjectRoot", () => {
 		mkdirSync(sub, { recursive: true });
 		// tmp is not a git repo and has no package.json
 		expect(getProjectRoot(sub)).toBe(sub);
+	});
+
+	it("does not climb above the git root into an unrelated package.json", () => {
+		// Simulate `~/package.json` sitting above a git repo
+		const outerPkg = join(tmp, "outside-package.json-dir");
+		const repo = join(outerPkg, "repo");
+		const subdir = join(repo, "scripts");
+		mkdirSync(subdir, { recursive: true });
+		writeFileSync(join(outerPkg, "package.json"), "{}");
+		execSync("git init --quiet", { cwd: repo });
+		// repo has no package.json anywhere; getProjectRoot must stop at the git
+		// root instead of returning outerPkg.
+		expect(getProjectRoot(subdir)).toBe(repo);
 	});
 });

@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import * as prompts from "@clack/prompts";
 import type { KeyScope } from "@dotvars/node";
@@ -175,17 +175,25 @@ export function resolveEnv(env: string): string {
 
 /** Find the nearest project root, walking up from startDir.
  *  Prefers the closest ancestor containing package.json (the current package in a
- *  monorepo), falling back to the git root, then to startDir/cwd. */
+ *  monorepo), falling back to the git root, then to startDir/cwd.
+ *
+ *  The walk is bounded by the git root so we don't pick up an unrelated
+ *  package.json that happens to sit above the repository (e.g. a personal
+ *  `~/package.json`). */
 export function getProjectRoot(startDir?: string): string {
-	const start = resolve(startDir ?? process.cwd());
+	const resolved = resolve(startDir ?? process.cwd());
+	// Normalize through the real filesystem path so the boundary comparison
+	// below matches git's own (symlink-resolved) output on macOS/Linux.
+	const start = existsSync(resolved) ? realpathSync(resolved) : resolved;
+	const gitRoot = getGitRoot(start);
 	let dir = start;
 	while (true) {
 		if (existsSync(join(dir, "package.json"))) return dir;
+		if (gitRoot && dir === gitRoot) break;
 		const parent = dirname(dir);
 		if (parent === dir) break;
 		dir = parent;
 	}
-	const gitRoot = getGitRoot(start);
 	if (gitRoot) return gitRoot;
 	return start;
 }
