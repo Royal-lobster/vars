@@ -55,6 +55,7 @@ describe("generateForFile — cloudflare migration error", () => {
 
 	afterEach(() => {
 		rmSync(tmp, { recursive: true, force: true });
+		vi.restoreAllMocks();
 	});
 
 	it("prints a migration error and calls process.exit(1)", () => {
@@ -70,8 +71,5 @@ describe("generateForFile — cloudflare migration error", () => {
 		expect(printed).toContain("--platform cloudflare was removed");
 		expect(printed).toContain("--platform serverless");
 		expect(printed).toContain("https://vars.dev/docs/frameworks/cloudflare");
-
-		exitSpy.mockRestore();
-		errorSpy.mockRestore();
 	});
 });
