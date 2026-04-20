@@ -173,8 +173,26 @@ export function resolveEnv(env: string): string {
 	return aliases[env] ?? env;
 }
 
-/** Get the git root directory */
+/** Find the nearest project root, walking up from startDir.
+ *  Prefers the closest ancestor containing package.json (the current package in a
+ *  monorepo), falling back to the git root, then to startDir/cwd. */
 export function getProjectRoot(startDir?: string): string {
+	const start = resolve(startDir ?? process.cwd());
+	let dir = start;
+	while (true) {
+		if (existsSync(join(dir, "package.json"))) return dir;
+		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+	const gitRoot = getGitRoot(start);
+	if (gitRoot) return gitRoot;
+	return start;
+}
+
+/** Get the git repository root for git-scoped operations (e.g. hooks).
+ *  Returns null if not in a git repository. */
+export function getGitRoot(startDir?: string): string | null {
 	try {
 		return execSync("git rev-parse --show-toplevel", {
 			cwd: startDir ?? process.cwd(),
@@ -182,6 +200,6 @@ export function getProjectRoot(startDir?: string): string {
 			stdio: ["pipe", "pipe", "pipe"],
 		}).trim();
 	} catch {
-		return startDir ?? process.cwd();
+		return null;
 	}
 }

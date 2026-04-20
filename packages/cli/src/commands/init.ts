@@ -13,7 +13,7 @@ import { createMasterKey, encryptMasterKey, resolveUseChain, toUnlockedPath } fr
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { buildHeaderComment } from "../utils/build-header-comment.js";
-import { getProjectRoot } from "../utils/context.js";
+import { getGitRoot, getProjectRoot } from "../utils/context.js";
 import { ALL_PUBLIC_PREFIXES, detectFramework } from "../utils/detect-framework.js";
 import { migrateFromEnv } from "../utils/migrate-from-env.js";
 
@@ -129,10 +129,12 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 			writeFileSync(gitignorePath, `${varsIgnoreEntries.trim()}\n`);
 		}
 
-		// 6. Install pre-commit hook
+		// 6. Install pre-commit hook (always at git root — .git/hooks is repo-wide)
 		try {
-			const huskyDir = join(root, ".husky");
-			const gitHookDir = join(root, ".git", "hooks");
+			const gitRoot = getGitRoot(root);
+			if (!gitRoot) throw new Error("not a git repo");
+			const huskyDir = join(gitRoot, ".husky");
+			const gitHookDir = join(gitRoot, ".git", "hooks");
 			const hookPath = existsSync(huskyDir)
 				? join(huskyDir, "pre-commit")
 				: join(gitHookDir, "pre-commit");
