@@ -69,7 +69,7 @@ describe("generateServerless — embedded crypto helpers", () => {
 });
 
 describe("generateServerless — getVars shape", () => {
-	it("emits async getVars that memoizes and reads VARS_ENV by default", () => {
+	it("emits async getVars that memoizes per env+key and reads VARS_ENV by default", () => {
 		const byEnv = {
 			dev: vars("enc:v2:aes256gcm-det:aa:bb:cc"),
 			prod: vars("enc:v2:aes256gcm-det:dd:ee:ff"),
@@ -78,12 +78,138 @@ describe("generateServerless — getVars shape", () => {
 		expect(code).toContain("export async function getVars");
 		expect(code).toContain("env.VARS_ENV");
 		expect(code).toContain("env.VARS_KEY");
-		expect(code).toMatch(/let\s+cache:\s*Promise<Vars>\s*\|\s*null/);
+		expect(code).toMatch(/const\s+cache\s*=\s*new\s+Map<string,\s*Promise<Vars>>/);
+		expect(code).toContain('const cacheKey = targetEnv + ":" + env.VARS_KEY');
+		expect(code).toContain("cache.get(cacheKey)");
+		expect(code).toContain("cache.delete(cacheKey)");
 		expect(code).toContain('throw new Error("vars: VARS_KEY not set');
 		expect(code).toContain('throw new Error("vars: VARS_ENV not set');
 		expect(code).toContain("schema.parse");
 		expect(code).toContain("inflight.catch(");
-		expect(code).toContain("cache = null");
+	});
+});
+
+describe("generateServerless — grouped vars", () => {
+	it("nests grouped secret ciphertexts so schema.parse sees the group shape", () => {
+		const byEnv = {
+			dev: {
+				vars: [
+					{
+						name: "url",
+						flatName: "DB_URL",
+						public: false,
+						schema: "z.string().url()",
+						value: "enc:v2:aes256gcm-det:a:b:c",
+						metadata: null,
+						group: "db",
+					},
+					{
+						name: "password",
+						flatName: "DB_PASSWORD",
+						public: false,
+						schema: "z.string()",
+						value: "enc:v2:aes256gcm-det:d:e:f",
+						metadata: null,
+						group: "db",
+					},
+				],
+				checks: [],
+				envs: [],
+				params: [],
+				sourceFiles: [],
+			},
+		};
+		const code = generateServerless(byEnv as unknown as Record<string, ResolvedVars>);
+		// CIPHERTEXTS must nest under the group name.
+		expect(code).toMatch(/"dev":\s*\{\s*db:\s*\{/);
+		expect(code).toContain('url: "enc:v2:aes256gcm-det:a:b:c"');
+		expect(code).toContain('password: "enc:v2:aes256gcm-det:d:e:f"');
+		// Runtime loop must reassemble groups before schema.parse.
+		expect(code).toContain('typeof value === "string"');
+	});
+
+	it("nests grouped public vars inside PUBLIC_VARS", () => {
+		const byEnv = {
+			dev: {
+				vars: [
+					{
+						name: "region",
+						flatName: "AWS_REGION",
+						public: true,
+						schema: "z.string()",
+						value: "us-east-1",
+						metadata: null,
+						group: "aws",
+					},
+				],
+				checks: [],
+				envs: [],
+				params: [],
+				sourceFiles: [],
+			},
+		};
+		const code = generateServerless(byEnv as unknown as Record<string, ResolvedVars>);
+		expect(code).toMatch(/const PUBLIC_VARS = \{\s*aws:\s*\{\s*region:\s*"us-east-1"/);
+	});
+});
+
+describe("generateServerless — public var divergence", () => {
+	it("throws when a public var has different values across envs", () => {
+		const byEnv = {
+			dev: vars("https://dev.api", "API_URL", true),
+			prod: vars("https://api.example.com", "API_URL", true),
+		};
+		expect(() => generateServerless(byEnv)).toThrow(
+			/public variable "API_URL" has divergent values/,
+		);
+	});
+
+	it("accepts a public var when all envs agree on the value", () => {
+		const byEnv = {
+			dev: vars("my-app", "APP_NAME", true),
+			prod: vars("my-app", "APP_NAME", true),
+		};
+		expect(() => generateServerless(byEnv)).not.toThrow();
+	});
+
+	it("reports grouped public vars using group.name notation", () => {
+		const byEnv: Record<string, ResolvedVars> = {
+			dev: {
+				vars: [
+					{
+						name: "region",
+						flatName: "AWS_REGION",
+						public: true,
+						schema: "z.string()",
+						value: "us-east-1",
+						metadata: null,
+						group: "aws",
+					},
+				],
+				checks: [],
+				envs: [],
+				params: [],
+				sourceFiles: [],
+			},
+			prod: {
+				vars: [
+					{
+						name: "region",
+						flatName: "AWS_REGION",
+						public: true,
+						schema: "z.string()",
+						value: "eu-west-1",
+						metadata: null,
+						group: "aws",
+					},
+				],
+				checks: [],
+				envs: [],
+				params: [],
+				sourceFiles: [],
+			},
+		};
+		expect(() => generateServerless(byEnv)).toThrow(/"aws\.region"/);
 	});
 });
 

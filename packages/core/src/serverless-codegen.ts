@@ -6,25 +6,22 @@ import {
 	groupVars,
 	inferType,
 } from "./codegen.js";
-import type { ResolvedVars } from "./types.js";
+import type { ResolvedVar, ResolvedVars } from "./types.js";
 
 /**
  * Build the serverless `#vars` module source.
  *
  * Assumes every env in `byEnv` declares the same set of variables. The first
- * env is used as the structural reference for both public vars (whose values
- * are expected to be identical across envs) and the list of secret names.
- * Divergent variable sets across envs will silently produce a bundle that
- * references only the reference env's vars.
+ * env is used as the structural reference for grouping; secret values are
+ * collected per-env. Public variables are inlined once, so their values must
+ * be identical across envs — a mismatch throws to avoid silently serving the
+ * reference env's value under a different VARS_ENV.
  */
 export function generateServerless(byEnv: Record<string, ResolvedVars>): string {
 	const envNames = Object.keys(byEnv);
 	if (envNames.length === 0) throw new Error("generateServerless: no envs provided");
 
-	// Assume all envs share the same variable set; use the first as reference.
 	const ref = byEnv[envNames[0]];
-	const publicVars = ref.vars.filter((v) => v.public);
-	const secretVars = ref.vars.filter((v) => !v.public);
 	const grouped = groupVars(ref.vars);
 
 	const lines: string[] = [];
@@ -41,21 +38,48 @@ export function generateServerless(byEnv: Record<string, ResolvedVars>): string 
 	lines.push(generateVarsType(grouped));
 	lines.push("");
 
-	// PUBLIC_VARS block — literal values, identical across envs.
+	// PUBLIC_VARS — nested to mirror the schema shape. Public values are
+	// emitted once and cannot differ across envs at runtime; throw early if
+	// any public var disagrees between envs.
 	lines.push("const PUBLIC_VARS = {");
-	for (const v of publicVars) {
+	for (const v of grouped.topLevel) {
+		if (!v.public) continue;
+		assertPublicValuesAgree(v, byEnv);
 		lines.push(`  ${v.name}: ${JSON.stringify(v.value)},`);
+	}
+	for (const [groupName, groupVars] of grouped.groups) {
+		const publicMembers = groupVars.filter((m) => m.public);
+		if (publicMembers.length === 0) continue;
+		lines.push(`  ${groupName}: {`);
+		for (const v of publicMembers) {
+			assertPublicValuesAgree(v, byEnv);
+			lines.push(`    ${v.name}: ${JSON.stringify(v.value)},`);
+		}
+		lines.push("  },");
 	}
 	lines.push("} as const;");
 	lines.push("");
 
-	// CIPHERTEXTS block — per-env ciphertext tokens.
+	// CIPHERTEXTS — nested per env so grouped secrets round-trip through
+	// the schema without flattening (which would collide with the nested
+	// z.object() groups).
 	lines.push("const CIPHERTEXTS = {");
 	for (const env of envNames) {
 		lines.push(`  ${JSON.stringify(env)}: {`);
-		for (const v of secretVars) {
-			const val = byEnv[env].vars.find((x) => x.name === v.name)?.value;
+		for (const v of grouped.topLevel) {
+			if (v.public) continue;
+			const val = byEnv[env].vars.find((x) => x.name === v.name && !x.group)?.value;
 			lines.push(`    ${v.name}: ${JSON.stringify(val ?? "")},`);
+		}
+		for (const [groupName, groupVars] of grouped.groups) {
+			const secretMembers = groupVars.filter((m) => !m.public);
+			if (secretMembers.length === 0) continue;
+			lines.push(`    ${groupName}: {`);
+			for (const v of secretMembers) {
+				const val = byEnv[env].vars.find((x) => x.name === v.name && x.group === groupName)?.value;
+				lines.push(`      ${v.name}: ${JSON.stringify(val ?? "")},`);
+			}
+			lines.push("    },");
 		}
 		lines.push("  },");
 	}
@@ -69,35 +93,66 @@ export function generateServerless(byEnv: Record<string, ResolvedVars>): string 
 
 	const envUnion = envNames.map((e) => JSON.stringify(e)).join(" | ");
 	lines.push(`
-let cache: Promise<Vars> | null = null;
+const cache = new Map<string, Promise<Vars>>();
 
 export async function getVars(
   env: { VARS_KEY?: string; VARS_ENV?: string } & Record<string, unknown>,
   envOverride?: ${envUnion},
 ): Promise<Vars> {
-  if (cache) return cache;
+  const targetEnv = envOverride ?? (env.VARS_ENV as ${envUnion} | undefined);
+  if (!targetEnv) throw new Error("vars: VARS_ENV not set and no override passed");
+  if (!(targetEnv in CIPHERTEXTS)) throw new Error("vars: unknown env \\\"" + targetEnv + "\\\"");
+  if (!env.VARS_KEY) throw new Error("vars: VARS_KEY not set in runtime env");
+  const cacheKey = targetEnv + ":" + env.VARS_KEY;
+  const hit = cache.get(cacheKey);
+  if (hit) return hit;
   const inflight = (async () => {
-    const targetEnv = envOverride ?? (env.VARS_ENV as ${envUnion} | undefined);
-    if (!targetEnv) throw new Error("vars: VARS_ENV not set and no override passed");
-    if (!(targetEnv in CIPHERTEXTS)) throw new Error("vars: unknown env \\\"" + targetEnv + "\\\"");
-    if (!env.VARS_KEY) throw new Error("vars: VARS_KEY not set in runtime env");
-    const masterKey = base64ToBytes(env.VARS_KEY);
-    const raw: Record<string, unknown> = { ...PUBLIC_VARS };
-    for (const [name, token] of Object.entries(CIPHERTEXTS[targetEnv])) {
-      raw[name] = await decryptToken(token, masterKey);
+    const masterKey = base64ToBytes(env.VARS_KEY as string);
+    const raw: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(PUBLIC_VARS)) {
+      raw[k] = v && typeof v === "object" ? { ...(v as Record<string, unknown>) } : v;
+    }
+    const envCiphers = CIPHERTEXTS[targetEnv] as Record<string, string | Record<string, string>>;
+    for (const [name, value] of Object.entries(envCiphers)) {
+      if (typeof value === "string") {
+        raw[name] = await decryptToken(value, masterKey);
+      } else {
+        const sub = (raw[name] as Record<string, string> | undefined) ?? {};
+        for (const [member, token] of Object.entries(value)) {
+          sub[member] = await decryptToken(token, masterKey);
+        }
+        raw[name] = sub;
+      }
     }
     const parsed = schema.parse(raw);
     return wrapRedacted(parsed);
   })();
-  cache = inflight;
+  cache.set(cacheKey, inflight);
   inflight.catch(() => {
-    if (cache === inflight) cache = null;
+    if (cache.get(cacheKey) === inflight) cache.delete(cacheKey);
   });
   return inflight;
 }
 `);
 
 	return lines.join("\n");
+}
+
+function assertPublicValuesAgree(v: ResolvedVar, byEnv: Record<string, ResolvedVars>): void {
+	const values = new Map<string, string | undefined>();
+	for (const env of Object.keys(byEnv)) {
+		const match = byEnv[env].vars.find((x) => x.name === v.name && x.group === v.group);
+		values.set(env, match?.value);
+	}
+	const distinct = new Set(values.values());
+	if (distinct.size <= 1) return;
+	const label = v.group ? `${v.group}.${v.name}` : v.name;
+	const detail = [...values.entries()]
+		.map(([e, val]) => `  ${e}: ${JSON.stringify(val)}`)
+		.join("\n");
+	throw new Error(
+		`generateServerless: public variable "${label}" has divergent values across envs:\n${detail}\n\nPublic vars are inlined once and cannot be selected per-env at runtime. Either use identical values across all envs, or mark this variable as a secret so it is encrypted per-env.`,
+	);
 }
 
 function generateWrapRedacted(grouped: GroupedVars): string {

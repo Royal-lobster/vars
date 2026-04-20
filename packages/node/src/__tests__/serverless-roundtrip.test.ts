@@ -71,6 +71,67 @@ describe("serverless round-trip", () => {
 		},
 	);
 
+	it.skipIf(!hasSubtle)("decrypts grouped secrets nested under the group name", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "vars-rt-"));
+		tmpDirs.push(dir);
+		const file = join(dir, "config.vars");
+		writeFileSync(
+			file,
+			`env(dev)\n\ngroup db {\n  url : z.string() {\n    dev = "postgres://dev/app"\n  }\n  password : z.string() {\n    dev = "hunter2"\n  }\n}\n`,
+		);
+
+		const key = await createMasterKey();
+		await hideFile(file, key);
+
+		const byEnv = resolveAllEnvs(file);
+		const code = generateTypeScript(byEnv.dev, { platform: "serverless", byEnv });
+
+		const mod = await loadServerlessCode(code, dir);
+		const vars = await mod.getVars({
+			VARS_KEY: key.toString("base64"),
+			VARS_ENV: "dev",
+		});
+		expect(vars.db.url.unwrap()).toBe("postgres://dev/app");
+		expect(vars.db.password.unwrap()).toBe("hunter2");
+	});
+
+	it.skipIf(!hasSubtle)(
+		"getVars memoizes per env+key so distinct inputs return distinct results",
+		async () => {
+			const dir = mkdtempSync(join(tmpdir(), "vars-rt-"));
+			tmpDirs.push(dir);
+			const file = join(dir, "config.vars");
+			writeFileSync(
+				file,
+				`env(dev, prod)\n\nDATABASE_URL : z.string() {\n  dev = "postgres://dev"\n  prod = "postgres://prod"\n}\n`,
+			);
+
+			const key = await createMasterKey();
+			await hideFile(file, key);
+
+			const byEnv = resolveAllEnvs(file);
+			const code = generateTypeScript(byEnv.dev, { platform: "serverless", byEnv });
+
+			const mod = await loadServerlessCode(code, dir);
+			const devVars = await mod.getVars({
+				VARS_KEY: key.toString("base64"),
+				VARS_ENV: "dev",
+			});
+			const prodVars = await mod.getVars({
+				VARS_KEY: key.toString("base64"),
+				VARS_ENV: "prod",
+			});
+			expect(devVars.DATABASE_URL.unwrap()).toBe("postgres://dev");
+			expect(prodVars.DATABASE_URL.unwrap()).toBe("postgres://prod");
+			// Same call returns the same memoized promise.
+			const devVars2 = await mod.getVars({
+				VARS_KEY: key.toString("base64"),
+				VARS_ENV: "dev",
+			});
+			expect(devVars2).toBe(devVars);
+		},
+	);
+
 	it.skipIf(!hasSubtle)(
 		"owner-scoped HKDF subkey matches @dotvars/node Node-crypto path",
 		async () => {
