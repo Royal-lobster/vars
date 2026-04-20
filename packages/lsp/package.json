@@ -1,6 +1,6 @@
 {
 	"name": "@dotvars/lsp",
-	"version": "0.3.1",
+	"version": "0.3.2",
 	"type": "module",
 	"main": "./dist/index.cjs",
 	"module": "./dist/index.js",
@@ -20,7 +20,9 @@
 	"bin": {
 		"vars-lsp": "./dist/index.cjs"
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"build": "tsup",
 		"test": "vitest run",
