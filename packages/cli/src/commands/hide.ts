@@ -1,13 +1,13 @@
 import { hideFile } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { detectGeneratedPlatform, generateForFile } from "./gen.js";
 import {
 	findKeyFile,
 	findUnlockedVarsFiles,
 	getProjectRoot,
 	requireKey,
 } from "../utils/context.js";
+import { detectGeneratedPlatform, generateForFile } from "./gen.js";
 
 export default defineCommand({
 	meta: { name: "hide", description: "Encrypt all unlocked .vars files" },
