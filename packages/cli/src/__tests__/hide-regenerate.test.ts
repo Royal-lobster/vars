@@ -1,9 +1,10 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createMasterKey } from "@dotvars/node";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { generateForFile } from "../commands/gen.js";
-import { regenerateGeneratedForLockedFile } from "../commands/hide.js";
+import { hideUnlockedFiles, regenerateGeneratedForLockedFile } from "../commands/hide.js";
 
 describe("regenerateGeneratedForLockedFile", () => {
 	let dir: string;
@@ -80,5 +81,27 @@ SECRET : z.string() {
 			/regeneration failed for .*config\.vars:/,
 		);
 		expect(readFileSync(filePath.replace(/\.vars$/, ".generated.ts"), "utf8")).toBe(original);
+	});
+
+	it("continues encrypting remaining files when regeneration fails for one file", async () => {
+		const key = await createMasterKey();
+		const first = join(dir, "first.unlocked.vars");
+		const second = join(dir, "second.unlocked.vars");
+		writeFileSync(first, 'env(dev)\nSECRET = "one"\n');
+		writeFileSync(second, 'env(dev)\nSECRET = "two"\n');
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		const failures = await hideUnlockedFiles([first, second], key, "master", (lockedPath) => {
+			if (lockedPath.endsWith("first.vars")) {
+				throw new Error(`regeneration failed for ${lockedPath}: boom`);
+			}
+		});
+
+		expect(failures).toBe(1);
+		expect(existsSync(join(dir, "first.vars"))).toBe(true);
+		expect(existsSync(join(dir, "second.vars"))).toBe(true);
+		expect(existsSync(first)).toBe(false);
+		expect(existsSync(second)).toBe(false);
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("regeneration failed for"));
 	});
 });

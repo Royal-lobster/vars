@@ -1,4 +1,5 @@
 import { hideFile } from "@dotvars/node";
+import type { KeyScope } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
@@ -23,14 +24,37 @@ export default defineCommand({
 
 		const keyFile = findKeyFile(process.cwd());
 		const { key, scope } = await requireKey(keyFile, "vars hide");
-
-		for (const f of unlocked) {
-			const lockedPath = await hideFile(f, key, scope);
-			console.log(pc.green(`  ✓ Encrypted → ${lockedPath}`));
-			regenerateGeneratedForLockedFile(lockedPath);
+		const regenerationFailures = await hideUnlockedFiles(unlocked, key, scope);
+		if (regenerationFailures > 0) {
+			console.error(
+				pc.red(`  ${regenerationFailures} generated file(s) failed to regenerate after encryption`),
+			);
+			process.exitCode = 1;
 		}
 	},
 });
+
+export async function hideUnlockedFiles(
+	unlocked: string[],
+	key: Buffer,
+	scope: KeyScope,
+	regenerateLockedFile: (filePath: string) => void = regenerateGeneratedForLockedFile,
+): Promise<number> {
+	let regenerationFailures = 0;
+
+	for (const f of unlocked) {
+		const lockedPath = await hideFile(f, key, scope);
+		console.log(pc.green(`  ✓ Encrypted → ${lockedPath}`));
+		try {
+			regenerateLockedFile(lockedPath);
+		} catch (err: any) {
+			regenerationFailures++;
+			console.error(pc.red(`  ✗ ${err.message}`));
+		}
+	}
+
+	return regenerationFailures;
+}
 
 export function regenerateGeneratedForLockedFile(filePath: string): void {
 	const existingPlatform = detectGeneratedPlatform(filePath);
