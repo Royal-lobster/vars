@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { generateForFile } from "../commands/gen.js";
+import { detectGeneratedPlatform, generateForFile } from "../commands/gen.js";
 
 function makeTmpDir(): string {
 	const dir = join(tmpdir(), `vars-gen-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -37,9 +37,34 @@ describe("generateForFile — serverless platform", () => {
 		generateForFile(filePath, "serverless");
 		const outPath = filePath.replace(/\.vars$/, ".generated.ts");
 		const code = readFileSync(outPath, "utf8");
+		expect(code).toContain("// @vars-platform: serverless");
 		expect(code).toContain("CIPHERTEXTS");
 		expect(code).toContain("export async function getVars");
 		expect(code).toContain("PUBLIC_VARS");
+	});
+});
+
+describe("detectGeneratedPlatform", () => {
+	let tmp: string;
+	let filePath: string;
+
+	beforeEach(() => {
+		tmp = makeTmpDir();
+		filePath = join(tmp, "config.vars");
+		writeFileSync(filePath, FIXTURE);
+	});
+
+	afterEach(() => {
+		rmSync(tmp, { recursive: true, force: true });
+	});
+
+	it("returns the platform marker from an existing generated file", () => {
+		generateForFile(filePath, "serverless");
+		expect(detectGeneratedPlatform(filePath)).toBe("serverless");
+	});
+
+	it("returns null when the generated file does not exist", () => {
+		expect(detectGeneratedPlatform(filePath)).toBeNull();
 	});
 });
 

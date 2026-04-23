@@ -1,6 +1,7 @@
 import { hideFile } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
+import { detectGeneratedPlatform, generateForFile } from "./gen.js";
 import {
 	findKeyFile,
 	findUnlockedVarsFiles,
@@ -26,6 +27,14 @@ export default defineCommand({
 		for (const f of unlocked) {
 			const lockedPath = await hideFile(f, key, scope);
 			console.log(pc.green(`  ✓ Encrypted → ${lockedPath}`));
+			regenerateGeneratedForLockedFile(lockedPath);
 		}
 	},
 });
+
+export function regenerateGeneratedForLockedFile(filePath: string): void {
+	const existingPlatform = detectGeneratedPlatform(filePath);
+	if (existingPlatform) {
+		generateForFile(filePath, existingPlatform);
+	}
+}

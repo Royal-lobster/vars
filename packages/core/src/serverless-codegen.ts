@@ -201,7 +201,7 @@ function base64ToBytes(b64: string): Uint8Array {
 async function hkdfSha256(master: Uint8Array, salt: string, info: string, length: number): Promise<Uint8Array> {
   const saltBytes = new TextEncoder().encode(salt);
   const infoBytes = new TextEncoder().encode(info);
-  const baseKey = await crypto.subtle.importKey("raw", master, "HKDF", false, ["deriveBits"]);
+  const baseKey = await crypto.subtle.importKey("raw", master as BufferSource, "HKDF", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits(
     { name: "HKDF", hash: "SHA-256", salt: saltBytes, info: infoBytes },
     baseKey,
@@ -227,7 +227,7 @@ async function decryptToken(token: string, masterKey: Uint8Array): Promise<strin
   }
   let aesKey = masterKey;
   if (owner) aesKey = await hkdfSha256(masterKey, "dotvars-owner-key-v1", "owner:" + owner, 32);
-  const key = await crypto.subtle.importKey("raw", aesKey, { name: "AES-GCM" }, false, ["decrypt"]);
+  const key = await crypto.subtle.importKey("raw", aesKey as BufferSource, { name: "AES-GCM" }, false, ["decrypt"]);
   const ivBytes = base64ToBytes(iv);
   const ctBytes = base64ToBytes(ct);
   const tagBytes = base64ToBytes(tag);
