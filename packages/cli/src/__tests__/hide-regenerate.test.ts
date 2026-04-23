@@ -57,4 +57,28 @@ SECRET : z.string() {
 		regenerateGeneratedForLockedFile(filePath);
 		expect(() => readFileSync(filePath.replace(/\.vars$/, ".generated.ts"), "utf8")).toThrow();
 	});
+
+	it("throws when an existing generated file cannot be regenerated", () => {
+		generateForFile(filePath, "serverless");
+		const original = readFileSync(filePath.replace(/\.vars$/, ".generated.ts"), "utf8");
+		writeFileSync(
+			filePath,
+			`env(dev, prod)
+
+public APP_NAME {
+  dev = "demo"
+  prod = "renamed"
+}
+SECRET : z.string() {
+  dev = "enc:v2:aes256gcm-det:a:b:c"
+  prod = "enc:v2:aes256gcm-det:d:e:f"
+}
+`,
+		);
+
+		expect(() => regenerateGeneratedForLockedFile(filePath)).toThrow(
+			/regeneration failed for .*config\.vars:/,
+		);
+		expect(readFileSync(filePath.replace(/\.vars$/, ".generated.ts"), "utf8")).toBe(original);
+	});
 });

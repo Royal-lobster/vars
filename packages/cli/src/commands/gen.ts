@@ -64,22 +64,27 @@ export function generateForFile(filePath: string, platform: string) {
 	}
 
 	try {
-		let code: string;
-		if (platform === "serverless") {
-			const byEnv = resolveAllEnvs(filePath);
-			const envNames = Object.keys(byEnv);
-			const ref = byEnv[envNames[0]];
-			code = generateTypeScript(ref, { platform: "serverless", byEnv });
-		} else {
-			const resolved = resolveUseChain(filePath, { env: "dev" });
-			code = generateTypeScript(resolved, {
-				platform: platform as "node" | "serverless" | "deno" | "static",
-			});
-		}
-		const outPath = toCanonicalPath(filePath).replace(/\.vars$/, ".generated.ts");
-		writeFileSync(outPath, code);
-		console.log(pc.green(`  ✓ ${outPath}`));
+		generateForFileOrThrow(filePath, platform);
 	} catch (err: any) {
 		console.error(pc.red(`  ✗ ${filePath}: ${err.message}`));
 	}
+}
+
+export function generateForFileOrThrow(filePath: string, platform: string): string {
+	let code: string;
+	if (platform === "serverless") {
+		const byEnv = resolveAllEnvs(filePath);
+		const envNames = Object.keys(byEnv);
+		const ref = byEnv[envNames[0]];
+		code = generateTypeScript(ref, { platform: "serverless", byEnv });
+	} else {
+		const resolved = resolveUseChain(filePath, { env: "dev" });
+		code = generateTypeScript(resolved, {
+			platform: platform as "node" | "serverless" | "deno" | "static",
+		});
+	}
+	const outPath = toCanonicalPath(filePath).replace(/\.vars$/, ".generated.ts");
+	writeFileSync(outPath, code);
+	console.log(pc.green(`  ✓ ${outPath}`));
+	return outPath;
 }

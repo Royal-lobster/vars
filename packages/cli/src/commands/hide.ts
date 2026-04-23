@@ -7,7 +7,7 @@ import {
 	getProjectRoot,
 	requireKey,
 } from "../utils/context.js";
-import { detectGeneratedPlatform, generateForFile } from "./gen.js";
+import { detectGeneratedPlatform, generateForFileOrThrow } from "./gen.js";
 
 export default defineCommand({
 	meta: { name: "hide", description: "Encrypt all unlocked .vars files" },
@@ -35,6 +35,10 @@ export default defineCommand({
 export function regenerateGeneratedForLockedFile(filePath: string): void {
 	const existingPlatform = detectGeneratedPlatform(filePath);
 	if (existingPlatform) {
-		generateForFile(filePath, existingPlatform);
+		try {
+			generateForFileOrThrow(filePath, existingPlatform);
+		} catch (err: any) {
+			throw new Error(`regeneration failed for ${filePath}: ${err.message}`);
+		}
 	}
 }
