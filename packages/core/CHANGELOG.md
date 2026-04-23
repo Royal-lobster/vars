@@ -1,5 +1,11 @@
 # @dotvars/core
 
+## 1.0.1
+
+### Patch Changes
+
+- [#66](https://github.com/Royal-lobster/vars/pull/66) [`1658901`](https://github.com/Royal-lobster/vars/commit/1658901972b723dad28d8a6ad2bff223bd9d3df0) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Preserve existing generated platforms during `vars hide` by reusing the platform marker from sibling generated files, and improve hide-time regeneration handling so encryption continues across all unlocked files while surfacing regeneration failures at the end.
+
 ## 1.0.0
 
 ### Major Changes
