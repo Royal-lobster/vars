@@ -20,9 +20,7 @@
 	"bin": {
 		"vars-lsp": "./dist/index.cjs"
 	},
-	"files": [
-		"dist"
-	],
+	"files": ["dist"],
 	"scripts": {
 		"build": "tsup",
 		"test": "vitest run",
