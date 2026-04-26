@@ -20,4 +20,15 @@ describe("resolveEnvValue", () => {
 		await expect(resolveEnvValue(encrypted, loadKey)).resolves.toBe("secret");
 		expect(loadKey).toHaveBeenCalledTimes(1);
 	});
+
+	it("propagates key-loading errors for encrypted values", async () => {
+		const key = Buffer.alloc(32, 1);
+		const encrypted = encryptDeterministic("secret", key, "SECRET");
+		const loadKey = vi.fn(async () => {
+			throw new Error("Invalid PIN");
+		});
+
+		await expect(resolveEnvValue(encrypted, loadKey)).rejects.toThrow("Invalid PIN");
+		expect(loadKey).toHaveBeenCalledTimes(1);
+	});
 });

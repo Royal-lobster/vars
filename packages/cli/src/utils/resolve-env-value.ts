@@ -7,8 +7,10 @@ export async function resolveEnvValue(
 ): Promise<string | undefined> {
 	if (!isEncrypted(value)) return value;
 
+	const key = await loadKey();
+
 	try {
-		return decrypt(value, await loadKey());
+		return decrypt(value, key);
 	} catch {
 		return undefined;
 	}
