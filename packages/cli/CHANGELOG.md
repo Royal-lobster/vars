@@ -1,5 +1,11 @@
 # dotvars
 
+## 1.0.2
+
+### Patch Changes
+
+- [#68](https://github.com/Royal-lobster/vars/pull/68) [`8df4dcb`](https://github.com/Royal-lobster/vars/commit/8df4dcb9436b8f65baaf06ab26bcac33e966a76e) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Load the decryption key lazily in `vars run` and `vars export` so plaintext-only configs no longer require `VARS_KEY` or PIN approval. This also adds focused coverage for plaintext env resolution and fixes the CLI prompt select typecheck issue.
+
 ## 1.0.1
 
 ### Patch Changes
