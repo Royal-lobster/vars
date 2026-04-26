@@ -55,7 +55,7 @@ export async function promptConfirm(message: string): Promise<boolean> {
  */
 export async function promptSelect<T extends string>(message: string, options: T[]): Promise<T> {
 	const selectOptions = options.map((o) => ({ value: o, label: String(o) })) as Option<T>[];
-	const result = await clack.selectKey({
+	const result = await clack.select<T>({
 		message,
 		options: selectOptions,
 	});
