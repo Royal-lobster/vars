@@ -1,9 +1,9 @@
 import { resolve } from "node:path";
-import { isEncrypted } from "@dotvars/core";
-import { decrypt, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
+import { getKeyFromEnv, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findKeyFile, findVarsFile, requireKey, resolveEnv } from "../utils/context.js";
+import { resolveEnvValue } from "../utils/resolve-env-value.js";
 
 export default defineCommand({
 	meta: { name: "export", description: "Export resolved values" },
@@ -47,22 +47,19 @@ export default defineCommand({
 		}
 
 		let key: Buffer | null = getKeyFromEnv();
-		if (!key) {
-			const keyFile = findKeyFile(file);
-			({ key } = await requireKey(keyFile, `vars export --env ${env}`));
-		}
+		const getKey = async () => {
+			if (!key) {
+				const keyFile = findKeyFile(file);
+				({ key } = await requireKey(keyFile, `vars export --env ${env}`));
+			}
+			return key;
+		};
 
 		const pairs: [string, string][] = [];
 		for (const v of resolved.vars) {
 			if (v.value === undefined) continue;
-			let val = v.value;
-			if (isEncrypted(val)) {
-				try {
-					val = decrypt(val, key);
-				} catch {
-					continue;
-				}
-			}
+			const val = await resolveEnvValue(v.value, getKey);
+			if (val === undefined) continue;
 			pairs.push([v.flatName, val]);
 		}
 

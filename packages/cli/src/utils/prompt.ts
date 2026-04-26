@@ -1,4 +1,5 @@
 import * as clack from "@clack/prompts";
+import type { Option } from "@clack/prompts";
 
 /**
  * Prompt the user for their PIN with masked input.
@@ -53,9 +54,10 @@ export async function promptConfirm(message: string): Promise<boolean> {
  * Prompt to select from a list of options.
  */
 export async function promptSelect<T extends string>(message: string, options: T[]): Promise<T> {
-	const result = await clack.select({
+	const selectOptions = options.map((o) => ({ value: o, label: String(o) })) as Option<T>[];
+	const result = await clack.selectKey({
 		message,
-		options: options.map((o) => ({ value: o, label: o })),
+		options: selectOptions,
 	});
 	if (clack.isCancel(result)) {
 		clack.cancel("Operation cancelled.");
