@@ -31,6 +31,7 @@
 		"ignore": [
 			"dist",
 			"node_modules",
+			".sc",
 			".claude",
 			".turbo",
 			".superset",
