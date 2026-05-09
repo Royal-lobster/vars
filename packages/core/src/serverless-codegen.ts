@@ -13,9 +13,8 @@ import type { ResolvedVar, ResolvedVars } from "./types.js";
  *
  * Assumes every env in `byEnv` declares the same set of variables. The first
  * env is used as the structural reference for grouping; secret values are
- * collected per-env. Public variables are inlined once, so their values must
- * be identical across envs — a mismatch throws to avoid silently serving the
- * reference env's value under a different VARS_ENV.
+ * collected per-env. Public variables are emitted as per-env leaves and are
+ * selected at runtime with VARS_ENV before schema validation.
  */
 export function generateServerless(byEnv: Record<string, ResolvedVars>): string {
 	const envNames = Object.keys(byEnv);
@@ -38,22 +37,20 @@ export function generateServerless(byEnv: Record<string, ResolvedVars>): string 
 	lines.push(generateVarsType(grouped));
 	lines.push("");
 
-	// PUBLIC_VARS — nested to mirror the schema shape. Public values are
-	// emitted once and cannot differ across envs at runtime; throw early if
-	// any public var disagrees between envs.
+	// PUBLIC_VARS — nested to mirror the schema shape. Public leaves are keyed
+	// by env so serverless output can support public config that differs
+	// between dev/prod without requiring decryption.
 	lines.push("const PUBLIC_VARS = {");
 	for (const v of grouped.topLevel) {
 		if (!v.public) continue;
-		assertPublicValuesAgree(v, byEnv);
-		lines.push(`  ${v.name}: ${JSON.stringify(v.value)},`);
+		lines.push(`  ${v.name}: ${formatEnvValueMap(v, byEnv, 2)},`);
 	}
 	for (const [groupName, groupVars] of grouped.groups) {
 		const publicMembers = groupVars.filter((m) => m.public);
 		if (publicMembers.length === 0) continue;
 		lines.push(`  ${groupName}: {`);
 		for (const v of publicMembers) {
-			assertPublicValuesAgree(v, byEnv);
-			lines.push(`    ${v.name}: ${JSON.stringify(v.value)},`);
+			lines.push(`    ${v.name}: ${formatEnvValueMap(v, byEnv, 4)},`);
 		}
 		lines.push("  },");
 	}
@@ -110,7 +107,7 @@ export async function getVars(
     const masterKey = base64ToBytes(env.VARS_KEY as string);
     const raw: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(PUBLIC_VARS)) {
-      raw[k] = v && typeof v === "object" ? { ...(v as Record<string, unknown>) } : v;
+      raw[k] = selectPublicValue(v, targetEnv);
     }
     const envCiphers = CIPHERTEXTS[targetEnv] as Record<string, string | Record<string, string>>;
     for (const [name, value] of Object.entries(envCiphers)) {
@@ -138,21 +135,18 @@ export async function getVars(
 	return lines.join("\n");
 }
 
-function assertPublicValuesAgree(v: ResolvedVar, byEnv: Record<string, ResolvedVars>): void {
-	const values = new Map<string, string | undefined>();
+function formatEnvValueMap(
+	v: ResolvedVar,
+	byEnv: Record<string, ResolvedVars>,
+	indent: number,
+): string {
+	const pad = " ".repeat(indent);
+	const entries: string[] = [];
 	for (const env of Object.keys(byEnv)) {
 		const match = byEnv[env].vars.find((x) => x.name === v.name && x.group === v.group);
-		values.set(env, match?.value);
+		entries.push(`${pad}  ${JSON.stringify(env)}: ${JSON.stringify(match?.value)},`);
 	}
-	const distinct = new Set(values.values());
-	if (distinct.size <= 1) return;
-	const label = v.group ? `${v.group}.${v.name}` : v.name;
-	const detail = [...values.entries()]
-		.map(([e, val]) => `  ${e}: ${JSON.stringify(val)}`)
-		.join("\n");
-	throw new Error(
-		`generateServerless: public variable "${label}" has divergent values across envs:\n${detail}\n\nPublic vars are inlined once and cannot be selected per-env at runtime. Either use identical values across all envs, or mark this variable as a secret so it is encrypted per-env.`,
-	);
+	return `{\n${entries.join("\n")}\n${pad}}`;
 }
 
 function generateWrapRedacted(grouped: GroupedVars): string {
@@ -240,5 +234,16 @@ async function decryptToken(token: string, masterKey: Uint8Array): Promise<strin
   } catch {
     throw new Error("vars: decryption failed — wrong VARS_KEY or tampered ciphertext");
   }
+}
+
+function selectPublicValue(value: unknown, targetEnv: string): unknown {
+  if (!value || typeof value !== "object") return value;
+  const obj = value as Record<string, unknown>;
+  if (Object.prototype.hasOwnProperty.call(obj, targetEnv)) return obj[targetEnv];
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    out[k] = selectPublicValue(v, targetEnv);
+  }
+  return out;
 }
 `;

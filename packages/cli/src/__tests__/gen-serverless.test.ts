@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { detectGeneratedPlatform, generateForFile } from "../commands/gen.js";
+import { detectGeneratedPlatform, generateForFile, resolvePlatformArg } from "../commands/gen.js";
 
 function makeTmpDir(): string {
 	const dir = join(tmpdir(), `vars-gen-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -41,6 +41,18 @@ describe("generateForFile — serverless platform", () => {
 		expect(code).toContain("CIPHERTEXTS");
 		expect(code).toContain("export async function getVars");
 		expect(code).toContain("PUBLIC_VARS");
+	});
+});
+
+describe("resolvePlatformArg", () => {
+	it("accepts --platform after the positional file", () => {
+		expect(resolvePlatformArg("node", ["config.vars", "--platform", "serverless"])).toBe(
+			"serverless",
+		);
+	});
+
+	it("accepts --platform=value after the positional file", () => {
+		expect(resolvePlatformArg("node", ["config.vars", "--platform=serverless"])).toBe("serverless");
 	});
 });
 

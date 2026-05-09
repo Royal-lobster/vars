@@ -17,8 +17,8 @@ export default defineCommand({
 			description: "Target: node, serverless, deno, static",
 		},
 	},
-	async run({ args }) {
-		const platform = (args.platform ?? "node") as "node" | "serverless" | "deno" | "static";
+	async run({ args, rawArgs }) {
+		const platform = resolvePlatformArg(args.platform, rawArgs);
 
 		if (args.all) {
 			const root = getProjectRoot();
@@ -44,6 +44,16 @@ export default defineCommand({
 export type GeneratedPlatform = "node" | "serverless" | "deno" | "static";
 
 const GENERATED_PLATFORM_RE = /^\/\/ @vars-platform: (node|serverless|deno|static)$/m;
+
+export function resolvePlatformArg(platform: unknown, rawArgs: string[]): string {
+	if (typeof platform === "string" && platform !== "node") return platform;
+	for (let i = rawArgs.length - 1; i >= 0; i--) {
+		const arg = rawArgs[i];
+		if (arg.startsWith("--platform=")) return arg.slice("--platform=".length);
+		if (arg === "--platform" && rawArgs[i + 1]) return rawArgs[i + 1];
+	}
+	return typeof platform === "string" ? platform : "node";
+}
 
 export function detectGeneratedPlatform(filePath: string): GeneratedPlatform | null {
 	const generatedPath = toCanonicalPath(filePath).replace(/\.vars$/, ".generated.ts");
