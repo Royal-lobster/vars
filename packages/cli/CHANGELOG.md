@@ -1,5 +1,11 @@
 # dotvars
 
+## 1.0.4
+
+### Patch Changes
+
+- [#74](https://github.com/Royal-lobster/vars/pull/74) [`146aa0f`](https://github.com/Royal-lobster/vars/commit/146aa0fdeae648ca523f718852eb3906df54bbbc) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Fix the CLI version output so `vars --version` and `dotvars --version` report the installed package version.
+
 ## 1.0.3
 
 ### Patch Changes
