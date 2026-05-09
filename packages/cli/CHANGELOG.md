@@ -1,5 +1,15 @@
 # dotvars
 
+## 1.0.3
+
+### Patch Changes
+
+- [#71](https://github.com/Royal-lobster/vars/pull/71) [`7007c83`](https://github.com/Royal-lobster/vars/commit/7007c837e0332cd3d80e3140435df93a6edf64d2) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Fix serverless config regeneration so public vars preserve per-environment values instead of collapsing to a single value.
+
+- Updated dependencies [[`7007c83`](https://github.com/Royal-lobster/vars/commit/7007c837e0332cd3d80e3140435df93a6edf64d2)]:
+  - @dotvars/core@1.0.2
+  - @dotvars/node@0.5.2
+
 ## 1.0.2
 
 ### Patch Changes
