@@ -132,6 +132,37 @@ describe("serverless round-trip", () => {
 		},
 	);
 
+	it.skipIf(!hasSubtle)("selects divergent public vars by env", async () => {
+		const dir = mkdtempSync(join(tmpdir(), "vars-rt-"));
+		tmpDirs.push(dir);
+		const file = join(dir, "config.vars");
+		writeFileSync(
+			file,
+			`env(dev, prod)\n\npublic INBOUND_EMAIL_DOMAIN {\n  dev = "in-dev.example.com"\n  prod = "in.example.com"\n}\nSECRET {\n  dev = "dev-secret"\n  prod = "prod-secret"\n}\n`,
+		);
+
+		const key = await createMasterKey();
+		await hideFile(file, key);
+
+		const byEnv = resolveAllEnvs(file);
+		const code = generateTypeScript(byEnv.dev, { platform: "serverless", byEnv });
+
+		const mod = await loadServerlessCode(code, dir);
+		const devVars = await mod.getVars({
+			VARS_KEY: key.toString("base64"),
+			VARS_ENV: "dev",
+		});
+		const prodVars = await mod.getVars({
+			VARS_KEY: key.toString("base64"),
+			VARS_ENV: "prod",
+		});
+
+		expect(devVars.INBOUND_EMAIL_DOMAIN).toBe("in-dev.example.com");
+		expect(devVars.SECRET.unwrap()).toBe("dev-secret");
+		expect(prodVars.INBOUND_EMAIL_DOMAIN).toBe("in.example.com");
+		expect(prodVars.SECRET.unwrap()).toBe("prod-secret");
+	});
+
 	it.skipIf(!hasSubtle)(
 		"owner-scoped HKDF subkey matches @dotvars/node Node-crypto path",
 		async () => {
@@ -230,7 +261,6 @@ describe("serverless runtime errors", () => {
 		tmpDirs.push(dir);
 		const { mod, key } = await buildModule(dir);
 		await expect(
-			// @ts-expect-error — exercising the runtime guard for an unknown env literal.
 			mod.getVars({ VARS_KEY: key.toString("base64"), VARS_ENV: "dev" }, "production"),
 		).rejects.toThrow(/unknown env/);
 	});

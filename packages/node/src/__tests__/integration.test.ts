@@ -103,15 +103,15 @@ SECRET : z.string() {
 		const nodeCode = generateTypeScript(resolved, { platform: "node" });
 		expect(nodeCode).toContain("process.env");
 
-		// Serverless rejects this fixture because `LOG_LEVEL` is a public var
-		// with per-env values (dev="debug", prod="info") — public vars are
-		// inlined once and cannot be selected at runtime. The divergence guard
-		// surfaces this as an error rather than silently serving the dev value
-		// under VARS_ENV=prod.
+		// Serverless keeps public vars in plaintext, but still has to select
+		// per-env values at runtime when a public var differs by env.
 		const byEnv = resolveAllEnvs(resolve(fixtureDir, "services/api/vars.vars"));
-		expect(() => generateTypeScript(resolved, { platform: "serverless", byEnv })).toThrow(
-			/public variable "LOG_LEVEL" has divergent values/,
-		);
+		const serverlessCode = generateTypeScript(resolved, { platform: "serverless", byEnv });
+		expect(serverlessCode).toContain("export async function getVars");
+		expect(serverlessCode).toContain("LOG_LEVEL: {");
+		expect(serverlessCode).toContain('"dev": "debug"');
+		expect(serverlessCode).toContain('"prod": "info"');
+		expect(serverlessCode).toContain("selectPublicValue(v, targetEnv)");
 
 		const denoCode = generateTypeScript(resolved, { platform: "deno" });
 		expect(denoCode).toContain("Deno.env");

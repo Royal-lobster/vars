@@ -50,8 +50,57 @@ SECRET : z.string() {
 		const generated = readFileSync(filePath.replace(/\.vars$/, ".generated.ts"), "utf8");
 		expect(generated).toContain("// @vars-platform: serverless");
 		expect(generated).toContain("export async function getVars");
-		expect(generated).toContain('APP_NAME: "renamed"');
+		expect(generated).toContain("APP_NAME: {");
+		expect(generated).toContain('"dev": "renamed"');
+		expect(generated).toContain('"prod": "renamed"');
 		expect(generated).not.toContain("export const vars: Vars = parseVars(process.env);");
+	});
+
+	it("regenerates serverless output when public vars differ across envs", () => {
+		writeFileSync(
+			filePath,
+			`env(dev, prod)
+
+public INBOUND_EMAIL_DOMAIN {
+  dev = "in-dev.example.com"
+  prod = "in.example.com"
+}
+SECRET : z.string() {
+  dev = "enc:v2:aes256gcm-det:a:b:c"
+  prod = "enc:v2:aes256gcm-det:d:e:f"
+}
+`,
+		);
+		generateForFile(filePath, "serverless");
+
+		writeFileSync(
+			filePath,
+			`env(dev, prod)
+
+public INBOUND_EMAIL_DOMAIN {
+  dev = "in-dev.example.com"
+  prod = "in.example.com"
+}
+SECRET : z.string() {
+  dev = "enc:v2:aes256gcm-det:a:b:c"
+  prod = "enc:v2:aes256gcm-det:d:e:f"
+}
+ADDED : z.string() {
+  dev = "enc:v2:aes256gcm-det:g:h:i"
+  prod = "enc:v2:aes256gcm-det:j:k:l"
+}
+`,
+		);
+
+		regenerateGeneratedForLockedFile(filePath);
+
+		const generated = readFileSync(filePath.replace(/\.vars$/, ".generated.ts"), "utf8");
+		expect(generated).toContain("// @vars-platform: serverless");
+		expect(generated).toContain("export async function getVars");
+		expect(generated).toContain("INBOUND_EMAIL_DOMAIN");
+		expect(generated).toContain('"dev": "in-dev.example.com"');
+		expect(generated).toContain('"prod": "in.example.com"');
+		expect(generated).toContain("ADDED: Redacted<string>");
 	});
 
 	it("does nothing when there is no existing generated file", () => {
@@ -66,10 +115,8 @@ SECRET : z.string() {
 			filePath,
 			`env(dev, prod)
 
-public APP_NAME {
-  dev = "demo"
-  prod = "renamed"
-}
+use "./missing.vars"
+
 SECRET : z.string() {
   dev = "enc:v2:aes256gcm-det:a:b:c"
   prod = "enc:v2:aes256gcm-det:d:e:f"

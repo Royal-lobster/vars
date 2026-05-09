@@ -26,14 +26,16 @@ describe("generateServerless — ciphertext collection", () => {
 		expect(code).toContain('"enc:v2:aes256gcm-det:dd:ee:ff"');
 	});
 
-	it("inlines public vars as plaintext in PUBLIC_VARS", () => {
+	it("emits public vars as per-env plaintext in PUBLIC_VARS", () => {
 		const byEnv = {
 			dev: vars("my-app", "APP_NAME", true),
 			prod: vars("my-app", "APP_NAME", true),
 		};
 		const code = generateServerless(byEnv);
 		expect(code).toContain("const PUBLIC_VARS = {");
-		expect(code).toContain('APP_NAME: "my-app"');
+		expect(code).toContain("APP_NAME: {");
+		expect(code).toContain('"dev": "my-app"');
+		expect(code).toContain('"prod": "my-app"');
 	});
 });
 
@@ -149,19 +151,21 @@ describe("generateServerless — grouped vars", () => {
 			},
 		};
 		const code = generateServerless(byEnv as unknown as Record<string, ResolvedVars>);
-		expect(code).toMatch(/const PUBLIC_VARS = \{\s*aws:\s*\{\s*region:\s*"us-east-1"/);
+		expect(code).toMatch(/const PUBLIC_VARS = \{\s*aws:\s*\{\s*region:\s*\{/);
+		expect(code).toContain('"dev": "us-east-1"');
 	});
 });
 
 describe("generateServerless — public var divergence", () => {
-	it("throws when a public var has different values across envs", () => {
+	it("emits different public values across envs", () => {
 		const byEnv = {
 			dev: vars("https://dev.api", "API_URL", true),
 			prod: vars("https://api.example.com", "API_URL", true),
 		};
-		expect(() => generateServerless(byEnv)).toThrow(
-			/public variable "API_URL" has divergent values/,
-		);
+		const code = generateServerless(byEnv);
+		expect(code).toContain('"dev": "https://dev.api"');
+		expect(code).toContain('"prod": "https://api.example.com"');
+		expect(code).toContain("selectPublicValue(v, targetEnv)");
 	});
 
 	it("accepts a public var when all envs agree on the value", () => {
@@ -172,7 +176,7 @@ describe("generateServerless — public var divergence", () => {
 		expect(() => generateServerless(byEnv)).not.toThrow();
 	});
 
-	it("reports grouped public vars using group.name notation", () => {
+	it("emits different grouped public values across envs", () => {
 		const byEnv: Record<string, ResolvedVars> = {
 			dev: {
 				vars: [
@@ -209,7 +213,10 @@ describe("generateServerless — public var divergence", () => {
 				sourceFiles: [],
 			},
 		};
-		expect(() => generateServerless(byEnv)).toThrow(/"aws\.region"/);
+		const code = generateServerless(byEnv);
+		expect(code).toMatch(/aws:\s*\{\s*region:\s*\{/);
+		expect(code).toContain('"dev": "us-east-1"');
+		expect(code).toContain('"prod": "eu-west-1"');
 	});
 });
 
