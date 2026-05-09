@@ -1,9 +1,12 @@
 import { defineCommand, runMain } from "citty";
+import { readPackageVersion } from "./utils/package-version.js";
+
+const entrypointUrl = (import.meta as ImportMeta & { url: string }).url;
 
 const main = defineCommand({
 	meta: {
 		name: "vars",
-		version: "0.1.0",
+		version: readPackageVersion(entrypointUrl),
 		description: "Encrypted, typed, schema-first environment variables",
 	},
 	subCommands: {
