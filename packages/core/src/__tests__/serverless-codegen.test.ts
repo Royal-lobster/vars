@@ -1,3 +1,6 @@
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { generateServerless } from "../serverless-codegen.js";
 import type { ResolvedVars } from "../types.js";
@@ -67,6 +70,40 @@ describe("generateServerless — embedded crypto helpers", () => {
 		expect(code).toContain("crypto.subtle.importKey");
 		expect(code).toContain("AES-GCM");
 		expect(code).toContain("dotvars-owner-key-v1"); // HKDF salt must match @vars/node
+	});
+
+	it("emits code that typechecks with noUncheckedIndexedAccess", () => {
+		const byEnv = {
+			dev: vars("enc:v2:aes256gcm-det:aa:bb:cc"),
+		};
+		const dir = join(process.cwd(), `.tmp-serverless-typecheck-${Date.now()}`);
+		const filePath = join(dir, "config.generated.ts");
+
+		try {
+			mkdirSync(dir, { recursive: true });
+			writeFileSync(filePath, generateServerless(byEnv));
+
+			const program = ts.createProgram([filePath], {
+				esModuleInterop: true,
+				lib: ["lib.es2022.d.ts", "lib.dom.d.ts"],
+				module: ts.ModuleKind.Node16,
+				moduleResolution: ts.ModuleResolutionKind.Node16,
+				noEmit: true,
+				noUncheckedIndexedAccess: true,
+				skipLibCheck: true,
+				strict: true,
+				target: ts.ScriptTarget.ES2022,
+				types: ["node"],
+			});
+			const diagnostics = ts.getPreEmitDiagnostics(program);
+			expect(
+				diagnostics.map((diagnostic) =>
+					ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
+				),
+			).toEqual([]);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });
 

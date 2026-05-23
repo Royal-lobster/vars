@@ -103,6 +103,33 @@ ADDED : z.string() {
 		expect(generated).toContain("ADDED: Redacted<string>");
 	});
 
+	it("preserves serverless output when hiding an unlocked file", async () => {
+		generateForFile(filePath, "serverless");
+
+		const unlockedPath = join(dir, "config.unlocked.vars");
+		writeFileSync(
+			unlockedPath,
+			`env(dev, prod)
+
+public APP_NAME = "demo"
+SECRET : z.string() {
+  dev = "enc:v2:aes256gcm-det:a:b:c"
+  prod = "enc:v2:aes256gcm-det:d:e:f"
+}
+ADDED_SECRET = "new"
+`,
+		);
+		const key = await createMasterKey();
+
+		await hideUnlockedFiles([unlockedPath], key, "master");
+
+		const generated = readFileSync(filePath.replace(/\.vars$/, ".generated.ts"), "utf8");
+		expect(generated).toContain("// @vars-platform: serverless");
+		expect(generated).toContain("export async function getVars");
+		expect(generated).toContain("ADDED_SECRET: Redacted<string>");
+		expect(generated).not.toContain("export const vars: Vars = parseVars(process.env);");
+	});
+
 	it("does nothing when there is no existing generated file", () => {
 		regenerateGeneratedForLockedFile(filePath);
 		expect(() => readFileSync(filePath.replace(/\.vars$/, ".generated.ts"), "utf8")).toThrow();

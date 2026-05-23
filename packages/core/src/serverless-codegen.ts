@@ -210,12 +210,18 @@ async function decryptToken(token: string, masterKey: Uint8Array): Promise<strin
   const rest = token.slice(PREFIX.length);
   const parts = rest.split(":");
   let owner: string | null = null;
-  let iv: string, ct: string, tag: string;
-  if (parts.length === 4 && parts[0].startsWith("owner=")) {
-    owner = parts[0].slice("owner=".length);
-    [, iv, ct, tag] = parts;
+  let iv: string;
+  let ct: string;
+  let tag: string;
+  if (parts.length === 4 && parts[0]!.startsWith("owner=")) {
+    owner = parts[0]!.slice("owner=".length);
+    iv = parts[1]!;
+    ct = parts[2]!;
+    tag = parts[3]!;
   } else if (parts.length === 3) {
-    [iv, ct, tag] = parts;
+    iv = parts[0]!;
+    ct = parts[1]!;
+    tag = parts[2]!;
   } else {
     throw new Error("vars: malformed token");
   }
@@ -229,7 +235,7 @@ async function decryptToken(token: string, masterKey: Uint8Array): Promise<strin
   combined.set(ctBytes, 0);
   combined.set(tagBytes, ctBytes.length);
   try {
-    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: ivBytes }, key, combined);
+    const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: ivBytes as BufferSource }, key, combined as BufferSource);
     return new TextDecoder().decode(pt);
   } catch {
     throw new Error("vars: decryption failed — wrong VARS_KEY or tampered ciphertext");

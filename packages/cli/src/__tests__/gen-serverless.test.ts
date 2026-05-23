@@ -54,6 +54,19 @@ describe("resolvePlatformArg", () => {
 	it("accepts --platform=value after the positional file", () => {
 		expect(resolvePlatformArg("node", ["config.vars", "--platform=serverless"])).toBe("serverless");
 	});
+
+	it("preserves the existing generated platform when --platform is omitted", () => {
+		const tmp = makeTmpDir();
+		const filePath = join(tmp, "config.vars");
+		try {
+			writeFileSync(filePath, FIXTURE);
+			generateForFile(filePath, "serverless");
+
+			expect(resolvePlatformArg("node", ["config.vars"], filePath)).toBe("serverless");
+		} finally {
+			rmSync(tmp, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("detectGeneratedPlatform", () => {
