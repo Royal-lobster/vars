@@ -1,5 +1,11 @@
 # @dotvars/core
 
+## 1.0.3
+
+### Patch Changes
+
+- [#77](https://github.com/Royal-lobster/vars/pull/77) [`d2dce9b`](https://github.com/Royal-lobster/vars/commit/d2dce9b9c699503963d118cd2014061e5e83de88) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Preserve existing generated platforms when running `vars gen` without `--platform`, and emit serverless generated code that typechecks under strict indexed access settings.
+
 ## 1.0.2
 
 ### Patch Changes
