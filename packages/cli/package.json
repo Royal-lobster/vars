@@ -15,8 +15,6 @@
 		"clean": "rm -rf dist"
 	},
 	"dependencies": {
-		"@dotvars/node": "workspace:*",
-		"@dotvars/core": "workspace:*",
 		"@clack/prompts": "^0.10.0",
 		"argon2": "^0.44.0",
 		"citty": "^0.2.1",
@@ -25,6 +23,8 @@
 		"zod": "^3.24.0"
 	},
 	"devDependencies": {
+		"@dotvars/node": "workspace:*",
+		"@dotvars/core": "workspace:*",
 		"tsup": "^8.3.0",
 		"vitest": "^3.0.0",
 		"typescript": "^5.7.0"

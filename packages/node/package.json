@@ -1,5 +1,6 @@
 {
 	"name": "@dotvars/node",
+	"private": true,
 	"version": "0.5.3",
 	"type": "module",
 	"main": "./dist/index.cjs",
