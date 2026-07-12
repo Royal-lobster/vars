@@ -88,19 +88,19 @@ group stripe {
 		const content = `env(dev)
 
 group public_group {
-  public API-KEY = "visible"
+  public api-key = "visible"
   SECRET = "first" (owner = "first-team")
 }
 group private-group {
-  API-KEY = "hidden"
+  api-key = "hidden"
   SECRET = "second" (owner = "second-team")
 }`;
 		const f = join(dir, "grouped.vars");
 		writeFileSync(f, content);
 		await hideFile(f, key);
 		const result = readFileSync(f, "utf8");
-		expect(result).toContain('API-KEY = "visible"');
-		expect(result).not.toContain('API-KEY = "hidden"');
+		expect(result).toContain('api-key = "visible"');
+		expect(result).not.toContain('api-key = "hidden"');
 		expect(result).toContain("owner=first-team:");
 		expect(result).toContain("owner=second-team:");
 	});

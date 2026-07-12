@@ -66,16 +66,19 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 	const publicVars = new Set<string>();
 	const ownerMap = new Map<string, string>();
 	const multilineValues = new Map<string, string>();
+	const declarationsByLine = new Map<number, { name: string; group: string | null }>();
 	const identity = (group: string | null, name: string) => `${group ?? ""}\0${name}`;
 
 	for (const decl of parsed.ast.declarations) {
 		if (decl.kind === "variable") {
+			declarationsByLine.set(decl.line, { name: decl.name, group: null });
 			if (decl.public) publicVars.add(identity(null, decl.name));
 			if (decl.metadata?.owner) ownerMap.set(identity(null, decl.name), decl.metadata.owner);
 			collectMultilineValues(decl.value, identity(null, decl.name), multilineValues);
 		}
 		if (decl.kind === "group") {
 			for (const v of decl.declarations) {
+				declarationsByLine.set(v.line, { name: v.name, group: decl.name });
 				if (v.public) publicVars.add(identity(decl.name, v.name));
 				if (v.metadata?.owner) ownerMap.set(identity(decl.name, v.name), v.metadata.owner);
 				collectMultilineValues(v.value, identity(decl.name, v.name), multilineValues);
@@ -119,9 +122,10 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 			currentGroup = null;
 		}
 
-		const varMatch = line.match(/^\s*(?:public\s+)?([A-Z][A-Z0-9_-]*)\s*[:{=]/);
-		if (varMatch) {
-			currentVar = varMatch[1];
+		const declaration = declarationsByLine.get(i + 1);
+		if (declaration) {
+			currentVar = declaration.name;
+			currentGroup = declaration.group;
 			currentIsPublic = publicVars.has(identity(currentGroup, currentVar));
 		}
 
@@ -136,7 +140,7 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 
 		// Schema-with-default lines
 		const schemaDefaultMatch = line.match(
-			/^(\s*(?:public\s+)?[A-Z][A-Z0-9_-]*\s*:\s*[^=]+=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/,
+			/^(\s*(?:public\s+)?[A-Za-z_][A-Za-z0-9_-]*\s*:\s*[^=]+=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/,
 		);
 		if (!currentIsPublic && inScope && line.includes('"""')) {
 			const opening = line.indexOf('"""');
@@ -201,7 +205,7 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 		}
 		if (envMatch && !currentIsPublic && inScope) {
 			const [, prefix, rawValue, suffix] = envMatch;
-			if (line.match(/^\s*(?:public\s+)?[A-Z][A-Z0-9_-]*\s*:.*\{\s*$/)) {
+			if (line.match(/^\s*(?:public\s+)?[A-Za-z_][A-Za-z0-9_-]*\s*:.*\{\s*$/)) {
 				result.push(line);
 				continue;
 			}
