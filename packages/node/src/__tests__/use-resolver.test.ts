@@ -1,4 +1,6 @@
-import { resolve } from "node:path";
+import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
@@ -10,6 +12,26 @@ const __dirname = dirname(__filename);
 const fixtureDir = resolve(__dirname, "fixtures");
 
 describe("use-resolver", () => {
+	it("rejects traversal, absolute imports, and symlink escapes", () => {
+		const parent = mkdtempSync(join(tmpdir(), "vars-use-"));
+		const project = join(parent, "project");
+		mkdirSync(project);
+		writeFileSync(join(project, "package.json"), "{}");
+		const outside = join(parent, "outside.vars");
+		writeFileSync(outside, 'SECRET : z.string() = "outside"');
+
+		for (const imported of ["../outside.vars", outside]) {
+			writeFileSync(join(project, "config.vars"), `use "${imported}"`);
+			expect(() => resolveUseChain(join(project, "config.vars"), { env: "dev" })).toThrow();
+		}
+
+		symlinkSync(outside, join(project, "linked.vars"));
+		writeFileSync(join(project, "config.vars"), 'use "./linked.vars"');
+		expect(() => resolveUseChain(join(project, "config.vars"), { env: "dev" })).toThrow(
+			"escapes project root",
+		);
+	});
+
 	it("resolves use imports and merges declarations", () => {
 		const result = resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "dev" });
 		const names = result.vars.map((v) => v.name);

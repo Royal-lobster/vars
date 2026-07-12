@@ -379,6 +379,15 @@ public APP_URL : z.string().url() = "https://example.com"`;
 	});
 
 	describe("owner-scoped show/hide", () => {
+		it("rejects owner names that cannot round-trip in ciphertext", async () => {
+			const f = join(dir, "invalid-owner.unlocked.vars");
+			writeFileSync(
+				f,
+				'env(dev)\nSECRET : z.string() {\n  dev = "secret"\n} (owner = "bad:owner")',
+			);
+			await expect(hideFile(f, key, "master")).rejects.toThrow("Invalid owner");
+			expect(readFileSync(f, "utf8")).toContain('dev = "secret"');
+		});
 		let dir: string;
 		let masterKey: Buffer;
 		let backendKey: Buffer;

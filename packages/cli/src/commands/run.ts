@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { relative, resolve } from "node:path";
-import { getKeyFromEnv, resolveUseChain } from "@dotvars/node";
+import { getKeyFromEnv, type KeyScope, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findKeyFile, findVarsFile, requireKey, resolveEnv } from "../utils/context.js";
@@ -51,15 +51,16 @@ export default defineCommand({
 		}
 
 		let key: Buffer | null = getKeyFromEnv();
+		let scope: KeyScope = "master";
 		const getKey = async () => {
 			if (!key) {
 				const keyFile = findKeyFile(file);
-				({ key } = await requireKey(
+				({ key, scope } = await requireKey(
 					keyFile,
 					`vars run --env ${env} -- ${rawArgs.slice(rawArgs.indexOf("--") + 1).join(" ")}`,
 				));
 			}
-			return key;
+			return { key, scope };
 		};
 
 		// Build env vars (decrypt encrypted values)
@@ -67,7 +68,6 @@ export default defineCommand({
 		for (const v of resolved.vars) {
 			if (v.value === undefined) continue;
 			const val = await resolveEnvValue(v.value, getKey);
-			if (val === undefined) continue;
 			envVars[v.flatName] = val;
 		}
 
@@ -81,8 +81,22 @@ export default defineCommand({
 
 		const child = spawn(cmd[0], cmd.slice(1), {
 			stdio: "inherit",
-			env: { ...process.env, ...envVars, VARS_ENV: env },
+			env: childEnv(envVars, env),
 		});
 		child.on("exit", (code) => process.exit(code ?? 0));
 	},
 });
+
+const DANGEROUS_ENV =
+	/^(?:PATH|PATHEXT|COMSPEC|NODE_OPTIONS|NODE_PATH|BASH_ENV|ENV|SHELLOPTS|PS4|CDPATH|GLOBIGNORE|PYTHONPATH|PYTHONHOME|RUBYOPT|RUBYLIB|PERL5OPT|PERL5LIB|JAVA_TOOL_OPTIONS|JDK_JAVA_OPTIONS|CLASSPATH|LD_|DYLD_)/;
+
+export function childEnv(vars: Record<string, string>, env: string): NodeJS.ProcessEnv {
+	const dangerous = Object.keys(vars).find((name) => DANGEROUS_ENV.test(name));
+	if (dangerous) throw new Error(`Refusing dangerous environment variable: ${dangerous}`);
+	const inherited = { ...process.env };
+	// biome-ignore lint/performance/noDelete: omitted unlock secrets must not reach the child
+	delete inherited.VARS_KEY;
+	// biome-ignore lint/performance/noDelete: omitted unlock secrets must not reach the child
+	delete inherited.VARS_PIN;
+	return { ...inherited, ...vars, VARS_ENV: env };
+}
