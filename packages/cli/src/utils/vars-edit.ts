@@ -1,6 +1,16 @@
 /** Serialize a string as a valid single-line .vars literal. */
 export function quoteVarsString(value: string): string {
-	return JSON.stringify(value);
+	if ([...value].some((char) => char < " " && char !== "\n" && char !== "\r" && char !== "\t")) {
+		throw new Error(
+			".vars strings cannot contain control characters other than newline, tab, or carriage return",
+		);
+	}
+	return `"${value
+		.replace(/\\/g, "\\\\")
+		.replace(/"/g, '\\"')
+		.replace(/\n/g, "\\n")
+		.replace(/\r/g, "\\r")
+		.replace(/\t/g, "\\t")}"`;
 }
 
 /** Return the final balanced metadata block without reformatting it. */
@@ -19,6 +29,8 @@ export function trailingMetadata(source: string): string | null {
 		if (ch === '"' || ch === "'") {
 			quote = ch;
 			escaped = false;
+		} else if (ch === "#") {
+			while (i + 1 < source.length && source[i + 1] !== "\n") i++;
 		} else if (ch === "(") {
 			if (depth === 0) start = i;
 			depth++;

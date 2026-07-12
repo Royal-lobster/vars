@@ -26,10 +26,15 @@ function findVariable(
 	return null;
 }
 
-function quoteValue(val: string): string {
+export function quoteValue(val: string): string {
 	// Don't double-quote if already quoted, or if it looks like a number/boolean
 	if (val === "true" || val === "false") return val;
 	if (/^\d+(\.\d+)?$/.test(val)) return val;
+	if (val.startsWith("[")) {
+		try {
+			if (Array.isArray(JSON.parse(val))) return val;
+		} catch {}
+	}
 	return quoteVarsString(val);
 }
 
