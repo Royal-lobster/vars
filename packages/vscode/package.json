@@ -274,6 +274,11 @@
 		"configuration": {
 			"title": "vars",
 			"properties": {
+				"vars.cli.path": {
+					"type": "string",
+					"scope": "machine",
+					"description": "Absolute path to a trusted vars executable outside the workspace. Set this in User settings."
+				},
 				"vars.trace.server": {
 					"type": "string",
 					"enum": ["off", "messages", "verbose"],
@@ -291,6 +296,7 @@
 	},
 	"scripts": {
 		"build": "tsup",
+		"test": "vitest run",
 		"typecheck": "tsc --noEmit",
 		"clean": "rm -rf dist",
 		"vscode:prepublish": "tsup",
@@ -304,6 +310,7 @@
 		"@types/vscode": "^1.85.0",
 		"tsup": "^8.3.0",
 		"typescript": "^5.7.0",
+		"vitest": "^3.0.0",
 		"@vscode/vsce": "^3.0.0"
 	}
 }
