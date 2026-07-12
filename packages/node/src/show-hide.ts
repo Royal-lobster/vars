@@ -89,7 +89,7 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 	for (const line of lines) {
 		if (inMetadata) {
 			result.push(line);
-			if (line.trim() === ")") inMetadata = false;
+			if (/^\)\s*(?:#.*)?$/.test(line.trim())) inMetadata = false;
 			continue;
 		}
 		if (line.match(/^\s*check\s+/)) {

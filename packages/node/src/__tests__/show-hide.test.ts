@@ -43,7 +43,8 @@ SECRET {
 } (
   owner = "ops"
   description = "call (ops)"
-)`;
+) # rotation complete
+SECOND = "second-secret"`;
 		const f = join(dir, "config.vars");
 		writeFileSync(f, content);
 		await hideFile(f, key);
@@ -51,6 +52,7 @@ SECRET {
 		expect(result).toContain('owner = "ops"');
 		expect(result).toContain('description = "call (ops)"');
 		expect(result).not.toContain('dev = "secret"');
+		expect(result).not.toContain("second-secret");
 		expect(parse(result, f).errors).toEqual([]);
 	});
 
