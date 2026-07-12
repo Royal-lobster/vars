@@ -24,6 +24,7 @@ export function resolveUseChain(filePath: string, options: UseResolveOptions): R
 		options.params ?? {},
 		localOverrides.envs,
 		localOverrides.params,
+		localOverrides.checks,
 	);
 
 	// Inject source files collected during the chain walk
