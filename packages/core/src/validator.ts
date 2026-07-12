@@ -145,6 +145,16 @@ class SchemaParser {
 			if (c !== "\\") value += c;
 			else {
 				const escaped = this.text[this.pos++];
+				if (escaped === "u" && this.text[this.pos] === "{") {
+					const end = this.text.indexOf("}", ++this.pos);
+					const hex = this.text.slice(this.pos, end);
+					if (end < 0 || !/^[0-9a-fA-F]{1,6}$/.test(hex)) this.fail("invalid code-point escape");
+					const codePoint = Number.parseInt(hex, 16);
+					if (codePoint > 0x10ffff) this.fail("invalid code-point escape");
+					value += String.fromCodePoint(codePoint);
+					this.pos = end + 1;
+					continue;
+				}
 				if (escaped === "x" || escaped === "u") {
 					const length = escaped === "x" ? 2 : 4;
 					const hex = this.text.slice(this.pos, this.pos + length);

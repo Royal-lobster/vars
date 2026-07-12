@@ -88,7 +88,9 @@ describe("validator", () => {
 
 		it("supports regex schemas and JavaScript string escapes", () => {
 			expect(evaluateSchema("z.string().regex(/^[A-Z]+$/)").safeParse("ABC").success).toBe(true);
-			expect(evaluateSchema('z.enum(["\\x41", "\\u0042"])').safeParse("B").success).toBe(true);
+			const escaped = evaluateSchema('z.enum(["\\x41", "\\u0042", "\\u{1F600}"])');
+			expect(escaped.safeParse("B").success).toBe(true);
+			expect(escaped.safeParse("😀").success).toBe(true);
 		});
 
 		it("rejects unknown methods", () => {
