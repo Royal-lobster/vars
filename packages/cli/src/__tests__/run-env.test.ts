@@ -24,7 +24,8 @@ describe("vars run child environment", () => {
 
 		for (const name of [
 			"PATH",
-			"NODE_OPTIONS",
+			"Path",
+			"Node_Options",
 			"BASH_ENV",
 			"LD_PRELOAD",
 			"DYLD_INSERT_LIBRARIES",

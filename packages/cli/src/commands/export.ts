@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { getKeyFromEnv, type KeyScope, resolveUseChain } from "@dotvars/node";
+import { type KeyScope, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findKeyFile, findVarsFile, requireKey, resolveEnv } from "../utils/context.js";

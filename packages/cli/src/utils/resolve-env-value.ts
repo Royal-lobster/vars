@@ -1,5 +1,5 @@
 import { isEncrypted, parseEncryptedToken } from "@dotvars/core";
-import { decrypt, deriveOwnerKey, type KeyScope } from "@dotvars/node";
+import { type KeyScope, decrypt, deriveOwnerKey } from "@dotvars/node";
 
 export async function resolveEnvValue(
 	value: string,

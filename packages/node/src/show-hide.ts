@@ -75,8 +75,8 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 		}
 	}
 	for (const owner of ownerMap.values()) {
-		if (!/^[A-Za-z0-9_-]+$/.test(owner)) {
-			throw new Error(`Invalid owner "${owner}": use only letters, numbers, _ and -`);
+		if (/[:\s]/.test(owner)) {
+			throw new Error(`Invalid owner "${owner}": colons and whitespace are not allowed`);
 		}
 	}
 

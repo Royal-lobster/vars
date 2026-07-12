@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { relative, resolve } from "node:path";
-import { getKeyFromEnv, type KeyScope, resolveUseChain } from "@dotvars/node";
+import { type KeyScope, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findKeyFile, findVarsFile, requireKey, resolveEnv } from "../utils/context.js";
@@ -88,7 +88,7 @@ export default defineCommand({
 });
 
 const DANGEROUS_ENV =
-	/^(?:PATH|PATHEXT|COMSPEC|NODE_OPTIONS|NODE_PATH|BASH_ENV|ENV|SHELLOPTS|PS4|CDPATH|GLOBIGNORE|PYTHONPATH|PYTHONHOME|RUBYOPT|RUBYLIB|PERL5OPT|PERL5LIB|JAVA_TOOL_OPTIONS|JDK_JAVA_OPTIONS|CLASSPATH|LD_|DYLD_)/;
+	/^(?:PATH|PATHEXT|COMSPEC|NODE_OPTIONS|NODE_PATH|BASH_ENV|ENV|SHELLOPTS|PS4|CDPATH|GLOBIGNORE|PYTHONPATH|PYTHONHOME|RUBYOPT|RUBYLIB|PERL5OPT|PERL5LIB|JAVA_TOOL_OPTIONS|JDK_JAVA_OPTIONS|CLASSPATH|LD_|DYLD_)/i;
 
 export function childEnv(vars: Record<string, string>, env: string): NodeJS.ProcessEnv {
 	const dangerous = Object.keys(vars).find((name) => DANGEROUS_ENV.test(name));
