@@ -129,6 +129,11 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 				typeof effectiveScope === "object" &&
 				currentOwner === effectiveScope.owner);
 
+		if (/^\s*#/.test(line)) {
+			result.push(line);
+			continue;
+		}
+
 		if (/\(\s*$/.test(line)) {
 			inMetadata = true;
 			result.push(line);

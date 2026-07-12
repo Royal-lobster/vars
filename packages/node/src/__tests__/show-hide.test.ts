@@ -37,6 +37,7 @@ SECRET : z.string() {
 	it("hide preserves multiline metadata as plaintext syntax", async () => {
 		const content = `env(dev)
 
+# rotation note (
 SECRET {
   dev = "secret"
 } (
@@ -49,6 +50,7 @@ SECRET {
 		const result = readFileSync(f, "utf8");
 		expect(result).toContain('owner = "ops"');
 		expect(result).toContain('description = "call (ops)"');
+		expect(result).not.toContain('dev = "secret"');
 		expect(parse(result, f).errors).toEqual([]);
 	});
 
