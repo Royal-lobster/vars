@@ -106,7 +106,11 @@ export function findDeclarationEndLine(source: string, startLine: number): numbe
 		if (ch !== "\n" || braces || parens || brackets) continue;
 		if (!sawBlock || blockClosed) {
 			let next = i + 1;
-			while (next < source.length && /[ \t\r\n]/.test(source[next]!)) next++;
+			while (next < source.length) {
+				while (next < source.length && /[ \t\r\n]/.test(source[next]!)) next++;
+				if (source[next] !== "#") break;
+				while (next < source.length && source[next] !== "\n") next++;
+			}
 			if (source[next] !== "(") return line - 1;
 			parens = 0;
 			i = next - 1;

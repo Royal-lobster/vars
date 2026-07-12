@@ -42,6 +42,15 @@ NEXT = "kept"
 		expect(findDeclarationEndLine(source, 0)).toBe(3);
 	});
 
+	it("includes metadata after full-line comments", () => {
+		const source = `SECRET = "value"
+# rotation details
+(owner = "team")
+NEXT = "kept"
+`;
+		expect(findDeclarationEndLine(source, 0)).toBe(2);
+	});
+
 	it("preserves metadata containing parentheses", () => {
 		expect(trailingMetadata('SECRET = "value" (description = "call (team)", owner = "ops")')).toBe(
 			'(description = "call (team)", owner = "ops")',
