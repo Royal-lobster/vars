@@ -35,6 +35,7 @@ const ALLOWED_ZOD_METHODS = new Set([
 	"email",
 	"url",
 	"uuid",
+	"regex",
 	"startsWith",
 	"endsWith",
 	"includes",
@@ -57,12 +58,14 @@ const COERCE_METHODS = new Set(["string", "number", "boolean", "bigint", "date"]
 
 type SchemaCall = { name: string; args: SchemaValue[] };
 type SchemaExpr = { coerce: boolean; calls: SchemaCall[] };
+type SchemaRegex = { regex: string; flags: string };
 type SchemaValue =
 	| string
 	| number
 	| boolean
 	| null
 	| SchemaExpr
+	| SchemaRegex
 	| SchemaValue[]
 	| { [key: string]: SchemaValue };
 
@@ -116,6 +119,7 @@ class SchemaParser {
 		this.space();
 		const c = this.text[this.pos];
 		if (c === '"' || c === "'") return this.string(c);
+		if (c === "/") return this.regex();
 		if (c === "[") return this.array();
 		if (c === "{") return this.object();
 		if (this.text.startsWith("z.", this.pos)) return this.schema();
@@ -141,6 +145,14 @@ class SchemaParser {
 			if (c !== "\\") value += c;
 			else {
 				const escaped = this.text[this.pos++];
+				if (escaped === "x" || escaped === "u") {
+					const length = escaped === "x" ? 2 : 4;
+					const hex = this.text.slice(this.pos, this.pos + length);
+					if (!new RegExp(`^[0-9a-fA-F]{${length}}$`).test(hex)) this.fail("invalid hex escape");
+					value += String.fromCharCode(Number.parseInt(hex, 16));
+					this.pos += length;
+					continue;
+				}
 				const escapes: Record<string, string> = {
 					n: "\n",
 					r: "\r",
@@ -155,6 +167,33 @@ class SchemaParser {
 		}
 		this.expect(quote);
 		return value;
+	}
+
+	private regex(): SchemaRegex {
+		this.pos++;
+		let source = "";
+		let inClass = false;
+		while (this.pos < this.text.length) {
+			const c = this.text[this.pos++];
+			if (c === "\\") {
+				source += c + (this.text[this.pos++] ?? this.fail("unterminated regex escape"));
+			} else if (c === "[") {
+				inClass = true;
+				source += c;
+			} else if (c === "]") {
+				inClass = false;
+				source += c;
+			} else if (c === "/" && !inClass) {
+				const flags = this.text.slice(this.pos).match(/^[dgimsuvy]*/)?.[0] ?? "";
+				this.pos += flags.length;
+				new RegExp(source, flags);
+				return { regex: source, flags };
+			} else {
+				if (c === "\n" || c === "\r") this.fail("newline in regex");
+				source += c;
+			}
+		}
+		this.fail("unterminated regex");
 	}
 
 	private array(): SchemaValue[] {
@@ -213,6 +252,7 @@ class SchemaParser {
 
 function buildValue(value: SchemaValue): unknown {
 	if (isSchema(value)) return buildSchema(value);
+	if (isRegex(value)) return new RegExp(value.regex, value.flags);
 	if (Array.isArray(value)) return value.map(buildValue);
 	if (value && typeof value === "object")
 		return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, buildValue(v)]));
@@ -221,6 +261,10 @@ function buildValue(value: SchemaValue): unknown {
 
 function isSchema(value: SchemaValue): value is SchemaExpr {
 	return !!value && typeof value === "object" && !Array.isArray(value) && "calls" in value;
+}
+
+function isRegex(value: SchemaValue): value is SchemaRegex {
+	return !!value && typeof value === "object" && !Array.isArray(value) && "regex" in value;
 }
 
 function buildSchema(expr: SchemaExpr): z.ZodTypeAny {
@@ -242,6 +286,8 @@ function buildSchema(expr: SchemaExpr): z.ZodTypeAny {
 
 function renderValue(value: SchemaValue): string {
 	if (isSchema(value)) return renderSchema(value);
+	if (isRegex(value))
+		return `new RegExp(${JSON.stringify(value.regex)}, ${JSON.stringify(value.flags)})`;
 	if (Array.isArray(value)) return `[${value.map(renderValue).join(", ")}]`;
 	if (value && typeof value === "object")
 		return `{ ${Object.entries(value)

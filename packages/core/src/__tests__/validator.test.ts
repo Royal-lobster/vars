@@ -86,6 +86,11 @@ describe("validator", () => {
 			expect(schema.safeParse({ enabled: true, tags: ["safe"] }).success).toBe(true);
 		});
 
+		it("supports regex schemas and JavaScript string escapes", () => {
+			expect(evaluateSchema("z.string().regex(/^[A-Z]+$/)").safeParse("ABC").success).toBe(true);
+			expect(evaluateSchema('z.enum(["\\x41", "\\u0042"])').safeParse("B").success).toBe(true);
+		});
+
 		it("rejects unknown methods", () => {
 			expect(() => evaluateSchema("z.strng()")).toThrow(/unknown.*method/i);
 		});
