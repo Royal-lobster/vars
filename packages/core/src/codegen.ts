@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { isEncrypted } from "./crypto-constants.js";
 import { generateServerless } from "./serverless-codegen.js";
 import type { ResolvedVar, ResolvedVars } from "./types.js";
+import { normalizeSchema } from "./validator.js";
 
 export interface CodegenOptions {
 	platform?: "node" | "serverless" | "deno" | "static";
@@ -97,13 +98,13 @@ export function generateSchemaBlock(grouped: GroupedVars): string {
 	lines.push("const schema = z.object({");
 
 	for (const v of grouped.topLevel) {
-		lines.push(`  ${v.name}: ${v.schema},`);
+		lines.push(`  ${v.name}: ${normalizeSchema(v.schema)},`);
 	}
 
 	for (const [groupName, vars] of grouped.groups) {
 		lines.push(`  ${groupName}: z.object({`);
 		for (const v of vars) {
-			lines.push(`    ${v.name}: ${v.schema},`);
+			lines.push(`    ${v.name}: ${normalizeSchema(v.schema)},`);
 		}
 		lines.push("  }),");
 	}

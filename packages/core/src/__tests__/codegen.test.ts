@@ -21,6 +21,11 @@ function makeResolved(vars: Partial<import("../types.js").ResolvedVar>[]): Resol
 }
 
 describe("codegen", () => {
+	it("rejects executable schemas before emitting code", () => {
+		expect(() =>
+			generateTypeScript(makeResolved([{ name: "X", schema: "z.string() && process.exit()" }])),
+		).toThrow();
+	});
 	it("generates @generated header with source hash", () => {
 		const code = generateTypeScript(
 			makeResolved([{ name: "X", public: true, schema: "z.string()", value: "hello" }]),
