@@ -1,10 +1,14 @@
-import { chmodSync, mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 import { describe, expect, it } from "vitest";
-import { resolveCliPath } from "./cli-path.js";
+import { isPathInside, resolveCliPath } from "./cli-path.js";
 
 describe("resolveCliPath", () => {
+	it("does not treat a Windows path on another drive as contained", () => {
+		expect(isPathInside("C:\\workspace", "D:\\vars.exe", path.win32)).toBe(false);
+	});
+
 	it("accepts only an absolute executable outside the workspace", () => {
 		const root = mkdtempSync(path.join(tmpdir(), "vars-vscode-"));
 		const workspace = path.join(root, "workspace");
