@@ -74,7 +74,7 @@ export function findVarsFile(startDir: string, fileName?: string): string | null
 
 /** Find all .vars files recursively in a directory */
 export function findAllVarsFiles(rootDir: string): string[] {
-	const results: string[] = [];
+	const results = new Map<string, string>();
 	const SKIP = new Set(["node_modules", ".git", "dist", ".vars"]);
 	function walk(dir: string) {
 		try {
@@ -83,14 +83,17 @@ export function findAllVarsFiles(rootDir: string): string[] {
 				if (SKIP.has(entry.name)) continue;
 				const fullPath = join(dir, entry.name);
 				if (entry.isDirectory()) walk(fullPath);
-				else if (entry.name.endsWith(".vars") && !isLocalPath(entry.name)) results.push(fullPath);
+				else if (entry.name.endsWith(".vars") && !isLocalPath(entry.name)) {
+					const canonical = toLockedPath(fullPath);
+					if (isUnlockedPath(fullPath) || !results.has(canonical)) results.set(canonical, fullPath);
+				}
 			}
 		} catch {
 			/* permission error */
 		}
 	}
 	walk(rootDir);
-	return results;
+	return [...results.values()];
 }
 
 /** Find all .unlocked.vars files in a directory */

@@ -84,6 +84,53 @@ group stripe {
 		expect(result).not.toContain("sk_secret_value"); // secret not in plaintext
 	});
 
+	it("keeps public and owner state scoped to each group", async () => {
+		const content = `env(dev)
+
+group public_group {
+  public TOKEN = "visible"
+  SECRET = "first" (owner = "first-team")
+}
+group private_group {
+  TOKEN = "hidden"
+  SECRET = "second" (owner = "second-team")
+}`;
+		const f = join(dir, "grouped.vars");
+		writeFileSync(f, content);
+		await hideFile(f, key);
+		const result = readFileSync(f, "utf8");
+		expect(result).toContain('TOKEN = "visible"');
+		expect(result).not.toContain('TOKEN = "hidden"');
+		expect(result).toContain("owner=first-team:");
+		expect(result).toContain("owner=second-team:");
+	});
+
+	it("encrypts conditional secret values", async () => {
+		const content = `param region : enum(eu, us) = eu
+SECRET {
+  when region = eu => "eu-secret"
+  else => "us-secret"
+}`;
+		const f = join(dir, "conditional.vars");
+		writeFileSync(f, content);
+		await hideFile(f, key);
+		const result = readFileSync(f, "utf8");
+		expect(result).not.toContain("eu-secret");
+		expect(result).not.toContain("us-secret");
+		expect(result.match(/enc:v2:/g)).toHaveLength(2);
+	});
+
+	it("fails closed without changing multiline secrets", async () => {
+		const content = `SECRET = """
+private-key
+"""`;
+		const f = join(dir, "multiline.unlocked.vars");
+		writeFileSync(f, content);
+		await expect(hideFile(f, key)).rejects.toThrow("multiline secret");
+		expect(readFileSync(f, "utf8")).toBe(content);
+		expect(existsSync(join(dir, "multiline.vars"))).toBe(false);
+	});
+
 	it("show renames .vars to .unlocked.vars and decrypts", async () => {
 		const content = `env(dev)
 
@@ -100,6 +147,16 @@ SECRET : z.string() {
 		expect(existsSync(unlocked)).toBe(true);
 		const result = readFileSync(unlocked, "utf8");
 		expect(result).toContain("my-secret");
+	});
+
+	it("show refuses to overwrite an existing unlocked file", async () => {
+		const locked = join(dir, "config.vars");
+		const unlocked = join(dir, "config.unlocked.vars");
+		writeFileSync(locked, 'SECRET = "locked"');
+		writeFileSync(unlocked, 'SECRET = "new edits"');
+		await expect(showFile(locked, key)).rejects.toThrow("Refusing to overwrite");
+		expect(readFileSync(unlocked, "utf8")).toContain("new edits");
+		expect(readFileSync(locked, "utf8")).toContain("locked");
 	});
 
 	it("show is idempotent — re-running on .unlocked.vars re-decrypts", async () => {

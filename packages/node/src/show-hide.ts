@@ -9,6 +9,9 @@ export async function showFile(filePath: string, key: Buffer, scope?: KeyScope):
 	const unlockedPath = isUnlockedPath(filePath) ? filePath : toUnlockedPath(filePath);
 
 	if (!isUnlockedPath(filePath) && existsSync(filePath)) {
+		if (existsSync(unlockedPath)) {
+			throw new Error(`Refusing to overwrite existing unlocked file: ${unlockedPath}`);
+		}
 		renameSync(filePath, unlockedPath);
 	}
 
@@ -59,18 +62,22 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 
 	const content = readFileSync(readPath, "utf8");
 	const parsed = parse(content, readPath);
+	if (parsed.errors.length > 0) {
+		throw new Error(`Cannot safely encrypt invalid vars file: ${parsed.errors[0]!.message}`);
+	}
 	const publicVars = new Set<string>();
 	const ownerMap = new Map<string, string>();
+	const identity = (group: string | null, name: string) => `${group ?? ""}\0${name}`;
 
 	for (const decl of parsed.ast.declarations) {
 		if (decl.kind === "variable") {
-			if (decl.public) publicVars.add(decl.name);
-			if (decl.metadata?.owner) ownerMap.set(decl.name, decl.metadata.owner);
+			if (decl.public) publicVars.add(identity(null, decl.name));
+			if (decl.metadata?.owner) ownerMap.set(identity(null, decl.name), decl.metadata.owner);
 		}
 		if (decl.kind === "group") {
 			for (const v of decl.declarations) {
-				if (v.public) publicVars.add(v.name);
-				if (v.metadata?.owner) ownerMap.set(v.name, v.metadata.owner);
+				if (v.public) publicVars.add(identity(decl.name, v.name));
+				if (v.metadata?.owner) ownerMap.set(identity(decl.name, v.name), v.metadata.owner);
 			}
 		}
 	}
@@ -113,10 +120,12 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 		const varMatch = line.match(/^\s*(?:public\s+)?([A-Z][A-Z0-9_]*)\s*[:{=]/);
 		if (varMatch) {
 			currentVar = varMatch[1];
-			currentIsPublic = line.trimStart().startsWith("public") || publicVars.has(currentVar);
+			currentIsPublic = publicVars.has(identity(currentGroup, currentVar));
 		}
 
-		const currentOwner = currentVar ? (ownerMap.get(currentVar) ?? null) : null;
+		const currentOwner = currentVar
+			? (ownerMap.get(identity(currentGroup, currentVar)) ?? null)
+			: null;
 		const inScope =
 			effectiveScope === "master" ||
 			(currentOwner !== null &&
@@ -127,6 +136,9 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 		const schemaDefaultMatch = line.match(
 			/^(\s*(?:public\s+)?[A-Z][A-Z0-9_]*\s*:\s*[^=]+=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/,
 		);
+		if (!currentIsPublic && inScope && line.includes('"""')) {
+			throw new Error(`Cannot safely encrypt multiline secret ${currentVar ?? "value"}`);
+		}
 		if (schemaDefaultMatch && !currentIsPublic && inScope) {
 			const [, prefix, rawValue, suffix] = schemaDefaultMatch;
 			if (!rawValue.startsWith('"') && !rawValue.startsWith("'")) {
@@ -151,6 +163,21 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 		const envMatch = line.match(
 			/^(\s*\w[\w-]*\s*=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/,
 		);
+		const conditionalMatch = line.match(
+			/^(\s*(?:when\s+\w+\s*=\s*\w+|else)\s*=>\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')(.*)$/,
+		);
+		if (conditionalMatch && !currentIsPublic && inScope) {
+			const [, prefix, rawValue, suffix] = conditionalMatch;
+			const value = rawValue.slice(1, -1);
+			const context = currentGroup
+				? `${currentGroup.toUpperCase()}_${currentVar}@conditional`
+				: `${currentVar}@conditional`;
+			const encKey = await getEncryptionKey(key, currentOwner, effectiveScope, ownerKeyCache);
+			result.push(
+				`${prefix}${encryptDeterministic(value, encKey, context, currentOwner ?? undefined)}${suffix}`,
+			);
+			continue;
+		}
 		if (envMatch && !currentIsPublic && inScope) {
 			const [, prefix, rawValue, suffix] = envMatch;
 			if (line.match(/^\s*(?:public\s+)?[A-Z][A-Z0-9_]*\s*:.*\{\s*$/)) {
