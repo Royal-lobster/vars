@@ -110,7 +110,7 @@ group private_group {
 SECRET {
 	  when region = us-east => "eu-secret"
 	  else => "us-secret"
-}`;
+} (owner = "backend-team")`;
 		const f = join(dir, "conditional.vars");
 		writeFileSync(f, content);
 		await hideFile(f, key);
@@ -118,6 +118,7 @@ SECRET {
 		expect(result).not.toContain("eu-secret");
 		expect(result).not.toContain("us-secret");
 		expect(result.match(/enc:v2:/g)).toHaveLength(2);
+		expect(result).toContain("owner=backend-team:");
 		const unlocked = await showFile(f, key);
 		expect(readFileSync(unlocked, "utf8")).toBe(content);
 	});

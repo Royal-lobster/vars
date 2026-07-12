@@ -22,7 +22,7 @@ export async function showFile(filePath: string, key: Buffer, scope?: KeyScope):
 	const ownerKeyCache = new Map<string, Buffer>();
 
 	for (const line of lines) {
-		const match = line.match(/^(.*(?:=>|=)\s*)(enc:v2:\S+)(.*)$/);
+		const match = line.match(/^(.*?(?:=>|=)\s*)(enc:v2:\S+)(.*)$/);
 		if (match) {
 			const [, prefix, encrypted, suffix] = match;
 			const parsed = parseEncryptedToken(encrypted);
