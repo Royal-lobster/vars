@@ -105,11 +105,11 @@ group private_group {
 		expect(result).toContain("owner=second-team:");
 	});
 
-	it("encrypts conditional secret values", async () => {
-		const content = `param region : enum(eu, us) = eu
+	it("round-trips conditional secret values with hyphenated conditions", async () => {
+		const content = `param region : enum(eu, us-east) = eu
 SECRET {
-  when region = eu => "eu-secret"
-  else => "us-secret"
+	  when region = us-east => "eu-secret"
+	  else => "us-secret"
 }`;
 		const f = join(dir, "conditional.vars");
 		writeFileSync(f, content);
@@ -118,6 +118,8 @@ SECRET {
 		expect(result).not.toContain("eu-secret");
 		expect(result).not.toContain("us-secret");
 		expect(result.match(/enc:v2:/g)).toHaveLength(2);
+		const unlocked = await showFile(f, key);
+		expect(readFileSync(unlocked, "utf8")).toBe(content);
 	});
 
 	it("fails closed without changing multiline secrets", async () => {

@@ -22,7 +22,7 @@ export async function showFile(filePath: string, key: Buffer, scope?: KeyScope):
 	const ownerKeyCache = new Map<string, Buffer>();
 
 	for (const line of lines) {
-		const match = line.match(/^(.*=\s*)(enc:v2:\S+)(.*)$/);
+		const match = line.match(/^(.*(?:=>|=)\s*)(enc:v2:\S+)(.*)$/);
 		if (match) {
 			const [, prefix, encrypted, suffix] = match;
 			const parsed = parseEncryptedToken(encrypted);
@@ -164,7 +164,7 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 			/^(\s*\w[\w-]*\s*=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/,
 		);
 		const conditionalMatch = line.match(
-			/^(\s*(?:when\s+\w+\s*=\s*\w+|else)\s*=>\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')(.*)$/,
+			/^(\s*(?:when\s+[\w-]+\s*=\s*[\w-]+|else)\s*=>\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')(.*)$/,
 		);
 		if (conditionalMatch && !currentIsPublic && inScope) {
 			const [, prefix, rawValue, suffix] = conditionalMatch;
