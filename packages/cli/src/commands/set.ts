@@ -7,7 +7,11 @@ import { defineCommand } from "citty";
 import pc from "picocolors";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import { findVarsFile } from "../utils/context.js";
-import { findDeclarationEndLine, quoteVarsString, trailingMetadata } from "../utils/vars-edit.js";
+import {
+	findDeclarationEndLine,
+	serializeVarsValue,
+	trailingMetadata,
+} from "../utils/vars-edit.js";
 
 function findVariable(
 	declarations: Declaration[],
@@ -26,18 +30,6 @@ function findVariable(
 	return null;
 }
 
-export function quoteValue(val: string): string {
-	// Don't double-quote if already quoted, or if it looks like a number/boolean
-	if (val === "true" || val === "false") return val;
-	if (/^\d+(\.\d+)?$/.test(val)) return val;
-	if (val.startsWith("[")) {
-		try {
-			if (Array.isArray(JSON.parse(val))) return val;
-		} catch {}
-	}
-	return quoteVarsString(val);
-}
-
 function buildUpdatedBlock(
 	variable: VariableDecl,
 	envUpdates: Record<string, string>,
@@ -53,7 +45,7 @@ function buildUpdatedBlock(
 
 	// Case 1: Setting a single value on a flat variable with no envs
 	if (envUpdates.default && Object.keys(envUpdates).length === 1 && envs.length <= 1) {
-		result = [`${prefix}${variable.name}${schemaStr} = ${quoteValue(envUpdates.default)}`];
+		result = [`${prefix}${variable.name}${schemaStr} = ${serializeVarsValue(envUpdates.default)}`];
 
 		// Case 2: Variable currently has an env block — update specific entries
 	} else if (value?.kind === "env_block") {
@@ -70,14 +62,14 @@ function buildUpdatedBlock(
 		// Apply updates
 		for (const [env, val] of Object.entries(envUpdates)) {
 			if (env === "default") continue;
-			existingEntries.set(env, `${env} = ${quoteValue(val)}`);
+			existingEntries.set(env, `${env} = ${serializeVarsValue(val)}`);
 		}
 
 		// Rebuild the block
 		result = [];
 		const defaultVal = envUpdates.default;
 		if (defaultVal) {
-			result.push(`${prefix}${variable.name}${schemaStr} = ${quoteValue(defaultVal)} {`);
+			result.push(`${prefix}${variable.name}${schemaStr} = ${serializeVarsValue(defaultVal)} {`);
 		} else if (defaultEntry) {
 			// Preserve existing default from source
 			const declLine = lines[variable.line - 1];
@@ -105,22 +97,24 @@ function buildUpdatedBlock(
 
 		// Preserve existing flat value as default if no new default given
 		if (defaultVal) {
-			result.push(`${prefix}${variable.name}${schemaStr} = ${quoteValue(defaultVal)} {`);
+			result.push(`${prefix}${variable.name}${schemaStr} = ${serializeVarsValue(defaultVal)} {`);
 		} else if (value?.kind === "literal") {
-			result.push(`${prefix}${variable.name}${schemaStr} = ${quoteValue(String(value.value))} {`);
+			result.push(
+				`${prefix}${variable.name}${schemaStr} = ${serializeVarsValue(String(value.value))} {`,
+			);
 		} else {
 			result.push(`${prefix}${variable.name}${schemaStr} {`);
 		}
 
 		for (const [env, val] of Object.entries(envUpdates)) {
 			if (env === "default") continue;
-			result.push(`  ${env} = ${quoteValue(val)}`);
+			result.push(`  ${env} = ${serializeVarsValue(val)}`);
 		}
 		result.push("}");
 
 		// Case 4: Simple flat value update
 	} else {
-		result = [`${prefix}${variable.name}${schemaStr} = ${quoteValue(envUpdates.default)}`];
+		result = [`${prefix}${variable.name}${schemaStr} = ${serializeVarsValue(envUpdates.default)}`];
 	}
 
 	// Apply indentation (for variables inside groups)

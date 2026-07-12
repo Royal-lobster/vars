@@ -5,7 +5,7 @@ import { parse } from "@dotvars/core";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findVarsFile } from "../utils/context.js";
-import { quoteVarsString } from "../utils/vars-edit.js";
+import { serializeVarsValue } from "../utils/vars-edit.js";
 
 function buildVariableBlock(
 	name: string,
@@ -20,11 +20,11 @@ function buildVariableBlock(
 	if (Object.keys(values).length === 0) {
 		lines.push(`${prefix}${name}${schemaStr}`);
 	} else if (Object.keys(values).length === 1 && values.default) {
-		lines.push(`${prefix}${name}${schemaStr} = ${quoteVarsString(values.default)}`);
+		lines.push(`${prefix}${name}${schemaStr} = ${serializeVarsValue(values.default)}`);
 	} else {
 		lines.push(`${prefix}${name}${schemaStr} {`);
 		for (const [env, val] of Object.entries(values)) {
-			lines.push(`  ${env} = ${quoteVarsString(val)}`);
+			lines.push(`  ${env} = ${serializeVarsValue(val)}`);
 		}
 		lines.push("}");
 	}

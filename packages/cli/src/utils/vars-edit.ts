@@ -13,6 +13,16 @@ export function quoteVarsString(value: string): string {
 		.replace(/\t/g, "\\t")}"`;
 }
 
+export function serializeVarsValue(value: string): string {
+	if (value === "true" || value === "false" || /^\d+(\.\d+)?$/.test(value)) return value;
+	if (value.startsWith("[")) {
+		try {
+			if (Array.isArray(JSON.parse(value))) return value;
+		} catch {}
+	}
+	return quoteVarsString(value);
+}
+
 /** Return the final balanced metadata block without reformatting it. */
 export function trailingMetadata(source: string): string | null {
 	let start = -1;
