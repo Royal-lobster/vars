@@ -119,7 +119,7 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 			currentGroup = null;
 		}
 
-		const varMatch = line.match(/^\s*(?:public\s+)?([A-Z][A-Z0-9_]*)\s*[:{=]/);
+		const varMatch = line.match(/^\s*(?:public\s+)?([A-Z][A-Z0-9_-]*)\s*[:{=]/);
 		if (varMatch) {
 			currentVar = varMatch[1];
 			currentIsPublic = publicVars.has(identity(currentGroup, currentVar));
@@ -136,7 +136,7 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 
 		// Schema-with-default lines
 		const schemaDefaultMatch = line.match(
-			/^(\s*(?:public\s+)?[A-Z][A-Z0-9_]*\s*:\s*[^=]+=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/,
+			/^(\s*(?:public\s+)?[A-Z][A-Z0-9_-]*\s*:\s*[^=]+=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/,
 		);
 		if (!currentIsPublic && inScope && line.includes('"""')) {
 			const opening = line.indexOf('"""');
@@ -201,7 +201,7 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 		}
 		if (envMatch && !currentIsPublic && inScope) {
 			const [, prefix, rawValue, suffix] = envMatch;
-			if (line.match(/^\s*(?:public\s+)?[A-Z][A-Z0-9_]*\s*:.*\{\s*$/)) {
+			if (line.match(/^\s*(?:public\s+)?[A-Z][A-Z0-9_-]*\s*:.*\{\s*$/)) {
 				result.push(line);
 				continue;
 			}
