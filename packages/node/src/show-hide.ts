@@ -108,7 +108,7 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 			continue;
 		}
 
-		const groupMatch = line.match(/^group\s+(\w+)\s*\{/);
+		const groupMatch = line.match(/^group\s+([\w-]+)\s*\{/);
 		if (groupMatch) {
 			currentGroup = groupMatch[1];
 		}

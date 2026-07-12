@@ -91,7 +91,7 @@ group public_group {
   public TOKEN = "visible"
   SECRET = "first" (owner = "first-team")
 }
-group private_group {
+group private-group {
   TOKEN = "hidden"
   SECRET = "second" (owner = "second-team")
 }`;
