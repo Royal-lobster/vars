@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
-import { evaluateCheck, isEncrypted, validateValue } from "@dotvars/core";
-import { decrypt, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
+import { evaluateCheck, isEncrypted, parseEncryptedToken, validateValue } from "@dotvars/core";
+import { decrypt, deriveOwnerKey, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
+import type { KeyScope } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findKeyFile, findVarsFile, requireKey } from "../utils/context.js";
@@ -24,6 +25,7 @@ export default defineCommand({
 		}
 
 		let key: Buffer | null = getKeyFromEnv();
+		let keyScope: KeyScope = "master";
 		const keyFile = findKeyFile(file);
 
 		let errors = 0;
@@ -37,6 +39,7 @@ export default defineCommand({
 
 		for (const env of envsToCheck) {
 			const resolved = resolveUseChain(file, { env });
+			const checkedValues = new Map<string, string | undefined>();
 
 			for (const v of resolved.vars) {
 				if (v.value === undefined) continue;
@@ -45,21 +48,33 @@ export default defineCommand({
 				if (isEncrypted(value)) {
 					if (!key && keyFile) {
 						try {
-							({ key } = await requireKey(keyFile, "vars check"));
+							({ key, scope: keyScope } = await requireKey(keyFile, "vars check"));
 						} catch {
 							/* skip */
 						}
 					}
 					if (key) {
 						try {
-							value = decrypt(value, key);
+							const owner = parseEncryptedToken(value)?.owner;
+							const decryptKey =
+								owner && keyScope === "master" ? await deriveOwnerKey(key, owner) : key;
+							value = decrypt(value, decryptKey);
 						} catch {
+							console.error(pc.red(`  ✗ ${v.flatName} [${env}]: could not decrypt value`));
+							errors++;
+							checkedValues.set(v.flatName, undefined);
 							continue;
 						}
 					} else {
+						console.warn(
+							pc.yellow(`  ⚠ ${v.flatName} [${env}]: encrypted value not checked (no key)`),
+						);
+						warnings++;
+						checkedValues.set(v.flatName, undefined);
 						continue;
 					}
 				}
+				checkedValues.set(v.flatName, value);
 
 				const result = validateValue(v.schema, value);
 				if (!result.success) {
@@ -82,14 +97,7 @@ export default defineCommand({
 			if (resolved.checks.length > 0) {
 				const varMap: Record<string, string | undefined> = {};
 				for (const v of resolved.vars) {
-					let val = v.value;
-					if (val && isEncrypted(val) && key) {
-						try {
-							val = decrypt(val, key);
-						} catch {
-							/* can't decrypt with this key — skip */
-						}
-					}
+					const val = checkedValues.get(v.flatName);
 					varMap[v.name] = val;
 					varMap[v.flatName] = val;
 				}

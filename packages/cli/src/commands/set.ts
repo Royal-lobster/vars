@@ -1,10 +1,13 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parse } from "@dotvars/core";
 import type { Declaration, VariableDecl } from "@dotvars/core";
+import { isLocalPath, isUnlockedPath } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
+import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import { findVarsFile } from "../utils/context.js";
+import { findDeclarationEndLine, quoteVarsString, trailingMetadata } from "../utils/vars-edit.js";
 
 function findVariable(
 	declarations: Declaration[],
@@ -23,48 +26,11 @@ function findVariable(
 	return null;
 }
 
-function findBlockEnd(lines: string[], startLine: number): number {
-	let end = startLine;
-	// If the declaration line has an opening brace, find matching close
-	if (lines[startLine].includes("{")) {
-		let depth = 0;
-		for (let i = startLine; i < lines.length; i++) {
-			for (const ch of lines[i]) {
-				if (ch === "{") depth++;
-				if (ch === "}") depth--;
-			}
-			if (depth <= 0) {
-				end = i;
-				break;
-			}
-		}
-	}
-
-	// Check for trailing metadata block: ( ... ), skipping blank lines
-	let metaSearchIdx = end + 1;
-	while (metaSearchIdx < lines.length && lines[metaSearchIdx].trim() === "") {
-		metaSearchIdx++;
-	}
-	const nextNonEmpty = lines[metaSearchIdx]?.trim();
-	if (nextNonEmpty?.startsWith("(")) {
-		for (let i = metaSearchIdx; i < lines.length; i++) {
-			if (lines[i].includes(")")) {
-				end = i;
-				break;
-			}
-		}
-	}
-
-	return end;
-}
-
 function quoteValue(val: string): string {
 	// Don't double-quote if already quoted, or if it looks like a number/boolean
 	if (val === "true" || val === "false") return val;
 	if (/^\d+(\.\d+)?$/.test(val)) return val;
-	if (val.startsWith("[") || val.startsWith("{")) return val;
-	if (val.startsWith('"') && val.endsWith('"')) return val;
-	return `"${val.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+	return quoteVarsString(val);
 }
 
 function buildUpdatedBlock(
@@ -176,6 +142,12 @@ export default defineCommand({
 			console.error(pc.red("No .vars file found"));
 			process.exit(1);
 		}
+		if (!isUnlockedPath(file) && !isLocalPath(file)) {
+			console.error(
+				pc.red("Refusing to write plaintext to a locked .vars file. Run `vars show` first."),
+			);
+			process.exit(1);
+		}
 
 		const name = args.name as string;
 		if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
@@ -221,33 +193,22 @@ export default defineCommand({
 
 		// Find the range of lines to replace (declaration line through end of block/metadata)
 		const startIdx = variable.line - 1;
-		const endIdx = findBlockEnd(lines, startIdx);
+		const endIdx = findDeclarationEndLine(content, startIdx);
 
 		// Build replacement lines, preserving metadata if present
 		const updatedLines = buildUpdatedBlock(variable, envUpdates, envs, lines, indent);
 
 		// Check if there's trailing metadata we need to preserve
 		if (variable.metadata) {
-			const metaLines: string[] = [];
-			for (let i = startIdx; i <= endIdx; i++) {
-				const trimmed = lines[i].trim();
-				if (trimmed.startsWith("(") || (metaLines.length > 0 && !trimmed.startsWith(")"))) {
-					metaLines.push(lines[i]);
-				}
-				if (metaLines.length > 0 && trimmed.endsWith(")")) {
-					metaLines.push(lines[i]);
-					break;
-				}
-			}
-			if (metaLines.length > 0) {
-				updatedLines.push(...metaLines);
-			}
+			const original = lines.slice(startIdx, endIdx + 1).join("\n");
+			const metadata = trailingMetadata(original);
+			if (metadata) updatedLines.push(`${indent}${metadata}`);
 		}
 
 		// Replace lines
 		lines.splice(startIdx, endIdx - startIdx + 1, ...updatedLines);
 
-		writeFileSync(file, lines.join("\n"));
+		atomicWriteFileSync(file, lines.join("\n"));
 		console.log(pc.green(`  ✓ Updated ${name} in ${file}`));
 	},
 });

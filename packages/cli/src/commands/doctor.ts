@@ -8,10 +8,16 @@ import { checkExpiry, formatExpiryMessage } from "../utils/expiry.js";
 import { HOOK_MARKER, OLD_HOOK_MARKERS } from "../utils/pre-commit-hook.js";
 
 /** Find serverless bundles whose sibling `.vars` exists but `VARS_KEY` is
- *  not set in this shell — they'll fail to decrypt at runtime until the user
- *  exports the key. Returns paths relative to `root`. Exported for testing. */
+ *  lacks a valid key in this shell. Returns paths relative to `root`. */
 export function findOrphanedServerlessBundles(root: string): string[] {
-	if (process.env.VARS_KEY) return [];
+	const envKey = process.env.VARS_KEY;
+	if (
+		envKey &&
+		/^[A-Za-z0-9+/]+={0,2}$/.test(envKey) &&
+		envKey.length % 4 === 0 &&
+		Buffer.from(envKey, "base64").length === 32
+	)
+		return [];
 	const files = findAllVarsFiles(root);
 	const hits: string[] = [];
 	for (const f of files) {
