@@ -133,7 +133,7 @@ export default defineCommand({
 				if (val) values[env] = val as string;
 			}
 		}
-		schema = normalizeSchema(schema);
+		normalizeSchema(schema);
 
 		const lines = buildVariableBlock(name, isPublic, schema, values);
 		const newContent = `${content.trimEnd()}\n\n${lines.join("\n")}\n`;
