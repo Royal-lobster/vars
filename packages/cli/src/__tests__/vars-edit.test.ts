@@ -3,6 +3,7 @@ import {
 	findDeclarationEndLine,
 	quoteVarsString,
 	serializeParsedVarsValue,
+	serializeVarsStringOrArray,
 	serializeVarsValue,
 	trailingMetadata,
 } from "../utils/vars-edit.js";
@@ -20,6 +21,12 @@ describe("vars editing", () => {
 		expect(serializeVarsValue('["one"]')).toBe('["one"]');
 		expect(serializeVarsValue('{"one":1}')).toBe('"{\\"one\\":1}"');
 		expect(serializeParsedVarsValue(["one"])).toBe('["one"]');
+	});
+
+	it("keeps scalar CLI inputs as strings", () => {
+		expect(serializeVarsStringOrArray("3")).toBe('"3"');
+		expect(serializeVarsStringOrArray("true")).toBe('"true"');
+		expect(serializeVarsStringOrArray('["one"]')).toBe('["one"]');
 	});
 
 	it("finds blocks without counting braces in strings and includes metadata", () => {

@@ -15,16 +15,25 @@ export function quoteVarsString(value: string): string {
 
 export function serializeVarsValue(value: string): string {
 	if (value === "true" || value === "false" || /^\d+(\.\d+)?$/.test(value)) return value;
-	if (value.startsWith("[")) {
-		try {
-			if (Array.isArray(JSON.parse(value))) return value;
-		} catch {}
-	}
+	if (isArrayLiteral(value)) return value;
 	return quoteVarsString(value);
+}
+
+export function serializeVarsStringOrArray(value: string): string {
+	return isArrayLiteral(value) ? value : quoteVarsString(value);
 }
 
 export function serializeParsedVarsValue(value: unknown): string {
 	return serializeVarsValue(Array.isArray(value) ? JSON.stringify(value) : String(value));
+}
+
+function isArrayLiteral(value: string): boolean {
+	if (!value.startsWith("[")) return false;
+	try {
+		return Array.isArray(JSON.parse(value));
+	} catch {
+		return false;
+	}
 }
 
 /** Return the final balanced metadata block without reformatting it. */
