@@ -10,6 +10,10 @@ export function validationIssue(secret: boolean, issues?: Array<{ message: strin
 	return secret ? "secret value does not match schema" : (issues?.[0]?.message ?? "invalid value");
 }
 
+export function schemaAllowsMissing(schema: string): boolean {
+	return validateValue(schema, undefined).success;
+}
+
 export default defineCommand({
 	meta: { name: "check", description: "Validate schemas and run check blocks" },
 	args: {
@@ -78,7 +82,7 @@ export default defineCommand({
 			// Check for missing required values
 			for (const v of resolved.vars) {
 				if (v.value === undefined) {
-					if (!v.schema.includes(".optional()")) {
+					if (!schemaAllowsMissing(v.schema)) {
 						console.error(pc.red(`  ✗ ${v.flatName} [${env}]: missing required value`));
 						errors++;
 					}
