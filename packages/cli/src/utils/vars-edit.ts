@@ -23,6 +23,10 @@ export function serializeVarsValue(value: string): string {
 	return quoteVarsString(value);
 }
 
+export function serializeParsedVarsValue(value: unknown): string {
+	return serializeVarsValue(Array.isArray(value) ? JSON.stringify(value) : String(value));
+}
+
 /** Return the final balanced metadata block without reformatting it. */
 export function trailingMetadata(source: string): string | null {
 	let start = -1;

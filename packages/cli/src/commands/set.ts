@@ -9,6 +9,7 @@ import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import { findVarsFile } from "../utils/context.js";
 import {
 	findDeclarationEndLine,
+	serializeParsedVarsValue,
 	serializeVarsValue,
 	trailingMetadata,
 } from "../utils/vars-edit.js";
@@ -100,7 +101,7 @@ function buildUpdatedBlock(
 			result.push(`${prefix}${variable.name}${schemaStr} = ${serializeVarsValue(defaultVal)} {`);
 		} else if (value?.kind === "literal") {
 			result.push(
-				`${prefix}${variable.name}${schemaStr} = ${serializeVarsValue(String(value.value))} {`,
+				`${prefix}${variable.name}${schemaStr} = ${serializeParsedVarsValue(value.value)} {`,
 			);
 		} else {
 			result.push(`${prefix}${variable.name}${schemaStr} {`);

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	findDeclarationEndLine,
 	quoteVarsString,
+	serializeParsedVarsValue,
 	serializeVarsValue,
 	trailingMetadata,
 } from "../utils/vars-edit.js";
@@ -18,6 +19,7 @@ describe("vars editing", () => {
 	it("preserves valid arrays but quotes object-like strings", () => {
 		expect(serializeVarsValue('["one"]')).toBe('["one"]');
 		expect(serializeVarsValue('{"one":1}')).toBe('"{\\"one\\":1}"');
+		expect(serializeParsedVarsValue(["one"])).toBe('["one"]');
 	});
 
 	it("finds blocks without counting braces in strings and includes metadata", () => {
