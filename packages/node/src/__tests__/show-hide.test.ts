@@ -123,15 +123,17 @@ SECRET {
 		expect(readFileSync(unlocked, "utf8")).toBe(content);
 	});
 
-	it("fails closed without changing multiline secrets", async () => {
+	it("round-trips multiline secrets without leaving plaintext", async () => {
 		const content = `SECRET = """
 private-key
+second-line
 """`;
 		const f = join(dir, "multiline.unlocked.vars");
 		writeFileSync(f, content);
-		await expect(hideFile(f, key)).rejects.toThrow("multiline secret");
-		expect(readFileSync(f, "utf8")).toBe(content);
-		expect(existsSync(join(dir, "multiline.vars"))).toBe(false);
+		const locked = await hideFile(f, key);
+		expect(readFileSync(locked, "utf8")).not.toContain("private-key");
+		const unlocked = await showFile(locked, key);
+		expect(readFileSync(unlocked, "utf8")).toBe(content);
 	});
 
 	it("show renames .vars to .unlocked.vars and decrypts", async () => {

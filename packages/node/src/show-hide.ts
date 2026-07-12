@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { isEncrypted, parse, parseEncryptedToken } from "@dotvars/core";
+import { type Value, isEncrypted, parse, parseEncryptedToken } from "@dotvars/core";
 import { decrypt, deriveOwnerKey, encryptDeterministic } from "./crypto.js";
 import { isUnlockedPath, toLockedPath, toUnlockedPath } from "./unlocked-path.js";
 
@@ -36,13 +36,11 @@ export async function showFile(filePath: string, key: Buffer, scope?: KeyScope):
 					decryptKey = ownerKeyCache.get(parsed.owner)!;
 				}
 				const decrypted = decrypt(encrypted, decryptKey);
-				const escaped = decrypted.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-				result.push(`${prefix}"${escaped}"${suffix}`);
+				result.push(`${prefix}${serializeDecrypted(decrypted)}${suffix}`);
 			} else {
 				if (parsed?.owner === effectiveScope.owner) {
 					const decrypted = decrypt(encrypted, key);
-					const escaped = decrypted.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-					result.push(`${prefix}"${escaped}"${suffix}`);
+					result.push(`${prefix}${serializeDecrypted(decrypted)}${suffix}`);
 				} else {
 					result.push(line);
 				}
@@ -67,17 +65,20 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 	}
 	const publicVars = new Set<string>();
 	const ownerMap = new Map<string, string>();
+	const multilineValues = new Map<string, string>();
 	const identity = (group: string | null, name: string) => `${group ?? ""}\0${name}`;
 
 	for (const decl of parsed.ast.declarations) {
 		if (decl.kind === "variable") {
 			if (decl.public) publicVars.add(identity(null, decl.name));
 			if (decl.metadata?.owner) ownerMap.set(identity(null, decl.name), decl.metadata.owner);
+			collectMultilineValues(decl.value, identity(null, decl.name), multilineValues);
 		}
 		if (decl.kind === "group") {
 			for (const v of decl.declarations) {
 				if (v.public) publicVars.add(identity(decl.name, v.name));
 				if (v.metadata?.owner) ownerMap.set(identity(decl.name, v.name), v.metadata.owner);
+				collectMultilineValues(v.value, identity(decl.name, v.name), multilineValues);
 			}
 		}
 	}
@@ -92,7 +93,8 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 	let currentGroup: string | null = null;
 	let checkDepth = 0;
 
-	for (const line of lines) {
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i]!;
 		if (line.match(/^\s*check\s+/)) {
 			if (line.includes("{")) checkDepth = 1;
 			result.push(line);
@@ -137,7 +139,26 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 			/^(\s*(?:public\s+)?[A-Z][A-Z0-9_]*\s*:\s*[^=]+=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/,
 		);
 		if (!currentIsPublic && inScope && line.includes('"""')) {
-			throw new Error(`Cannot safely encrypt multiline secret ${currentVar ?? "value"}`);
+			const opening = line.indexOf('"""');
+			let closingLine = i;
+			let closing = line.indexOf('"""', opening + 3);
+			while (closing < 0 && ++closingLine < lines.length) {
+				closing = lines[closingLine]!.indexOf('"""');
+			}
+			const value = currentVar
+				? multilineValues.get(`${identity(currentGroup, currentVar)}\0${i + 1}`)
+				: undefined;
+			if (closing < 0 || value === undefined) {
+				throw new Error(`Cannot safely encrypt multiline secret ${currentVar ?? "value"}`);
+			}
+			const context = `${currentGroup ? `${currentGroup.toUpperCase()}_` : ""}${currentVar}@${i + 1}`;
+			const encKey = await getEncryptionKey(key, currentOwner, effectiveScope, ownerKeyCache);
+			const suffix = lines[closingLine]!.slice(closing + 3);
+			result.push(
+				`${line.slice(0, opening)}${encryptDeterministic(value, encKey, context, currentOwner ?? undefined)}${suffix}`,
+			);
+			i = closingLine;
+			continue;
 		}
 		if (schemaDefaultMatch && !currentIsPublic && inScope) {
 			const [, prefix, rawValue, suffix] = schemaDefaultMatch;
@@ -212,6 +233,31 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 		renameSync(readPath, lockedPath);
 	}
 	return lockedPath;
+}
+
+function serializeDecrypted(value: string): string {
+	if (value.includes("\n")) return `"""\n${value}\n"""`;
+	return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+function collectMultilineValues(
+	value: Value | null,
+	identity: string,
+	values: Map<string, string>,
+): void {
+	if (!value) return;
+	if (value.kind === "literal" && typeof value.value === "string") {
+		values.set(`${identity}\0${value.line}`, value.value);
+	} else if (value.kind === "env_block") {
+		for (const entry of value.entries) collectMultilineValues(entry.value, identity, values);
+	} else if (value.kind === "conditional") {
+		for (const clause of value.whens) {
+			if (Array.isArray(clause.result)) {
+				for (const entry of clause.result) collectMultilineValues(entry.value, identity, values);
+			} else collectMultilineValues(clause.result, identity, values);
+		}
+		collectMultilineValues(value.fallback ?? null, identity, values);
+	}
 }
 
 async function getEncryptionKey(

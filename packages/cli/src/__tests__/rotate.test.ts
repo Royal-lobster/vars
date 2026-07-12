@@ -20,14 +20,17 @@ describe("rotateFiles", () => {
 		const second = join(dir, "b.vars");
 		const keyFile = join(dir, ".varskey");
 		writeFileSync(first, 'SECRET = "first"');
-		writeFileSync(second, 'SECRET = """\nsecond\n"""');
+		writeFileSync(second, 'SECRET = "second"');
 		await hideFile(first, oldKey);
-		writeFileSync(second, `${readFileSync(first, "utf8")}\nSECRET2 = """\nsecond\n"""`);
+		writeFileSync(
+			second,
+			`${readFileSync(first, "utf8")}\nSECRET2 = "second" (owner = "bad:owner")`,
+		);
 		writeFileSync(keyFile, "old-key\n");
 		const before = [readFileSync(first), readFileSync(second)];
 
 		await expect(rotateFiles([first, second], keyFile, oldKey, newKey, "new-key")).rejects.toThrow(
-			"multiline secret",
+			"Owner name",
 		);
 		expect(readFileSync(keyFile, "utf8")).toBe("old-key\n");
 		expect(readFileSync(first)).toEqual(before[0]);
