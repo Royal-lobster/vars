@@ -27,6 +27,12 @@ export function serializeParsedVarsValue(value: unknown): string {
 	return serializeVarsValue(Array.isArray(value) ? JSON.stringify(value) : String(value));
 }
 
+export function appendTrailingMetadata(lines: string[], metadata: string): void {
+	const [first, ...rest] = metadata.split("\n");
+	lines[lines.length - 1] += ` ${first}`;
+	lines.push(...rest);
+}
+
 function isArrayLiteral(value: string): boolean {
 	if (!value.startsWith("[")) return false;
 	try {

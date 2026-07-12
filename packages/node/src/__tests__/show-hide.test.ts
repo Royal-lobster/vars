@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { parse } from "@dotvars/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { deriveOwnerKey } from "../crypto.js";
 import { createMasterKey } from "../key-manager.js";
@@ -31,6 +32,24 @@ SECRET : z.string() {
 		expect(result).toContain('APP_NAME = "my-app"');
 		expect(result).toContain("enc:v2:aes256gcm-det:");
 		expect(result).not.toContain("dev-secret");
+	});
+
+	it("hide preserves multiline metadata as plaintext syntax", async () => {
+		const content = `env(dev)
+
+SECRET {
+  dev = "secret"
+} (
+  owner = "ops"
+  description = "call (ops)"
+)`;
+		const f = join(dir, "config.vars");
+		writeFileSync(f, content);
+		await hideFile(f, key);
+		const result = readFileSync(f, "utf8");
+		expect(result).toContain('owner = "ops"');
+		expect(result).toContain('description = "call (ops)"');
+		expect(parse(result, f).errors).toEqual([]);
 	});
 
 	it("show decrypts encrypted values", async () => {

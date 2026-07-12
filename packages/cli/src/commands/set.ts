@@ -8,6 +8,7 @@ import pc from "picocolors";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import { findVarsFile } from "../utils/context.js";
 import {
+	appendTrailingMetadata,
 	findDeclarationEndLine,
 	serializeParsedVarsValue,
 	serializeVarsValue,
@@ -202,7 +203,7 @@ export default defineCommand({
 		if (variable.metadata) {
 			const original = lines.slice(startIdx, endIdx + 1).join("\n");
 			const metadata = trailingMetadata(original);
-			if (metadata) updatedLines.push(`${indent}${metadata}`);
+			if (metadata) appendTrailingMetadata(updatedLines, metadata);
 		}
 
 		// Replace lines

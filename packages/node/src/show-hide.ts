@@ -84,8 +84,14 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 	let currentIsPublic = false;
 	let currentGroup: string | null = null;
 	let checkDepth = 0;
+	let inMetadata = false;
 
 	for (const line of lines) {
+		if (inMetadata) {
+			result.push(line);
+			if (line.trim() === ")") inMetadata = false;
+			continue;
+		}
 		if (line.match(/^\s*check\s+/)) {
 			if (line.includes("{")) checkDepth = 1;
 			result.push(line);
@@ -122,6 +128,12 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 			(currentOwner !== null &&
 				typeof effectiveScope === "object" &&
 				currentOwner === effectiveScope.owner);
+
+		if (/\(\s*$/.test(line)) {
+			inMetadata = true;
+			result.push(line);
+			continue;
+		}
 
 		// Schema-with-default lines
 		const schemaDefaultMatch = line.match(

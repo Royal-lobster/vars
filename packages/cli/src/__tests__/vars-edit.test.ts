@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	appendTrailingMetadata,
 	findDeclarationEndLine,
 	quoteVarsString,
 	serializeParsedVarsValue,
@@ -68,5 +69,15 @@ NEXT = "kept"
 		expect(trailingMetadata('SECRET = "value" (owner = "ops") # note (')).toBe(
 			'(owner = "ops") # note (',
 		);
+	});
+
+	it("attaches metadata to parser-valid declaration syntax", () => {
+		const flat = ['SECRET = "new"'];
+		appendTrailingMetadata(flat, '(owner = "ops")');
+		expect(flat).toEqual(['SECRET = "new" (owner = "ops")']);
+
+		const block = ["SECRET {", '  dev = "new"', "}"];
+		appendTrailingMetadata(block, '(\n  owner = "ops"\n)');
+		expect(block).toEqual(["SECRET {", '  dev = "new"', "} (", '  owner = "ops"', ")"]);
 	});
 });
