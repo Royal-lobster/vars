@@ -116,6 +116,7 @@ function resolveFile(absPath: string, visited: Set<string>): MergedFile {
 	// Collect all imported declarations, tracking source for conflict reporting
 	const importedDecls: Map<string, { decl: Declaration; source: string }> = new Map();
 	const importedSourceFiles: string[] = [];
+	const importedChecks: Check[] = [];
 
 	for (const imp of ast.imports) {
 		let importPath = resolve(dirname(absPath), imp.path);
@@ -131,6 +132,7 @@ function resolveFile(absPath: string, visited: Set<string>): MergedFile {
 
 		// Collect transitively gathered source files
 		importedSourceFiles.push(...imported.sourceFiles);
+		importedChecks.push(...imported.checks);
 
 		// Apply pick/omit filter
 		let filteredDecls = imported.declarations;
@@ -165,7 +167,7 @@ function resolveFile(absPath: string, visited: Set<string>): MergedFile {
 		envs: ast.envs,
 		params: ast.params,
 		declarations: mergedDecls,
-		checks: [...ast.checks],
+		checks: [...importedChecks, ...ast.checks],
 		sourceFiles: [absPath, ...importedSourceFiles],
 	};
 }

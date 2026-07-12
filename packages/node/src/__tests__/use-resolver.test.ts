@@ -40,6 +40,11 @@ describe("use-resolver", () => {
 		expect(result.sourceFiles.length).toBeGreaterThanOrEqual(2);
 	});
 
+	it("preserves checks from imported files", () => {
+		const result = resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "dev" });
+		expect(result.checks.some((check) => check.description === "Shared secret exists")).toBe(true);
+	});
+
 	it("detects circular imports", () => {
 		// Circular detection is exercised via the visited set guard in resolveFile.
 		// This test verifies the basic chain resolves without error (non-circular case).
