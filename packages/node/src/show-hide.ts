@@ -154,7 +154,7 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 			continue;
 		}
 
-		if (/\(\s*$/.test(line)) {
+		if (/\(\s*$/.test(codeBeforeComment(line))) {
 			inMetadata = true;
 			result.push(line);
 			continue;
@@ -276,6 +276,21 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 function serializeDecrypted(value: string): string {
 	if (value.includes("\n")) return `"""\n${value}\n"""`;
 	return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+function codeBeforeComment(line: string): string {
+	let quote = "";
+	let escaped = false;
+	for (let i = 0; i < line.length; i++) {
+		const char = line[i]!;
+		if (quote) {
+			if (!escaped && char === quote) quote = "";
+			escaped = !escaped && char === "\\";
+		} else if (char === '"' || char === "'") {
+			quote = char;
+		} else if (char === "#") return line.slice(0, i);
+	}
+	return line;
 }
 
 function collectMultilineValues(

@@ -38,6 +38,7 @@ SECRET : z.string() {
 		const content = `env(dev)
 
 # rotation note (
+INLINE_COMMENT = "inline-secret" # rotation (
 SECRET {
   dev = "secret"
 } (
@@ -52,6 +53,7 @@ SECOND = "second-secret"`;
 		expect(result).toContain('owner = "ops"');
 		expect(result).toContain('description = "call (ops)"');
 		expect(result).not.toContain('dev = "secret"');
+		expect(result).not.toContain("inline-secret");
 		expect(result).not.toContain("second-secret");
 		expect(parse(result, f).errors).toEqual([]);
 	});

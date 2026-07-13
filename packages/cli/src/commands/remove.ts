@@ -1,10 +1,22 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { type Declaration, parse } from "@dotvars/core";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import { findVarsFile } from "../utils/context.js";
 import { findDeclarationEndLine } from "../utils/vars-edit.js";
+
+export function findDeclarationLine(declarations: Declaration[], name: string): number | null {
+	for (const declaration of declarations) {
+		if (declaration.kind === "variable" && declaration.name === name) return declaration.line;
+		if (declaration.kind === "group") {
+			const variable = declaration.declarations.find((item) => item.name === name);
+			if (variable) return variable.line;
+		}
+	}
+	return null;
+}
 
 export default defineCommand({
 	meta: { name: "remove", description: "Remove a variable from a .vars file" },
@@ -26,13 +38,12 @@ export default defineCommand({
 		}
 		const content = readFileSync(file, "utf8");
 		const lines = content.split("\n");
-		const start = lines.findIndex((line) =>
-			new RegExp(`^\\s*(public\\s+)?${name}(\\s|$|:)`).test(line),
-		);
-		if (start === -1) {
+		const line = findDeclarationLine(parse(content, file).ast.declarations, name);
+		if (line === null) {
 			console.error(pc.red(`  Variable "${name}" not found`));
 			process.exit(1);
 		}
+		const start = line - 1;
 		lines.splice(start, findDeclarationEndLine(content, start) - start + 1);
 
 		// Clean up double blank lines
