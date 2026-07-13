@@ -119,6 +119,8 @@ SECRET {
 		expect(result).not.toContain("us-secret");
 		expect(result.match(/enc:v2:/g)).toHaveLength(2);
 		expect(result).toContain("owner=backend-team:");
+		await hideFile(f, key);
+		expect(readFileSync(f, "utf8")).toBe(result);
 		const unlocked = await showFile(f, key);
 		expect(readFileSync(unlocked, "utf8")).toBe(content);
 	});

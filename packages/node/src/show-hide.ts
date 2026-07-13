@@ -193,6 +193,13 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 		const envMatch = line.match(
 			/^(\s*\w[\w-]*\s*=\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)(.*)$/,
 		);
+		const conditionalEncrypted = line.match(
+			/^\s*(?:when\s+[\w-]+\s*=\s*[\w-]+|else)\s*=>\s*(enc:v2:\S+)/,
+		);
+		if (conditionalEncrypted && !currentIsPublic && inScope) {
+			result.push(line);
+			continue;
+		}
 		const conditionalMatch = line.match(
 			/^(\s*(?:when\s+[\w-]+\s*=\s*[\w-]+|else)\s*=>\s*)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')(.*)$/,
 		);
