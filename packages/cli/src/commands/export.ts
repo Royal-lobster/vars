@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { getKeyFromEnv, resolveUseChain } from "@dotvars/node";
+import { type KeyScope, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findKeyFile, findVarsFile, requireKey, resolveEnv } from "../utils/context.js";
@@ -47,19 +47,19 @@ export default defineCommand({
 		}
 
 		let key: Buffer | null = getKeyFromEnv();
+		let scope: KeyScope = "master";
 		const getKey = async () => {
 			if (!key) {
 				const keyFile = findKeyFile(file);
-				({ key } = await requireKey(keyFile, `vars export --env ${env}`));
+				({ key, scope } = await requireKey(keyFile, `vars export --env ${env}`));
 			}
-			return key;
+			return { key, scope };
 		};
 
 		const pairs: [string, string][] = [];
 		for (const v of resolved.vars) {
 			if (v.value === undefined) continue;
 			const val = await resolveEnvValue(v.value, getKey);
-			if (val === undefined) continue;
 			pairs.push([v.flatName, val]);
 		}
 

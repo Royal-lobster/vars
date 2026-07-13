@@ -74,6 +74,11 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 			}
 		}
 	}
+	for (const owner of ownerMap.values()) {
+		if (/[:\s]/.test(owner)) {
+			throw new Error(`Invalid owner "${owner}": colons and whitespace are not allowed`);
+		}
+	}
 
 	const effectiveScope = scope ?? "master";
 	const ownerKeyCache = new Map<string, Buffer>();
