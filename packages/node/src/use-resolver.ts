@@ -25,6 +25,7 @@ export function resolveUseChain(filePath: string, options: UseResolveOptions): R
 		options.params ?? {},
 		localOverrides.envs,
 		localOverrides.params,
+		localOverrides.checks,
 	);
 
 	// Inject source files collected during the chain walk
@@ -126,6 +127,7 @@ function resolveFile(absPath: string, visited: Set<string>, root: string): Merge
 	// Collect all imported declarations, tracking source for conflict reporting
 	const importedDecls: Map<string, { decl: Declaration; source: string }> = new Map();
 	const importedSourceFiles: string[] = [];
+	const importedChecks: Check[] = [];
 
 	for (const imp of ast.imports) {
 		if (isAbsolute(imp.path)) throw new Error(`Absolute use path is not allowed: ${imp.path}`);
@@ -142,6 +144,7 @@ function resolveFile(absPath: string, visited: Set<string>, root: string): Merge
 
 		// Collect transitively gathered source files
 		importedSourceFiles.push(...imported.sourceFiles);
+		if (!imp.filter) importedChecks.push(...imported.checks);
 
 		// Apply pick/omit filter
 		let filteredDecls = imported.declarations;
@@ -176,7 +179,7 @@ function resolveFile(absPath: string, visited: Set<string>, root: string): Merge
 		envs: ast.envs,
 		params: ast.params,
 		declarations: mergedDecls,
-		checks: [...ast.checks],
+		checks: [...importedChecks, ...ast.checks],
 		sourceFiles: [canonicalPath, ...importedSourceFiles],
 	};
 }

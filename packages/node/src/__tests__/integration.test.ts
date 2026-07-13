@@ -106,6 +106,11 @@ SECRET : z.string() {
 		// Serverless keeps public vars in plaintext, but still has to select
 		// per-env values at runtime when a public var differs by env.
 		const byEnv = resolveAllEnvs(resolve(fixtureDir, "services/api/vars.vars"));
+		for (const resolvedEnv of Object.values(byEnv)) {
+			for (const v of resolvedEnv.vars) {
+				if (!v.public && v.value !== undefined) v.value = "enc:v2:aes256gcm-det:a:b:c";
+			}
+		}
 		const serverlessCode = generateTypeScript(resolved, { platform: "serverless", byEnv });
 		expect(serverlessCode).toContain("export async function getVars");
 		expect(serverlessCode).toContain("LOG_LEVEL: {");
