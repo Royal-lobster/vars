@@ -31,6 +31,9 @@ export function encryptDeterministic(
 	context: string,
 	owner?: string,
 ): string {
+	if (owner && /[:\s]/.test(owner)) {
+		throw new Error("Owner name may not contain colons or whitespace");
+	}
 	const iv = deriveIV(key, context, plaintext);
 	const cipher = createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
 	const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);

@@ -78,6 +78,12 @@ describe("owner-tagged encryption", () => {
 		expect(parsed?.owner).toBeNull();
 	});
 
+	it("rejects owner names that would corrupt the token", () => {
+		expect(() => encryptDeterministic("secret", masterKey, "ctx", "bad:owner")).toThrow(
+			"Owner name",
+		);
+	});
+
 	it("decrypts owner-tagged tokens", async () => {
 		const ownerKey = await deriveOwnerKey(masterKey, "backend-team");
 		const encrypted = encryptDeterministic("my-secret", ownerKey, "VAR@dev", "backend-team");
