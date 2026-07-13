@@ -36,6 +36,13 @@ describe("completion", () => {
 	});
 
 	describe("Zod method completions", () => {
+		it("does not evaluate executable schema prefixes", () => {
+			const text = "MY_VAR : z.string(), (() => z.string())().";
+			expect(
+				computeCompletions({ text, line: 0, character: text.length, uri: "file:///test/app.vars" }),
+			).toEqual([]);
+		});
+
 		it("suggests top-level z types after z.", () => {
 			const text = "MY_VAR : z.";
 			const ctx: CompletionContext = {

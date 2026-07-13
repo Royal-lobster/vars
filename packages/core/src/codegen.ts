@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { isEncrypted } from "./crypto-constants.js";
 import { generateServerless } from "./serverless-codegen.js";
 import type { ResolvedVar, ResolvedVars } from "./types.js";
+import { normalizeSchema } from "./validator.js";
 
 export interface CodegenOptions {
 	platform?: "node" | "serverless" | "deno" | "static";
@@ -18,7 +19,7 @@ export interface InferredType {
 }
 
 export function inferType(v: ResolvedVar): InferredType {
-	const s = v.schema;
+	const s = normalizeSchema(v.schema);
 	const optional = s.includes(".optional()");
 
 	// Compound roots must win over schemas nested inside them.
@@ -117,13 +118,13 @@ export function generateSchemaBlock(grouped: GroupedVars): string {
 	lines.push("const schema = z.object({");
 
 	for (const v of grouped.topLevel) {
-		lines.push(`  ${key(v.name)}: ${v.schema},`);
+		lines.push(`  ${key(v.name)}: ${normalizeSchema(v.schema)},`);
 	}
 
 	for (const [groupName, vars] of grouped.groups) {
 		lines.push(`  ${key(groupName)}: z.object({`);
 		for (const v of vars) {
-			lines.push(`    ${key(v.name)}: ${v.schema},`);
+			lines.push(`    ${key(v.name)}: ${normalizeSchema(v.schema)},`);
 		}
 		lines.push("  }),");
 	}

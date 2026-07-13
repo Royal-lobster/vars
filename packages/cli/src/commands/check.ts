@@ -6,6 +6,14 @@ import pc from "picocolors";
 import { findKeyFile, findVarsFile, requireKey } from "../utils/context.js";
 import { checkExpiry, formatExpiryMessage } from "../utils/expiry.js";
 
+export function validationIssue(secret: boolean, issues?: Array<{ message: string }>): string {
+	return secret ? "secret value does not match schema" : (issues?.[0]?.message ?? "invalid value");
+}
+
+export function schemaAllowsMissing(schema: string): boolean {
+	return validateValue(schema, undefined).success;
+}
+
 export default defineCommand({
 	meta: { name: "check", description: "Validate schemas and run check blocks" },
 	args: {
@@ -42,7 +50,8 @@ export default defineCommand({
 				if (v.value === undefined) continue;
 
 				let value = v.value;
-				if (isEncrypted(value)) {
+				const secret = isEncrypted(value);
+				if (secret) {
 					if (!key && keyFile) {
 						try {
 							({ key } = await requireKey(keyFile, "vars check"));
@@ -63,7 +72,9 @@ export default defineCommand({
 
 				const result = validateValue(v.schema, value);
 				if (!result.success) {
-					console.error(pc.red(`  ✗ ${v.flatName} [${env}]: ${result.issues?.[0]?.message}`));
+					console.error(
+						pc.red(`  ✗ ${v.flatName} [${env}]: ${validationIssue(secret, result.issues)}`),
+					);
 					errors++;
 				}
 			}
@@ -71,7 +82,7 @@ export default defineCommand({
 			// Check for missing required values
 			for (const v of resolved.vars) {
 				if (v.value === undefined) {
-					if (!v.schema.includes(".optional()")) {
+					if (!schemaAllowsMissing(v.schema)) {
 						console.error(pc.red(`  ✗ ${v.flatName} [${env}]: missing required value`));
 						errors++;
 					}

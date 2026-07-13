@@ -61,6 +61,12 @@ describe("generateServerless — validation", () => {
 	it("throws when byEnv is empty", () => {
 		expect(() => generateServerless({})).toThrow("generateServerless: no envs provided");
 	});
+
+	it("rejects executable schemas", () => {
+		const byEnv = { dev: vars("x") };
+		byEnv.dev.vars[0].schema = "z.string() && process.exit()";
+		expect(() => generateServerless(byEnv)).toThrow();
+	});
 });
 
 describe("generateServerless — embedded crypto helpers", () => {
