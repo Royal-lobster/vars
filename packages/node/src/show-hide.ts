@@ -208,6 +208,11 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 			);
 			continue;
 		}
+		if (!currentIsPublic && inScope && /(?:^|\s)(?:when\s+|else\s*=>)/.test(line)) {
+			throw new Error(
+				`Cannot safely encrypt non-string conditional secret ${currentVar ?? "value"}`,
+			);
+		}
 		if (envMatch && !currentIsPublic && inScope) {
 			const [, prefix, rawValue, suffix] = envMatch;
 			if (line.match(/^\s*(?:public\s+)?[A-Za-z_][A-Za-z0-9_-]*\s*:.*\{\s*$/)) {

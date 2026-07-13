@@ -123,6 +123,15 @@ SECRET {
 		expect(readFileSync(unlocked, "utf8")).toBe(content);
 	});
 
+	it("fails closed on non-string conditional secrets", async () => {
+		const content = `param region : enum(prod) = prod
+SECRET { when region = prod => 123 }`;
+		const f = join(dir, "conditional.unlocked.vars");
+		writeFileSync(f, content);
+		await expect(hideFile(f, key)).rejects.toThrow("non-string conditional secret");
+		expect(readFileSync(f, "utf8")).toBe(content);
+	});
+
 	it("round-trips multiline secrets without leaving plaintext", async () => {
 		const content = `SECRET = """
 private-key
