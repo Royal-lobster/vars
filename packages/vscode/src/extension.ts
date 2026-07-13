@@ -7,8 +7,17 @@ import {
 	type ServerOptions,
 	TransportKind,
 } from "vscode-languageclient/node.js";
+import { resolveCliPath } from "./cli-path.js";
 
 let client: LanguageClient | undefined;
+
+function cliPath(): string {
+	const configured = workspace.getConfiguration("vars").inspect("cli.path")?.globalValue;
+	return resolveCliPath(
+		configured,
+		workspace.workspaceFolders?.map((folder) => folder.uri.fsPath) ?? [],
+	);
+}
 
 export function activate(context: ExtensionContext): void {
 	const serverModule = context.asAbsolutePath(path.join("dist", "server.js"));
@@ -69,7 +78,7 @@ export function activate(context: ExtensionContext): void {
 			if (!pin) return;
 
 			try {
-				await runVarsWithPin(cmd, pin, cwd);
+				await runVarsWithPin(cliPath(), cmd, pin, cwd);
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
 				if (msg.includes("Invalid PIN")) {
@@ -90,7 +99,11 @@ export function activate(context: ExtensionContext): void {
 		if (regenTimer) clearTimeout(regenTimer);
 		regenTimer = setTimeout(() => {
 			const cwd = path.dirname(uri.fsPath);
-			cp.execFile("vars", ["gen"], { cwd, timeout: 5000 }, () => {});
+			try {
+				cp.execFile(cliPath(), ["gen"], { cwd, timeout: 5000 }, () => {});
+			} catch (err) {
+				window.showErrorMessage(`vars gen: ${err instanceof Error ? err.message : String(err)}`);
+			}
 		}, 500);
 	});
 
@@ -119,9 +132,14 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(watcher);
 }
 
-function runVarsWithPin(subcommand: string, pin: string, cwd: string): Promise<void> {
+function runVarsWithPin(
+	executable: string,
+	subcommand: string,
+	pin: string,
+	cwd: string,
+): Promise<void> {
 	return new Promise((resolve, reject) => {
-		const child = cp.spawn("vars", [subcommand], {
+		const child = cp.spawn(executable, [subcommand], {
 			cwd,
 			env: { ...process.env, VARS_PIN: pin },
 		});
