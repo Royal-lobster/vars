@@ -21,9 +21,6 @@ export function findOrphanedServerlessBundles(root: string): string[] {
 	const files = findAllVarsFiles(root);
 	const hits: string[] = [];
 	for (const f of files) {
-		// Skip .unlocked.vars — the canonical .vars sibling (if any) will cover
-		// this path and we'd otherwise double-count when both exist.
-		if (isUnlockedPath(f)) continue;
 		const generatedPath = toCanonicalPath(f).replace(/\.vars$/, ".generated.ts");
 		if (!existsSync(generatedPath)) continue;
 		try {

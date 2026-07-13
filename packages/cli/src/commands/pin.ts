@@ -73,9 +73,6 @@ export default defineCommand({
 				// Wrap owner key with PIN
 				const encryptedOwnerKey = await encryptMasterKey(ownerKey, pin as string, owner);
 
-				// Append to key file
-				writeFileSync(keyFile, `${keyContent}\n${encryptedOwnerKey}\n`);
-
 				// Re-encrypt owner fields across all .vars files
 				const root = getProjectRoot();
 				const files = findAllVarsFiles(root);
@@ -94,6 +91,9 @@ export default defineCommand({
 						reEncrypted++;
 					}
 				}
+
+				// Publish the PIN only after every owner field is safely migrated.
+				writeFileSync(keyFile, `${keyContent}\n${encryptedOwnerKey}\n`);
 
 				console.log(pc.green(`  ✓ PIN created for owner "${owner}"`));
 				if (reEncrypted > 0) {

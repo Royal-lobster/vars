@@ -15,7 +15,7 @@ export {
 	KEY_LENGTH,
 } from "./crypto-constants.js";
 export type { EncryptedTokenParts } from "./crypto-constants.js";
-export { evaluateSchema, validateValue } from "./validator.js";
+export { evaluateSchema, normalizeSchema, validateValue } from "./validator.js";
 export type { ValidateResult } from "./validator.js";
 export { evaluateCheck } from "./check-evaluator.js";
 export { resolveValue, resolveAll, resolveInterpolation } from "./resolver.js";

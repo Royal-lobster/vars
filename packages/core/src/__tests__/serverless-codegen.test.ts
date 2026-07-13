@@ -16,6 +16,11 @@ function vars(value: string, name = "SECRET", isPublic = false): ResolvedVars {
 }
 
 describe("generateServerless — ciphertext collection", () => {
+	it("rejects plaintext private values", () => {
+		expect(() => generateServerless({ dev: vars("plaintext") })).toThrow(
+			/requires encrypted secret/,
+		);
+	});
 	it("emits a CIPHERTEXTS object keyed by env", () => {
 		const byEnv = {
 			dev: vars("enc:v2:aes256gcm-det:aa:bb:cc"),
@@ -55,6 +60,12 @@ describe("generateServerless — platform marker", () => {
 describe("generateServerless — validation", () => {
 	it("throws when byEnv is empty", () => {
 		expect(() => generateServerless({})).toThrow("generateServerless: no envs provided");
+	});
+
+	it("rejects executable schemas", () => {
+		const byEnv = { dev: vars("x") };
+		byEnv.dev.vars[0].schema = "z.string() && process.exit()";
+		expect(() => generateServerless(byEnv)).toThrow();
 	});
 });
 
@@ -258,6 +269,15 @@ describe("generateServerless — public var divergence", () => {
 });
 
 describe("generateServerless — schema + Redacted", () => {
+	it("redacts and JSON-decodes private compound values", () => {
+		const resolved = vars("enc:v2:aes256gcm-det:a:b:c");
+		resolved.vars[0]!.schema = "z.array(z.string())";
+		const code = generateServerless({ dev: resolved });
+		expect(code).toContain("SECRET: Redacted<unknown[]>");
+		expect(code).toContain('JSON.parse(raw["SECRET"]');
+		expect(code).toContain('new Redacted(parsed["SECRET"] as unknown[])');
+	});
+
 	it("emits the same schema block and Redacted wrapping as node codegen", () => {
 		const byEnv = {
 			dev: {
@@ -289,7 +309,7 @@ describe("generateServerless — schema + Redacted", () => {
 		expect(code).toContain("const schema = z.object(");
 		expect(code).toContain("PORT: z.coerce.number()");
 		expect(code).toContain("DB: z.string().url()");
-		expect(code).toContain("new Redacted(parsed.DB");
-		expect(code).toContain("PORT: parsed.PORT as number");
+		expect(code).toContain('new Redacted(parsed["DB"]');
+		expect(code).toContain('PORT: parsed["PORT"] as number');
 	});
 });

@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import * as prompts from "@clack/prompts";
-import { parse } from "@dotvars/core";
+import { normalizeSchema, parse } from "@dotvars/core";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findVarsFile } from "../utils/context.js";
@@ -132,6 +132,7 @@ export default defineCommand({
 				if (val) values[env] = val as string;
 			}
 		}
+		normalizeSchema(schema);
 
 		const lines = buildVariableBlock(name, isPublic, schema, values);
 		const newContent = `${content.trimEnd()}\n\n${lines.join("\n")}\n`;

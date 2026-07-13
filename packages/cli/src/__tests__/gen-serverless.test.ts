@@ -123,3 +123,20 @@ describe("generateForFile — cloudflare migration error", () => {
 		expect(printed).toContain("https://vars.dev/docs/frameworks/cloudflare");
 	});
 });
+
+describe("generateForFile — schema errors", () => {
+	it("sets a failing exit code", () => {
+		const tmp = makeTmpDir();
+		const filePath = join(tmp, "config.vars");
+		writeFileSync(filePath, 'env(dev)\nX : z.string().refine(() => true) = "x"\n');
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			generateForFile(filePath, "node");
+			expect(process.exitCode).toBe(1);
+		} finally {
+			process.exitCode = undefined;
+			errorSpy.mockRestore();
+			rmSync(tmp, { recursive: true, force: true });
+		}
+	});
+});

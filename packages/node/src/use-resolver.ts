@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parse, resolveAll } from "@dotvars/core";
 import type { Check, Declaration, Import, Param, ResolvedVars } from "@dotvars/core";
 import { isLocalPath, isUnlockedPath, toLocalPath, toUnlockedPath } from "./unlocked-path.js";
@@ -11,12 +11,13 @@ export interface UseResolveOptions {
 
 export function resolveUseChain(filePath: string, options: UseResolveOptions): ResolvedVars {
 	const visited = new Set<string>();
-	const absPath = resolve(filePath);
+	const absPath = realpathSync(resolve(filePath));
+	const root = findProjectRoot(absPath);
 
-	const merged = resolveFile(absPath, visited);
+	const merged = resolveFile(absPath, visited, root);
 
 	// Merge local overrides (top-level only — imported files don't get local overlays)
-	const localOverrides = mergeLocalFile(absPath, merged, visited);
+	const localOverrides = mergeLocalFile(absPath, merged, visited, root);
 
 	const resolved = resolveAll(
 		localOverrides.declarations,
@@ -24,6 +25,7 @@ export function resolveUseChain(filePath: string, options: UseResolveOptions): R
 		options.params ?? {},
 		localOverrides.envs,
 		localOverrides.params,
+		localOverrides.checks,
 	);
 
 	// Inject source files collected during the chain walk
@@ -34,7 +36,12 @@ export function resolveUseChain(filePath: string, options: UseResolveOptions): R
 
 // ── Internal types ───────────────────────────────────────────────────────────
 
-function mergeLocalFile(basePath: string, base: MergedFile, baseVisited: Set<string>): MergedFile {
+function mergeLocalFile(
+	basePath: string,
+	base: MergedFile,
+	baseVisited: Set<string>,
+	root: string,
+): MergedFile {
 	// Don't look for local files of local files
 	if (isLocalPath(basePath)) return base;
 
@@ -43,7 +50,7 @@ function mergeLocalFile(basePath: string, base: MergedFile, baseVisited: Set<str
 
 	// Resolve the local file through the normal resolver (handles use imports).
 	// Inherit the base chain's visited set so circular-import guards stay consistent.
-	const localMerged = resolveFile(localPath, new Set(baseVisited));
+	const localMerged = resolveFile(localPath, new Set(baseVisited), root);
 
 	// Warn and discard env() declarations from local file
 	if (localMerged.envs.length > 0) {
@@ -102,22 +109,29 @@ function filterDeclarations(declarations: Declaration[], filter: Import["filter"
 
 // ── Core recursive resolver ──────────────────────────────────────────────────
 
-function resolveFile(absPath: string, visited: Set<string>): MergedFile {
-	if (visited.has(absPath)) {
-		throw new Error(`Circular use detected: ${absPath}`);
+function resolveFile(absPath: string, visited: Set<string>, root: string): MergedFile {
+	const canonicalPath = realpathSync(absPath);
+	const fromRoot = relative(root, canonicalPath);
+	if (fromRoot === ".." || fromRoot.startsWith(`..${sep}`) || isAbsolute(fromRoot)) {
+		throw new Error(`Use path escapes project root: ${canonicalPath}`);
 	}
-	visited.add(absPath);
+	if (visited.has(canonicalPath)) {
+		throw new Error(`Circular use detected: ${canonicalPath}`);
+	}
+	visited.add(canonicalPath);
 
-	const content = readFileSync(absPath, "utf8");
-	const result = parse(content, absPath);
+	const content = readFileSync(canonicalPath, "utf8");
+	const result = parse(content, canonicalPath);
 	const ast = result.ast;
 
 	// Collect all imported declarations, tracking source for conflict reporting
 	const importedDecls: Map<string, { decl: Declaration; source: string }> = new Map();
 	const importedSourceFiles: string[] = [];
+	const importedChecks: Check[] = [];
 
 	for (const imp of ast.imports) {
-		let importPath = resolve(dirname(absPath), imp.path);
+		if (isAbsolute(imp.path)) throw new Error(`Absolute use path is not allowed: ${imp.path}`);
+		let importPath = resolve(dirname(canonicalPath), imp.path);
 		// Try unlocked variant if locked path doesn't exist
 		if (!existsSync(importPath) && !isUnlockedPath(importPath)) {
 			const unlockedPath = toUnlockedPath(importPath);
@@ -126,10 +140,11 @@ function resolveFile(absPath: string, visited: Set<string>): MergedFile {
 			}
 		}
 		// Pass a copy of visited so siblings don't block each other
-		const imported = resolveFile(importPath, new Set(visited));
+		const imported = resolveFile(importPath, new Set(visited), root);
 
 		// Collect transitively gathered source files
 		importedSourceFiles.push(...imported.sourceFiles);
+		if (!imp.filter) importedChecks.push(...imported.checks);
 
 		// Apply pick/omit filter
 		let filteredDecls = imported.declarations;
@@ -164,7 +179,17 @@ function resolveFile(absPath: string, visited: Set<string>): MergedFile {
 		envs: ast.envs,
 		params: ast.params,
 		declarations: mergedDecls,
-		checks: [...ast.checks],
-		sourceFiles: [absPath, ...importedSourceFiles],
+		checks: [...importedChecks, ...ast.checks],
+		sourceFiles: [canonicalPath, ...importedSourceFiles],
 	};
+}
+
+function findProjectRoot(filePath: string): string {
+	let dir = dirname(filePath);
+	while (true) {
+		if (existsSync(join(dir, "package.json")) || existsSync(join(dir, ".git"))) return dir;
+		const parent = dirname(dir);
+		if (parent === dir) return dirname(filePath);
+		dir = parent;
+	}
 }

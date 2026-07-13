@@ -26,7 +26,7 @@ function resolveValueNode(
 ): string | undefined {
 	switch (value.kind) {
 		case "literal":
-			return String(value.value);
+			return typeof value.value === "string" ? value.value : JSON.stringify(value.value);
 		case "encrypted":
 			return value.raw;
 		case "interpolated":
@@ -128,6 +128,7 @@ export function resolveAll(
 	params: Record<string, string>,
 	envs: string[],
 	paramDefs: Param[],
+	checks: ResolvedVars["checks"] = [],
 ): ResolvedVars {
 	const resolvedVars: ResolvedVar[] = [];
 
@@ -179,6 +180,25 @@ export function resolveAll(
 	}
 
 	// Second pass: resolve interpolation iteratively until stable
+	const privateNames = new Set(
+		resolvedVars.filter((v) => !v.public).flatMap((v) => [v.name, v.flatName]),
+	);
+	for (let changed = true; changed; ) {
+		changed = false;
+		for (const v of resolvedVars) {
+			if (privateNames.has(v.name) || !v.value) continue;
+			const refs = [...v.value.matchAll(/(?<!\\)\$\{([^}]+)\}/g)].map((m) => m[1]!);
+			if (refs.some((ref) => privateNames.has(ref))) {
+				if (v.public) {
+					throw new Error(`Public variable "${v.flatName}" cannot interpolate private values`);
+				}
+				privateNames.add(v.name);
+				privateNames.add(v.flatName);
+				changed = true;
+			}
+		}
+	}
+
 	const MAX_ITERATIONS = 10;
 	for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
 		// Build fresh value map each iteration
@@ -206,7 +226,7 @@ export function resolveAll(
 
 	return {
 		vars: resolvedVars,
-		checks: [],
+		checks,
 		envs,
 		params: paramDefs,
 		sourceFiles: [],

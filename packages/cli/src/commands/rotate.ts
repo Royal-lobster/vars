@@ -1,6 +1,15 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import * as prompts from "@clack/prompts";
-import { createMasterKey, encryptMasterKey, hideFile, parseKeyFile, showFile } from "@dotvars/node";
+import {
+	createMasterKey,
+	encryptMasterKey,
+	hideFile,
+	isUnlockedPath,
+	parseKeyFile,
+	showFile,
+	toLockedPath,
+	toUnlockedPath,
+} from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findAllVarsFiles, findKeyFile, getProjectRoot, requireKey } from "../utils/context.js";
@@ -57,20 +66,45 @@ export default defineCommand({
 		const newKey = await createMasterKey();
 		const root = getProjectRoot();
 		const files = findAllVarsFiles(root);
-
-		// Decrypt all files with old key, re-encrypt with new key
-		for (const f of files) {
-			const content = readFileSync(f, "utf8");
-			if (content.includes("enc:v2:")) {
-				await showFile(f, oldKey, "master");
-				await hideFile(f, newKey, "master");
-				console.log(pc.green(`  ✓ Re-encrypted ${f}`));
-			}
-		}
-
-		// Save new key
 		const encryptedKey = await encryptMasterKey(newKey, pin as string);
-		writeFileSync(keyFile, `${encryptedKey}\n`);
+		await rotateFiles(files, keyFile, oldKey, newKey, encryptedKey);
 		console.log(pc.green("\n  ✓ Key rotated. Share the new .varskey + PIN with teammates."));
 	},
 });
+
+export async function rotateFiles(
+	files: string[],
+	keyFile: string,
+	oldKey: Buffer,
+	newKey: Buffer,
+	encryptedKey: string,
+): Promise<void> {
+	const originals = new Map<string, Buffer>();
+	for (const path of files) {
+		originals.set(path, readFileSync(path));
+		const counterpart = isUnlockedPath(path) ? toLockedPath(path) : toUnlockedPath(path);
+		if (existsSync(counterpart)) originals.set(counterpart, readFileSync(counterpart));
+	}
+	const originalKey = readFileSync(keyFile);
+	try {
+		// Save the recoverable new key before any file uses it.
+		writeFileSync(keyFile, `${encryptedKey}\n`);
+		for (const f of files) {
+			if (readFileSync(f, "utf8").includes("enc:v2:")) {
+				const unlocked = await showFile(f, oldKey, "master");
+				await hideFile(unlocked, newKey, "master");
+				console.log(pc.green(`  ✓ Re-encrypted ${f}`));
+			}
+		}
+	} catch (error) {
+		writeFileSync(keyFile, originalKey);
+		for (const path of files) {
+			const counterpart = isUnlockedPath(path) ? toLockedPath(path) : toUnlockedPath(path);
+			if (!originals.has(counterpart) && existsSync(counterpart)) rmSync(counterpart);
+		}
+		for (const [path, content] of originals) {
+			writeFileSync(path, content);
+		}
+		throw error;
+	}
+}
