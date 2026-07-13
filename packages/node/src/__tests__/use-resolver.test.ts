@@ -41,6 +41,17 @@ describe("use-resolver", () => {
 		expect(names).toContain("SHARED_SECRET");
 	});
 
+	it("does not inherit checks from filtered imports", () => {
+		const project = mkdtempSync(join(tmpdir(), "vars-filtered-check-"));
+		writeFileSync(join(project, "package.json"), "{}");
+		writeFileSync(
+			join(project, "shared.vars"),
+			'SECRET = "x"\npublic VALUE = "y"\ncheck "secret exists" { defined(SECRET) }',
+		);
+		writeFileSync(join(project, "config.vars"), 'use "./shared.vars" { pick: [VALUE] }');
+		expect(resolveUseChain(join(project, "config.vars"), { env: "dev" }).checks).toEqual([]);
+	});
+
 	it("resolves values for correct env", () => {
 		const result = resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "dev" });
 		const apiKey = result.vars.find((v) => v.name === "API_KEY");

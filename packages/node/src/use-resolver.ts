@@ -144,7 +144,7 @@ function resolveFile(absPath: string, visited: Set<string>, root: string): Merge
 
 		// Collect transitively gathered source files
 		importedSourceFiles.push(...imported.sourceFiles);
-		importedChecks.push(...imported.checks);
+		if (!imp.filter) importedChecks.push(...imported.checks);
 
 		// Apply pick/omit filter
 		let filteredDecls = imported.declarations;
