@@ -1,4 +1,6 @@
-import { resolve } from "node:path";
+import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
@@ -10,6 +12,26 @@ const __dirname = dirname(__filename);
 const fixtureDir = resolve(__dirname, "fixtures");
 
 describe("use-resolver", () => {
+	it("rejects traversal, absolute imports, and symlink escapes", () => {
+		const parent = mkdtempSync(join(tmpdir(), "vars-use-"));
+		const project = join(parent, "project");
+		mkdirSync(project);
+		writeFileSync(join(project, "package.json"), "{}");
+		const outside = join(parent, "outside.vars");
+		writeFileSync(outside, 'SECRET : z.string() = "outside"');
+
+		for (const imported of ["../outside.vars", outside]) {
+			writeFileSync(join(project, "config.vars"), `use "${imported}"`);
+			expect(() => resolveUseChain(join(project, "config.vars"), { env: "dev" })).toThrow();
+		}
+
+		symlinkSync(outside, join(project, "linked.vars"));
+		writeFileSync(join(project, "config.vars"), 'use "./linked.vars"');
+		expect(() => resolveUseChain(join(project, "config.vars"), { env: "dev" })).toThrow(
+			"escapes project root",
+		);
+	});
+
 	it("resolves use imports and merges declarations", () => {
 		const result = resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "dev" });
 		const names = result.vars.map((v) => v.name);
@@ -17,6 +39,17 @@ describe("use-resolver", () => {
 		expect(names).toContain("API_KEY");
 		expect(names).toContain("LOG_LEVEL");
 		expect(names).toContain("SHARED_SECRET");
+	});
+
+	it("does not inherit checks from filtered imports", () => {
+		const project = mkdtempSync(join(tmpdir(), "vars-filtered-check-"));
+		writeFileSync(join(project, "package.json"), "{}");
+		writeFileSync(
+			join(project, "shared.vars"),
+			'SECRET = "x"\npublic VALUE = "y"\ncheck "secret exists" { defined(SECRET) }',
+		);
+		writeFileSync(join(project, "config.vars"), 'use "./shared.vars" { pick: [VALUE] }');
+		expect(resolveUseChain(join(project, "config.vars"), { env: "dev" }).checks).toEqual([]);
 	});
 
 	it("resolves values for correct env", () => {
@@ -38,6 +71,11 @@ describe("use-resolver", () => {
 	it("tracks source files for hash computation", () => {
 		const result = resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "dev" });
 		expect(result.sourceFiles.length).toBeGreaterThanOrEqual(2);
+	});
+
+	it("preserves checks from imported files", () => {
+		const result = resolveUseChain(resolve(fixtureDir, "services/api/vars.vars"), { env: "dev" });
+		expect(result.checks.some((check) => check.description === "Shared secret exists")).toBe(true);
 	});
 
 	it("detects circular imports", () => {

@@ -85,6 +85,7 @@ export function generateForFile(filePath: string, platform: string) {
 		generateForFileOrThrow(filePath, platform);
 	} catch (err: any) {
 		console.error(pc.red(`  ✗ ${filePath}: ${err.message}`));
+		process.exitCode = 1;
 	}
 }
 

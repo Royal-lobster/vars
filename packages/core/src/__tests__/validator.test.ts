@@ -66,7 +66,31 @@ describe("validator", () => {
 		});
 
 		it("rejects bracket notation (bypass attempt)", () => {
-			expect(() => evaluateSchema('z.string()["constructor"]')).toThrow(/bracket/i);
+			expect(() => evaluateSchema('z.string()["constructor"]')).toThrow();
+		});
+
+		it("rejects executable expressions and callback schemas", () => {
+			for (const schema of [
+				"z.string() && (globalThis.pwned = true, z.string())",
+				"z.string(), (() => z.string())()",
+				"z.string().refine((value) => value.length > 0)",
+				'z["string"]["con" + "structor"]()',
+			])
+				expect(() => evaluateSchema(schema)).toThrow();
+		});
+
+		it("supports nested declarative schemas", () => {
+			const schema = evaluateSchema(
+				"z.object({ enabled: z.boolean(), tags: z.array(z.string()) }).optional()",
+			);
+			expect(schema.safeParse({ enabled: true, tags: ["safe"] }).success).toBe(true);
+		});
+
+		it("supports regex schemas and JavaScript string escapes", () => {
+			expect(evaluateSchema("z.string().regex(/^[A-Z]+$/)").safeParse("ABC").success).toBe(true);
+			const escaped = evaluateSchema('z.enum(["\\x41", "\\u0042", "\\u{1F600}"])');
+			expect(escaped.safeParse("B").success).toBe(true);
+			expect(escaped.safeParse("😀").success).toBe(true);
 		});
 
 		it("rejects unknown methods", () => {

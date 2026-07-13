@@ -456,6 +456,15 @@ function parseBlock(
 				}
 			}
 		}
+		if (whenClauses.some((wc) => !Array.isArray(wc.result)) || fallback !== undefined) {
+			errors.push(
+				new ParseError(
+					"Environment blocks cannot mix bare entries with scalar when/else values",
+					line,
+					filePath,
+				),
+			);
+		}
 		return { kind: "env_block", entries: envEntries, line } satisfies EnvBlockValue;
 	}
 	if (whenClauses.length > 0 || fallback !== undefined) {
