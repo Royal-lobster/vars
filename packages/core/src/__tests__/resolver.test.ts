@@ -159,6 +159,26 @@ URL = "jdbc:\${CONN}/db"`;
 			expect(url?.value).toBe("jdbc:host=localhost/db");
 		});
 
+		it("rejects public interpolation of private values", () => {
+			const result = parse('env(dev)\nSECRET = "hidden"\npublic LEAK = "${SECRET}"');
+			expect(() =>
+				resolveAll(result.ast.declarations, "dev", {}, result.ast.envs, result.ast.params),
+			).toThrow(/public variable.*private/i);
+		});
+
+		it("preserves supplied check blocks", () => {
+			const result = parse('env(dev)\ncheck "required" { defined(SECRET) }');
+			const resolved = resolveAll(
+				result.ast.declarations,
+				"dev",
+				{},
+				result.ast.envs,
+				result.ast.params,
+				result.ast.checks,
+			);
+			expect(resolved.checks).toEqual(result.ast.checks);
+		});
+
 		it("does not stutter flatName when var name already has group prefix", () => {
 			const src = `env(dev)
 group rate_limit {

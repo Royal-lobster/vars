@@ -6,7 +6,15 @@ import {
 	groupVars,
 	inferType,
 } from "./codegen.js";
+import { parseEncryptedToken } from "./crypto-constants.js";
 import type { ResolvedVar, ResolvedVars } from "./types.js";
+
+const key = (name: string): string =>
+	name === "__proto__"
+		? `[${JSON.stringify(name)}]`
+		: /^[A-Za-z_$][\w$]*$/.test(name)
+			? name
+			: JSON.stringify(name);
 
 /**
  * Build the serverless `#vars` module source.
@@ -22,6 +30,15 @@ export function generateServerless(byEnv: Record<string, ResolvedVars>): string 
 
 	const ref = byEnv[envNames[0]];
 	const grouped = groupVars(ref.vars);
+	for (const [env, resolved] of Object.entries(byEnv)) {
+		for (const v of resolved.vars) {
+			if (!v.public && v.value !== undefined && !parseEncryptedToken(v.value)) {
+				throw new Error(
+					`Serverless codegen requires encrypted secret "${v.flatName}" in env "${env}"`,
+				);
+			}
+		}
+	}
 
 	const lines: string[] = [];
 
@@ -43,14 +60,14 @@ export function generateServerless(byEnv: Record<string, ResolvedVars>): string 
 	lines.push("const PUBLIC_VARS = {");
 	for (const v of grouped.topLevel) {
 		if (!v.public) continue;
-		lines.push(`  ${v.name}: ${formatEnvValueMap(v, byEnv, 2)},`);
+		lines.push(`  ${key(v.name)}: ${formatEnvValueMap(v, byEnv, 2)},`);
 	}
 	for (const [groupName, groupVars] of grouped.groups) {
 		const publicMembers = groupVars.filter((m) => m.public);
 		if (publicMembers.length === 0) continue;
-		lines.push(`  ${groupName}: {`);
+		lines.push(`  ${key(groupName)}: {`);
 		for (const v of publicMembers) {
-			lines.push(`    ${v.name}: ${formatEnvValueMap(v, byEnv, 4)},`);
+			lines.push(`    ${key(v.name)}: ${formatEnvValueMap(v, byEnv, 4)},`);
 		}
 		lines.push("  },");
 	}
@@ -66,15 +83,15 @@ export function generateServerless(byEnv: Record<string, ResolvedVars>): string 
 		for (const v of grouped.topLevel) {
 			if (v.public) continue;
 			const val = byEnv[env].vars.find((x) => x.name === v.name && !x.group)?.value;
-			lines.push(`    ${v.name}: ${JSON.stringify(val ?? "")},`);
+			if (val !== undefined) lines.push(`    ${key(v.name)}: ${JSON.stringify(val)},`);
 		}
 		for (const [groupName, groupVars] of grouped.groups) {
 			const secretMembers = groupVars.filter((m) => !m.public);
 			if (secretMembers.length === 0) continue;
-			lines.push(`    ${groupName}: {`);
+			lines.push(`    ${key(groupName)}: {`);
 			for (const v of secretMembers) {
 				const val = byEnv[env].vars.find((x) => x.name === v.name && x.group === groupName)?.value;
-				lines.push(`      ${v.name}: ${JSON.stringify(val ?? "")},`);
+				if (val !== undefined) lines.push(`      ${key(v.name)}: ${JSON.stringify(val)},`);
 			}
 			lines.push("    },");
 		}
@@ -87,6 +104,7 @@ export function generateServerless(byEnv: Record<string, ResolvedVars>): string 
 
 	lines.push("");
 	lines.push(generateWrapRedacted(grouped));
+	lines.push(generateNormalizeRaw(grouped));
 
 	const envUnion = envNames.map((e) => JSON.stringify(e)).join(" | ");
 	lines.push(`
@@ -121,6 +139,7 @@ export async function getVars(
         raw[name] = sub;
       }
     }
+		normalizeRaw(raw);
     const parsed = schema.parse(raw);
     return wrapRedacted(parsed);
   })();
@@ -157,29 +176,59 @@ function generateWrapRedacted(grouped: GroupedVars): string {
 	// Top-level
 	for (const v of grouped.topLevel) {
 		const inf = inferType(v);
+		const value = `parsed[${JSON.stringify(v.name)}]`;
 		if (inf.needsRedacted) {
-			lines.push(`    ${v.name}: new Redacted(parsed.${v.name} as string),`);
+			const wrapped = `new Redacted(${value} as ${inf.base})`;
+			lines.push(
+				`    ${key(v.name)}: ${inf.optional ? `${value} === undefined ? undefined : ${wrapped}` : wrapped},`,
+			);
 		} else {
-			lines.push(`    ${v.name}: parsed.${v.name} as ${inf.base},`);
+			lines.push(`    ${key(v.name)}: ${value} as ${inf.base},`);
 		}
 	}
 
 	// Groups
 	for (const [groupName, vars] of grouped.groups) {
-		lines.push(`    ${groupName}: {`);
+		lines.push(`    ${key(groupName)}: {`);
 		for (const v of vars) {
 			const inf = inferType(v);
-			const accessor = `(parsed.${groupName} as Record<string, unknown>)`;
+			const accessor = `(parsed[${JSON.stringify(groupName)}] as Record<string, unknown>)[${JSON.stringify(v.name)}]`;
 			if (inf.needsRedacted) {
-				lines.push(`      ${v.name}: new Redacted(${accessor}.${v.name} as string),`);
+				const wrapped = `new Redacted(${accessor} as ${inf.base})`;
+				lines.push(
+					`      ${key(v.name)}: ${inf.optional ? `${accessor} === undefined ? undefined : ${wrapped}` : wrapped},`,
+				);
 			} else {
-				lines.push(`      ${v.name}: ${accessor}.${v.name} as ${inf.base},`);
+				lines.push(`      ${key(v.name)}: ${accessor} as ${inf.base},`);
 			}
 		}
 		lines.push("    },");
 	}
 
 	lines.push("  };");
+	lines.push("}");
+	return lines.join("\n");
+}
+
+function generateNormalizeRaw(grouped: GroupedVars): string {
+	const lines = ["function normalizeRaw(raw: Record<string, unknown>): void {"];
+	for (const v of grouped.topLevel) {
+		const inf = inferType(v);
+		if (inf.base === "unknown[]" || inf.base === "Record<string, unknown>") {
+			const value = `raw[${JSON.stringify(v.name)}]`;
+			lines.push(`  if (typeof ${value} === "string") ${value} = JSON.parse(${value});`);
+		}
+	}
+	for (const [groupName, vars] of grouped.groups) {
+		for (const v of vars) {
+			const inf = inferType(v);
+			if (inf.base === "unknown[]" || inf.base === "Record<string, unknown>") {
+				const group = `(raw[${JSON.stringify(groupName)}] as Record<string, unknown>)`;
+				const value = `${group}[${JSON.stringify(v.name)}]`;
+				lines.push(`  if (typeof ${value} === "string") ${value} = JSON.parse(${value});`);
+			}
+		}
+	}
 	lines.push("}");
 	return lines.join("\n");
 }

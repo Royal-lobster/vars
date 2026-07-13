@@ -180,6 +180,13 @@ describe("parser", () => {
 				expect(db.value?.kind).toBe("env_block");
 			}
 		});
+
+		it("rejects mixed env and scalar conditional blocks", () => {
+			const result = parse(
+				'env(dev, prod)\nparam region : enum(us, eu) = us\nX { dev = "x"\nwhen region = eu => "y"\nelse => "z"\n}',
+			);
+			expect(result.errors.some((error) => error.message.includes("cannot mix"))).toBe(true);
+		});
 	});
 
 	describe("checks", () => {

@@ -68,6 +68,13 @@ describe("codegen", () => {
 		expect(code).toMatch(/LOG: "debug" \| "info" \| "warn"/);
 	});
 
+	it("types escaped enum values from their normalized values", () => {
+		const code = generateTypeScript(
+			makeResolved([{ name: "ESCAPED", public: true, schema: 'z.enum(["\\x41", "\\u0042"])' }]),
+		);
+		expect(code).toContain('ESCAPED: "A" | "B"');
+	});
+
 	it("types secret string as Redacted<string>", () => {
 		const code = generateTypeScript(
 			makeResolved([{ name: "DB_URL", public: false, schema: "z.string().url()", value: "x" }]),
@@ -75,20 +82,18 @@ describe("codegen", () => {
 		expect(code).toContain("DB_URL: Redacted<string>");
 	});
 
-	it("types secret number as plain number (deliberate)", () => {
+	it("redacts secret numbers", () => {
 		const code = generateTypeScript(
 			makeResolved([{ name: "SECRET_PORT", public: false, schema: "z.number()", value: "3000" }]),
 		);
-		expect(code).toContain("SECRET_PORT: number");
-		expect(code).not.toMatch(/SECRET_PORT: Redacted/);
+		expect(code).toContain("SECRET_PORT: Redacted<number>");
 	});
 
-	it("types secret boolean as plain boolean (deliberate)", () => {
+	it("redacts secret booleans", () => {
 		const code = generateTypeScript(
 			makeResolved([{ name: "SECRET_FLAG", public: false, schema: "z.boolean()", value: "true" }]),
 		);
-		expect(code).toContain("SECRET_FLAG: boolean");
-		expect(code).not.toMatch(/SECRET_FLAG: Redacted/);
+		expect(code).toContain("SECRET_FLAG: Redacted<boolean>");
 	});
 
 	it("generates nested types for groups", () => {
@@ -179,6 +184,44 @@ describe("codegen", () => {
 			]),
 		);
 		expect(code).toMatch(/OPT\??: string/);
+	});
+
+	it("preserves missing optional values", () => {
+		const resolved = makeResolved([
+			{ name: "SECRET", schema: "z.string().optional()", value: undefined },
+			{ name: "COUNT", public: true, schema: "z.number().optional()", value: undefined },
+		]);
+		const node = generateTypeScript(resolved);
+		const staticCode = generateTypeScript(resolved, { platform: "static" });
+		expect(node).toContain("parsed.SECRET === undefined ? undefined : new Redacted");
+		expect(staticCode).toContain("SECRET: undefined");
+		expect(staticCode).toContain("COUNT: undefined");
+	});
+
+	it("quotes non-JavaScript identifiers and avoids __proto__ literals", () => {
+		const code = generateTypeScript(
+			makeResolved([
+				{ name: "API-KEY", flatName: "API-KEY", public: true },
+				{ name: "__proto__", flatName: "__proto__", public: true },
+			]),
+		);
+		expect(code).toContain('"API-KEY": z.string()');
+		expect(code).toContain('source["API-KEY"]');
+		expect(code).toContain('["__proto__"]: z.string()');
+		expect(code).toContain('source["__proto__"]');
+	});
+
+	it("infers compound roots and parses JSON input", () => {
+		const code = generateTypeScript(
+			makeResolved([
+				{ name: "LIST", public: true, schema: "z.array(z.number())" },
+				{ name: "FLAGS", public: true, schema: "z.object({ enabled: z.boolean() })" },
+			]),
+		);
+		expect(code).toContain("LIST: unknown[]");
+		expect(code).toContain("FLAGS: Record<string, unknown>");
+		expect(code).toContain("JSON.parse(source.LIST)");
+		expect(code).toContain("JSON.parse(source.FLAGS)");
 	});
 
 	it("uses correct non-stuttered flatName in parseVars for grouped vars", () => {

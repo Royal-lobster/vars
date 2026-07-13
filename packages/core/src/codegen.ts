@@ -15,15 +15,23 @@ export interface CodegenOptions {
 export interface InferredType {
 	base: string; // "string" | "number" | "boolean" | '"a" | "b"' | etc.
 	optional: boolean;
-	needsRedacted: boolean; // true only for secret strings
+	needsRedacted: boolean;
 }
 
 export function inferType(v: ResolvedVar): InferredType {
-	const s = v.schema;
+	const s = normalizeSchema(v.schema);
 	const optional = s.includes(".optional()");
 
+	// Compound roots must win over schemas nested inside them.
+	if (/^\s*z\.array\(/.test(s)) {
+		return { base: "unknown[]", optional, needsRedacted: !v.public };
+	}
+	if (/^\s*z\.object\(/.test(s)) {
+		return { base: "Record<string, unknown>", optional, needsRedacted: !v.public };
+	}
+
 	// Enum — extract values
-	const enumMatch = s.match(/z\.enum\(\[([^\]]+)\]\)/);
+	const enumMatch = s.match(/^\s*z\.enum\(\[([^\]]+)\]\)/);
 	if (enumMatch) {
 		// Parse the enum values from the matched content
 		const inner = enumMatch[1];
@@ -34,32 +42,44 @@ export function inferType(v: ResolvedVar): InferredType {
 			values.push(`"${m[1] ?? m[2]}"`);
 		}
 		const base = values.join(" | ");
-		return { base, optional, needsRedacted: false };
+		return { base, optional, needsRedacted: !v.public };
 	}
 
 	// Number (always plain even if secret)
-	if (s.includes("z.number()") || s.includes("z.coerce.number()")) {
-		return { base: "number", optional, needsRedacted: false };
+	if (/^\s*z\.(?:coerce\.)?number\(\)/.test(s)) {
+		return { base: "number", optional, needsRedacted: !v.public };
 	}
 
 	// Boolean (always plain even if secret)
-	if (s.includes("z.boolean()") || s.includes("z.coerce.boolean()")) {
-		return { base: "boolean", optional, needsRedacted: false };
-	}
-
-	// Array
-	if (s.includes("z.array(")) {
-		return { base: "unknown[]", optional, needsRedacted: false };
-	}
-
-	// Object
-	if (s.includes("z.object(")) {
-		return { base: "Record<string, unknown>", optional, needsRedacted: false };
+	if (/^\s*z\.(?:coerce\.)?boolean\(\)/.test(s)) {
+		return { base: "boolean", optional, needsRedacted: !v.public };
 	}
 
 	// String (default)
 	const isSecret = !v.public;
 	return { base: "string", optional, needsRedacted: isSecret };
+}
+
+const key = (name: string): string =>
+	name === "__proto__"
+		? `[${JSON.stringify(name)}]`
+		: /^[A-Za-z_$][\w$]*$/.test(name)
+			? name
+			: JSON.stringify(name);
+const access = (object: string, name: string): string =>
+	/^[A-Za-z_$][\w$]*$/.test(name) && name !== "__proto__"
+		? `${object}.${name}`
+		: `${object}[${JSON.stringify(name)}]`;
+
+function parseSourceValue(source: string, inf: InferredType): string {
+	if (inf.base === "number") return `${source} !== undefined ? Number(${source}) : undefined`;
+	if (inf.base === "boolean") {
+		return `${source} !== undefined ? (${source} === "true" || ${source} === "1") : undefined`;
+	}
+	if (inf.base === "unknown[]" || inf.base === "Record<string, unknown>") {
+		return `${source} !== undefined ? JSON.parse(${source}) : undefined`;
+	}
+	return source;
 }
 
 function renderType(inf: InferredType): string {
@@ -98,13 +118,13 @@ export function generateSchemaBlock(grouped: GroupedVars): string {
 	lines.push("const schema = z.object({");
 
 	for (const v of grouped.topLevel) {
-		lines.push(`  ${v.name}: ${normalizeSchema(v.schema)},`);
+		lines.push(`  ${key(v.name)}: ${normalizeSchema(v.schema)},`);
 	}
 
 	for (const [groupName, vars] of grouped.groups) {
-		lines.push(`  ${groupName}: z.object({`);
+		lines.push(`  ${key(groupName)}: z.object({`);
 		for (const v of vars) {
-			lines.push(`    ${v.name}: ${normalizeSchema(v.schema)},`);
+			lines.push(`    ${key(v.name)}: ${normalizeSchema(v.schema)},`);
 		}
 		lines.push("  }),");
 	}
@@ -122,15 +142,15 @@ export function generateVarsType(grouped: GroupedVars): string {
 	for (const v of grouped.topLevel) {
 		const inf = inferType(v);
 		const optMark = inf.optional ? "?" : "";
-		lines.push(`  ${v.name}${optMark}: ${renderType(inf)};`);
+		lines.push(`  ${key(v.name)}${optMark}: ${renderType(inf)};`);
 	}
 
 	for (const [groupName, vars] of grouped.groups) {
-		lines.push(`  ${groupName}: {`);
+		lines.push(`  ${key(groupName)}: {`);
 		for (const v of vars) {
 			const inf = inferType(v);
 			const optMark = inf.optional ? "?" : "";
-			lines.push(`    ${v.name}${optMark}: ${renderType(inf)};`);
+			lines.push(`    ${key(v.name)}${optMark}: ${renderType(inf)};`);
 		}
 		lines.push("  };");
 	}
@@ -202,35 +222,17 @@ function generateParseVars(grouped: GroupedVars): string {
 	// Top-level vars
 	for (const v of grouped.topLevel) {
 		const inf = inferType(v);
-		if (inf.base === "number") {
-			lines.push(
-				`  raw.${v.name} = source.${v.flatName} !== undefined ? Number(source.${v.flatName}) : undefined;`,
-			);
-		} else if (inf.base === "boolean") {
-			lines.push(
-				`  raw.${v.name} = source.${v.flatName} !== undefined ? (source.${v.flatName} === "true" || source.${v.flatName} === "1") : undefined;`,
-			);
-		} else {
-			lines.push(`  raw.${v.name} = source.${v.flatName};`);
-		}
+		lines.push(
+			`  ${access("raw", v.name)} = ${parseSourceValue(access("source", v.flatName), inf)};`,
+		);
 	}
 
 	// Groups
 	for (const [groupName, vars] of grouped.groups) {
-		lines.push(`  raw.${groupName} = {`);
+		lines.push(`  ${access("raw", groupName)} = {`);
 		for (const v of vars) {
 			const inf = inferType(v);
-			if (inf.base === "number") {
-				lines.push(
-					`    ${v.name}: source.${v.flatName} !== undefined ? Number(source.${v.flatName}) : undefined,`,
-				);
-			} else if (inf.base === "boolean") {
-				lines.push(
-					`    ${v.name}: source.${v.flatName} !== undefined ? (source.${v.flatName} === "true" || source.${v.flatName} === "1") : undefined,`,
-				);
-			} else {
-				lines.push(`    ${v.name}: source.${v.flatName},`);
-			}
+			lines.push(`    ${key(v.name)}: ${parseSourceValue(access("source", v.flatName), inf)},`);
 		}
 		lines.push("  };");
 	}
@@ -242,23 +244,33 @@ function generateParseVars(grouped: GroupedVars): string {
 	// Top-level
 	for (const v of grouped.topLevel) {
 		const inf = inferType(v);
+		const parsed = access("parsed", v.name);
 		if (inf.needsRedacted) {
-			lines.push(`    ${v.name}: new Redacted(parsed.${v.name} as string),`);
+			const wrapped = `new Redacted(${parsed} as ${inf.base})`;
+			lines.push(
+				`    ${key(v.name)}: ${inf.optional ? `${parsed} === undefined ? undefined : ${wrapped}` : wrapped},`,
+			);
 		} else {
-			lines.push(`    ${v.name}: parsed.${v.name},`);
+			lines.push(`    ${key(v.name)}: ${parsed},`);
 		}
 	}
 
 	// Groups
 	for (const [groupName, vars] of grouped.groups) {
-		lines.push(`    ${groupName}: {`);
+		lines.push(`    ${key(groupName)}: {`);
 		for (const v of vars) {
 			const inf = inferType(v);
-			const accessor = `(parsed.${groupName} as Record<string, unknown>)`;
+			const accessor = access(
+				`(${access("parsed", groupName)} as Record<string, unknown>)`,
+				v.name,
+			);
 			if (inf.needsRedacted) {
-				lines.push(`      ${v.name}: new Redacted(${accessor}.${v.name} as string),`);
+				const wrapped = `new Redacted(${accessor} as ${inf.base})`;
+				lines.push(
+					`      ${key(v.name)}: ${inf.optional ? `${accessor} === undefined ? undefined : ${wrapped}` : wrapped},`,
+				);
 			} else {
-				lines.push(`      ${v.name}: ${accessor}.${v.name} as ${inf.base},`);
+				lines.push(`      ${key(v.name)}: ${accessor} as ${inf.base},`);
 			}
 		}
 		lines.push("    },");
@@ -284,35 +296,26 @@ function generateStaticExport(grouped: GroupedVars): string {
 
 	const lines: string[] = [];
 	lines.push("export const vars: Vars = {");
+	const render = (v: ResolvedVar): string => {
+		if (v.value === undefined) return "undefined";
+		const inf = inferType(v);
+		let value: string;
+		if (inf.base === "number") value = String(Number(v.value));
+		else if (inf.base === "boolean") value = String(v.value === "true" || v.value === "1");
+		else if (inf.base === "unknown[]" || inf.base === "Record<string, unknown>") {
+			value = JSON.stringify(JSON.parse(v.value));
+		} else value = JSON.stringify(v.value);
+		return inf.needsRedacted ? `new Redacted(${value})` : value;
+	};
 
 	for (const v of grouped.topLevel) {
-		const inf = inferType(v);
-		const val = v.value ?? "undefined";
-		if (inf.needsRedacted) {
-			lines.push(`  ${v.name}: new Redacted(${JSON.stringify(val)}),`);
-		} else if (inf.base === "number") {
-			lines.push(`  ${v.name}: ${Number(val)},`);
-		} else if (inf.base === "boolean") {
-			lines.push(`  ${v.name}: ${val === "true" || val === "1"},`);
-		} else {
-			lines.push(`  ${v.name}: ${JSON.stringify(val)},`);
-		}
+		lines.push(`  ${key(v.name)}: ${render(v)},`);
 	}
 
 	for (const [groupName, vars] of grouped.groups) {
-		lines.push(`  ${groupName}: {`);
+		lines.push(`  ${key(groupName)}: {`);
 		for (const v of vars) {
-			const inf = inferType(v);
-			const val = v.value ?? "undefined";
-			if (inf.needsRedacted) {
-				lines.push(`    ${v.name}: new Redacted(${JSON.stringify(val)}),`);
-			} else if (inf.base === "number") {
-				lines.push(`    ${v.name}: ${Number(val)},`);
-			} else if (inf.base === "boolean") {
-				lines.push(`    ${v.name}: ${val === "true" || val === "1"},`);
-			} else {
-				lines.push(`    ${v.name}: ${JSON.stringify(val)},`);
-			}
+			lines.push(`    ${key(v.name)}: ${render(v)},`);
 		}
 		lines.push("  },");
 	}
@@ -347,17 +350,17 @@ function generateClientVarsExport(grouped: GroupedVars): string {
 	lines.push("export const clientVars: ClientVars = {");
 
 	for (const v of publicTopLevel) {
-		lines.push(`  ${v.name}: vars.${v.name},`);
+		lines.push(`  ${key(v.name)}: ${access("vars", v.name)},`);
 	}
 
 	for (const groupName of fullyPublicGroups) {
-		lines.push(`  ${groupName}: vars.${groupName},`);
+		lines.push(`  ${key(groupName)}: ${access("vars", groupName)},`);
 	}
 
 	for (const [groupName, pubVars] of partialGroups) {
-		lines.push(`  ${groupName}: {`);
+		lines.push(`  ${key(groupName)}: {`);
 		for (const v of pubVars) {
-			lines.push(`    ${v.name}: vars.${groupName}.${v.name},`);
+			lines.push(`    ${key(v.name)}: ${access(access("vars", groupName), v.name)},`);
 		}
 		lines.push("  },");
 	}

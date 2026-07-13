@@ -1,17 +1,16 @@
-import { isEncrypted } from "@dotvars/core";
-import { decrypt } from "@dotvars/node";
+import { isEncrypted, parseEncryptedToken } from "@dotvars/core";
+import { type KeyScope, decrypt, deriveOwnerKey } from "@dotvars/node";
 
 export async function resolveEnvValue(
 	value: string,
-	loadKey: () => Promise<Buffer>,
-): Promise<string | undefined> {
+	loadKey: () => Promise<{ key: Buffer; scope: KeyScope }>,
+): Promise<string> {
 	if (!isEncrypted(value)) return value;
 
-	const key = await loadKey();
-
-	try {
-		return decrypt(value, key);
-	} catch {
-		return undefined;
+	const { key, scope } = await loadKey();
+	const owner = parseEncryptedToken(value)?.owner;
+	if (scope !== "master" && owner !== scope.owner) {
+		throw new Error(`Secret belongs to owner "${owner ?? "master"}", not "${scope.owner}"`);
 	}
+	return decrypt(value, scope === "master" && owner ? await deriveOwnerKey(key, owner) : key);
 }
