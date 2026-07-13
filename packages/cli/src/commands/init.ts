@@ -51,7 +51,7 @@ export default defineCommand({
 		// 2. Create key
 		const masterKey = await createMasterKey();
 		const encryptedKey = await encryptMasterKey(masterKey, pin as string);
-		writeFileSync(keyPath, `${encryptedKey}\n`);
+		writeFileSync(keyPath, `${encryptedKey}\n`, { mode: 0o600, flag: "wx" });
 
 		// 3. Create starter config.unlocked.vars (unlocked state for editing)
 		const canonicalPath = join(root, "config.vars");
@@ -114,7 +114,7 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 								: "npm";
 					console.log(pc.dim("  Installing zod..."));
 					const { execSync } = await import("node:child_process");
-					execSync(`${pm} add zod`, { cwd: root, stdio: "pipe" });
+					execSync(`${pm} add zod --ignore-scripts`, { cwd: root, stdio: "pipe" });
 				}
 			} catch {
 				/* non-fatal */

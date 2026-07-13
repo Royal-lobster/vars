@@ -98,7 +98,7 @@ describe("migrateFromEnv", () => {
 		const env = `PRIVATE_KEY="-----BEGIN RSA-----\nMIIEpAIBAAKCAQEA\n-----END RSA-----"\nNORMAL=hello\n`;
 		const result = migrateFromEnv(env);
 		expect(result).toContain(
-			'PRIVATE_KEY = """-----BEGIN RSA-----\nMIIEpAIBAAKCAQEA\n-----END RSA-----"""',
+			'PRIVATE_KEY = "-----BEGIN RSA-----\\nMIIEpAIBAAKCAQEA\\n-----END RSA-----"',
 		);
 		expect(result).toContain('NORMAL = "hello"');
 	});
@@ -106,7 +106,7 @@ describe("migrateFromEnv", () => {
 	it("handles multiline value followed by more vars", () => {
 		const env = `CERT="line1\nline2\nline3"\nPORT=3000\n`;
 		const result = migrateFromEnv(env);
-		expect(result).toContain('CERT = """line1\nline2\nline3"""');
+		expect(result).toContain('CERT = "line1\\nline2\\nline3"');
 		expect(result).toContain("PORT : z.number() = 3000");
 	});
 
@@ -134,6 +134,12 @@ describe("migrateFromEnv", () => {
 		const env = "KEY = value\n";
 		const result = migrateFromEnv(env);
 		expect(result).toContain('KEY = "value"');
+	});
+
+	it("escapes quotes, backslashes, and newlines as .vars strings", () => {
+		const result = migrateFromEnv('SECRET="quote\\\\path\\""\nMULTI="one\ntwo"\n');
+		expect(result).toContain('SECRET = "quote\\\\\\\\path\\\\\\""');
+		expect(result).toContain('MULTI = "one\\ntwo"');
 	});
 
 	it("skips lines without = sign", () => {

@@ -1,5 +1,6 @@
 import { buildHeaderComment } from "./build-header-comment.js";
 import { ALL_PUBLIC_PREFIXES } from "./detect-framework.js";
+import { quoteVarsString } from "./vars-edit.js";
 
 /**
  * Parse a .env file into key-value entries, handling:
@@ -100,19 +101,13 @@ export function migrateFromEnv(
 
 		const pub = isPublic ? "public " : "";
 
-		// Multiline values get triple-quoted
-		if (value.includes("\n")) {
-			varLines.push(`${pub}${key} = """${value}"""`);
-			continue;
-		}
-
 		// Infer type only for unquoted values
 		if (!quoted && /^\d+$/.test(value)) {
 			varLines.push(`${pub}${key} : z.number() = ${value}`);
 		} else if (!quoted && (value === "true" || value === "false")) {
 			varLines.push(`${pub}${key} : z.boolean() = ${value}`);
 		} else {
-			varLines.push(`${pub}${key} = "${value}"`);
+			varLines.push(`${pub}${key} = ${quoteVarsString(value)}`);
 		}
 	}
 

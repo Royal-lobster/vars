@@ -1,8 +1,22 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { type Declaration, parse } from "@dotvars/core";
 import { defineCommand } from "citty";
 import pc from "picocolors";
+import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import { findVarsFile } from "../utils/context.js";
+import { findDeclarationEndLine } from "../utils/vars-edit.js";
+
+export function findDeclarationLine(declarations: Declaration[], name: string): number | null {
+	for (const declaration of declarations) {
+		if (declaration.kind === "variable" && declaration.name === name) return declaration.line;
+		if (declaration.kind === "group") {
+			const variable = declaration.declarations.find((item) => item.name === name);
+			if (variable) return variable.line;
+		}
+	}
+	return null;
+}
 
 export default defineCommand({
 	meta: { name: "remove", description: "Remove a variable from a .vars file" },
@@ -24,39 +38,17 @@ export default defineCommand({
 		}
 		const content = readFileSync(file, "utf8");
 		const lines = content.split("\n");
-		const result: string[] = [];
-		let skipping = false;
-		let found = false;
-
-		for (const line of lines) {
-			// Detect the variable declaration (with or without "public" prefix)
-			const declMatch = line.match(new RegExp(`^(public\\s+)?${name}(\\s|$|:)`));
-			if (declMatch && !skipping) {
-				skipping = true;
-				found = true;
-				continue;
-			}
-
-			if (skipping) {
-				// Skip indented lines (env values, metadata) and closing braces
-				if (line.match(/^\s+/) || line.trim() === "}" || line.trim() === ")") {
-					continue;
-				}
-				// Also skip a closing brace/paren at the start of a line
-				skipping = false;
-			}
-
-			result.push(line);
-		}
-
-		if (!found) {
+		const line = findDeclarationLine(parse(content, file).ast.declarations, name);
+		if (line === null) {
 			console.error(pc.red(`  Variable "${name}" not found`));
 			process.exit(1);
 		}
+		const start = line - 1;
+		lines.splice(start, findDeclarationEndLine(content, start) - start + 1);
 
 		// Clean up double blank lines
-		const cleaned = result.join("\n").replace(/\n{3,}/g, "\n\n");
-		writeFileSync(file, cleaned);
+		const cleaned = lines.join("\n").replace(/\n{3,}/g, "\n\n");
+		atomicWriteFileSync(file, cleaned);
 		console.log(pc.green(`  ✓ Removed ${name} from ${file}`));
 	},
 });

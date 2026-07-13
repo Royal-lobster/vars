@@ -100,9 +100,15 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 	let currentIsPublic = false;
 	let currentGroup: string | null = null;
 	let checkDepth = 0;
+	let inMetadata = false;
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i]!;
+		if (inMetadata) {
+			result.push(line);
+			if (/^\)\s*(?:#.*)?$/.test(line.trim())) inMetadata = false;
+			continue;
+		}
 		if (line.match(/^\s*check\s+/)) {
 			if (line.includes("{")) checkDepth = 1;
 			result.push(line);
@@ -142,6 +148,17 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 			(currentOwner !== null &&
 				typeof effectiveScope === "object" &&
 				currentOwner === effectiveScope.owner);
+
+		if (/^\s*#/.test(line)) {
+			result.push(line);
+			continue;
+		}
+
+		if (/\(\s*$/.test(codeBeforeComment(line))) {
+			inMetadata = true;
+			result.push(line);
+			continue;
+		}
 
 		// Schema-with-default lines
 		const schemaDefaultMatch = line.match(
@@ -259,6 +276,21 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 function serializeDecrypted(value: string): string {
 	if (value.includes("\n")) return `"""\n${value}\n"""`;
 	return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+function codeBeforeComment(line: string): string {
+	let quote = "";
+	let escaped = false;
+	for (let i = 0; i < line.length; i++) {
+		const char = line[i]!;
+		if (quote) {
+			if (!escaped && char === quote) quote = "";
+			escaped = !escaped && char === "\\";
+		} else if (char === '"' || char === "'") {
+			quote = char;
+		} else if (char === "#") return line.slice(0, i);
+	}
+	return line;
 }
 
 function collectMultilineValues(
