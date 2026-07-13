@@ -1,5 +1,11 @@
 # dotvars
 
+## 1.0.6
+
+### Patch Changes
+
+- [#87](https://github.com/Royal-lobster/vars/pull/87) [`e57684c`](https://github.com/Royal-lobster/vars/commit/e57684c54994a88f5c18b3e50c95f543cae68d17) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Harden schema evaluation, secret encryption, imports, subprocesses, and generated output while fixing CLI edits, key rotation, and environment resolution.
+
 ## 1.0.5
 
 ### Patch Changes
