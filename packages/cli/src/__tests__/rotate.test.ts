@@ -30,7 +30,7 @@ describe("rotateFiles", () => {
 		const before = [readFileSync(first), readFileSync(second)];
 
 		await expect(rotateFiles([first, second], keyFile, oldKey, newKey, "new-key")).rejects.toThrow(
-			"Owner name",
+			"Invalid owner",
 		);
 		expect(readFileSync(keyFile, "utf8")).toBe("old-key\n");
 		expect(readFileSync(first)).toEqual(before[0]);

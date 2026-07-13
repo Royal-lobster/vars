@@ -31,8 +31,8 @@ export function encryptDeterministic(
 	context: string,
 	owner?: string,
 ): string {
-	if (owner && !/^[A-Za-z0-9_-]+$/.test(owner)) {
-		throw new Error("Owner name may only contain letters, digits, hyphens, and underscores");
+	if (owner && /[:\s]/.test(owner)) {
+		throw new Error("Owner name may not contain colons or whitespace");
 	}
 	const iv = deriveIV(key, context, plaintext);
 	const cipher = createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
