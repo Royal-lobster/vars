@@ -2,6 +2,11 @@
 	"name": "dotvars",
 	"version": "1.0.6",
 	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Royal-lobster/vars",
+		"directory": "packages/cli"
+	},
 	"bin": {
 		"dotvars": "./dist/index.js",
 		"vars": "./dist/index.js"
