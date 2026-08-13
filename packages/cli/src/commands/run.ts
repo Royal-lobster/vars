@@ -65,7 +65,11 @@ export default defineCommand({
 				({ key, scope } = await requireKey(
 					keyFile,
 					`vars run --env ${env} -- ${rawArgs.slice(rawArgs.indexOf("--") + 1).join(" ")}`,
-					{ pin: args.pin, pinFile: args["pin-file"] },
+					{
+						pin: args.pin,
+						pinFile: args["pin-file"],
+						preferEnvelope: typeof args["key-file"] === "string",
+					},
 				));
 			}
 			return { key, scope };

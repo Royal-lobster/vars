@@ -4,6 +4,7 @@ import {
 	existsSync,
 	mkdirSync,
 	readFileSync,
+	rmSync,
 	writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
@@ -70,18 +71,20 @@ export default defineCommand({
 			pin = promptedPin as string;
 		}
 
-		// 2. Create key
+		// 2. Prepare the key and initial config before publishing either one.
 		const masterKey = await createMasterKey();
 		const encryptedKey = await encryptMasterKey(masterKey, pin as string);
-		writeFileSync(keyPath, `${encryptedKey}\n`, { mode: 0o600, flag: "wx" });
 
 		// 3. Create a locked config for automation or an unlocked config for human editing.
 		const canonicalPath = join(root, "config.vars");
 		const unlockedPath = toUnlockedPath(canonicalPath);
 		const configPath = lockedInitialization ? canonicalPath : unlockedPath;
+		let initialContent: string | undefined;
 		if (!existsSync(canonicalPath) && !existsSync(unlockedPath)) {
 			const envCandidates = [".env", ".env.local", ".env.example", ".env.sample"];
-			const envFile = envCandidates.map((f) => join(root, f)).find((f) => existsSync(f));
+			const envFile = envCandidates
+				.map((file) => join(root, file))
+				.find((file) => existsSync(file));
 			let content: string;
 
 			if (envFile) {
@@ -110,11 +113,12 @@ public PORT : z.number() = 3000
 DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 `;
 			}
-			const initialContent = lockedInitialization
+			initialContent = lockedInitialization
 				? await encryptVarsContent(content, masterKey, "master", canonicalPath)
 				: content;
-			writeFileSync(configPath, initialContent);
 		}
+
+		publishInitialization(keyPath, configPath, encryptedKey, initialContent);
 
 		// 4. Install zod if not already present
 		const pkgJsonPath = join(root, "package.json");
@@ -215,3 +219,25 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 		);
 	},
 });
+
+export function publishInitialization(
+	keyPath: string,
+	configPath: string,
+	encryptedKey: string,
+	initialContent?: string,
+): void {
+	let keyCreated = false;
+	let configCreated = false;
+	try {
+		writeFileSync(keyPath, `${encryptedKey}\n`, { mode: 0o600, flag: "wx" });
+		keyCreated = true;
+		if (initialContent !== undefined) {
+			writeFileSync(configPath, initialContent, { flag: "wx" });
+			configCreated = true;
+		}
+	} catch (error) {
+		if (configCreated && existsSync(configPath)) rmSync(configPath);
+		if (keyCreated && existsSync(keyPath)) rmSync(keyPath);
+		throw error;
+	}
+}

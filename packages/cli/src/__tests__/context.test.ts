@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { decryptMasterKey, encryptMasterKey } from "@dotvars/node";
 import { runCommand } from "citty";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import initCommand from "../commands/init.js";
+import initCommand, { publishInitialization } from "../commands/init.js";
 import { getProjectRoot, requireKey, resolveKeyFile } from "../utils/context.js";
 
 function makeTmpDir(): string {
@@ -77,6 +77,7 @@ describe("getProjectRoot", () => {
 
 describe("--pin", () => {
 	let tmp: string;
+	const originalEnvKey = process.env.VARS_KEY;
 	let originalEnvPin: string | undefined;
 
 	beforeEach(() => {
@@ -90,6 +91,12 @@ describe("--pin", () => {
 			delete process.env.VARS_PIN;
 		} else {
 			process.env.VARS_PIN = originalEnvPin;
+		}
+		if (originalEnvKey === undefined) {
+			// biome-ignore lint/performance/noDelete: restore actual absence, not the string "undefined"
+			delete process.env.VARS_KEY;
+		} else {
+			process.env.VARS_KEY = originalEnvKey;
 		}
 		vi.restoreAllMocks();
 		rmSync(tmp, { recursive: true, force: true });
@@ -105,6 +112,20 @@ describe("--pin", () => {
 		const result = await requireKey(keyPath, "vars show", { pin: "argument-pin" });
 
 		expect(result).toEqual({ key: masterKey, scope: "master" });
+	});
+
+	it("prefers explicit envelope credentials over VARS_KEY", async () => {
+		const envelopeKey = Buffer.alloc(32, 8);
+		const keyPath = join(tmp, ".varskey");
+		writeFileSync(keyPath, `${await encryptMasterKey(envelopeKey, "argument-pin")}\n`);
+		process.env.VARS_KEY = Buffer.alloc(32, 1).toString("base64");
+
+		const result = await requireKey(keyPath, "vars show", {
+			pin: "argument-pin",
+			preferEnvelope: true,
+		});
+
+		expect(result).toEqual({ key: envelopeKey, scope: "master" });
 	});
 
 	it("reads a PIN from a file and resolves an external key envelope", async () => {
@@ -134,5 +155,24 @@ describe("--pin", () => {
 		expect(readFileSync(join(tmp, "config.vars"), "utf8")).not.toContain(
 			"postgres://user:pass@localhost",
 		);
+	});
+});
+
+describe("publishInitialization", () => {
+	const directories: string[] = [];
+
+	afterEach(() => {
+		for (const directory of directories) rmSync(directory, { recursive: true, force: true });
+	});
+
+	it("rolls back a newly created key when config publication fails", () => {
+		const directory = makeTmpDir();
+		directories.push(directory);
+		const keyPath = join(directory, ".varskey");
+		const configPath = join(directory, "config.vars");
+		mkdirSync(configPath);
+
+		expect(() => publishInitialization(keyPath, configPath, "encrypted-key", "config")).toThrow();
+		expect(existsSync(keyPath)).toBe(false);
 	});
 });

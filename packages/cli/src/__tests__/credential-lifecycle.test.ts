@@ -1,7 +1,13 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createMasterKey, decryptMasterKey, encryptMasterKey, parseKeyFile } from "@dotvars/node";
+import {
+	createMasterKey,
+	decryptMasterKey,
+	encryptMasterKey,
+	encryptVarsContent,
+	parseKeyFile,
+} from "@dotvars/node";
 import { runCommand } from "citty";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import keyCommand from "../commands/key.js";
@@ -30,6 +36,15 @@ describe("non-interactive credential lifecycle", () => {
 		rmSync(directory, { recursive: true, force: true });
 	});
 
+	async function writeLockedConfig(content: string): Promise<void> {
+		const encrypted = await encryptVarsContent(
+			content,
+			masterKey,
+			"master",
+			join(directory, "config.vars"),
+		);
+		writeFileSync(join(directory, "config.vars"), encrypted);
+	}
 	it("creates an owner PIN from old and new PIN files without a TTY", async () => {
 		writeFileSync(join(directory, "owner-pin"), "owner-pin\n");
 
@@ -49,6 +64,25 @@ describe("non-interactive credential lifecycle", () => {
 		await expect(decryptMasterKey(entries[1]!.raw, "owner-pin")).resolves.toHaveLength(32);
 	});
 
+	it("migrates owner fields without creating an unlocked file", async () => {
+		await writeLockedConfig('API_TOKEN = "secret" # owner: backend\n');
+		writeFileSync(join(directory, "owner-pin"), "owner-pin\n");
+
+		await runCommand(pinCommand, {
+			rawArgs: [
+				"create",
+				"backend",
+				"--pin-file",
+				join(directory, "master-pin"),
+				"--new-pin-file",
+				join(directory, "owner-pin"),
+			],
+		});
+
+		expect(existsSync(join(directory, "config.unlocked.vars"))).toBe(false);
+		expect(readFileSync(join(directory, "config.vars"), "utf8")).not.toContain("secret");
+	});
+
 	it("rotates with old and new PIN files without a TTY", async () => {
 		writeFileSync(join(directory, "new-pin"), "new-pin\n");
 
@@ -64,6 +98,23 @@ describe("non-interactive credential lifecycle", () => {
 		const entry = parseKeyFile(readFileSync(join(directory, ".varskey"), "utf8"))[0]!;
 		await expect(decryptMasterKey(entry.raw, "master-pin")).rejects.toThrow();
 		await expect(decryptMasterKey(entry.raw, "new-pin")).resolves.toHaveLength(32);
+	});
+
+	it("rotates encrypted files without creating an unlocked file", async () => {
+		await writeLockedConfig('API_TOKEN = "secret"\n');
+		writeFileSync(join(directory, "new-pin"), "new-pin\n");
+
+		await runCommand(rotateCommand, {
+			rawArgs: [
+				"--pin-file",
+				join(directory, "master-pin"),
+				"--new-pin-file",
+				join(directory, "new-pin"),
+			],
+		});
+
+		expect(existsSync(join(directory, "config.unlocked.vars"))).toBe(false);
+		expect(readFileSync(join(directory, "config.vars"), "utf8")).not.toContain("secret");
 	});
 
 	it("imports an encrypted envelope without exposing the master key", async () => {

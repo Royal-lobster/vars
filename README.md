@@ -133,6 +133,8 @@ vars doctor            # diagnose setup
 vars init --pin-file /run/secrets/vars-pin
 vars add stripe.SECRET_KEY --value-file /run/secrets/stripe-key \
   --pin-file /run/secrets/vars-pin
+# Explicit envelope credentials override ambient VARS_KEY compatibility credentials.
+# Trusted lifecycle commands re-encrypt in memory and never create *.unlocked.vars.
 ```
 
 </details>

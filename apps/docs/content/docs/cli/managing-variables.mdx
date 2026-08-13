@@ -66,7 +66,7 @@ vars hide -f staging.vars
 
 ## Locked-file edits
 
-`add`, `set`, `remove`, and `apply` modify `config.vars` directly. Secret inputs are encrypted before the file is atomically replaced; these commands never create `config.unlocked.vars`.
+`add`, `set`, `remove`, and `apply` modify `config.vars` directly. Secret inputs are encrypted before replacement, and these commands never create `config.unlocked.vars`. If matching generated TypeScript output exists, vars regenerates it before completing; a regeneration failure restores both files.
 
 Qualified names keep public and secret values together by integration:
 
@@ -125,7 +125,7 @@ Updates a variable without unlocking the file. Environment flags and their `-fil
 </Accordion>
 <Accordion title="apply — atomically upsert an integration">
 
-`apply` reads variable and group declarations from stdin. Omitted variables remain unchanged:
+`apply` reads variable and group declarations from stdin. Omitted variables remain unchanged. Imports, params, checks, conditionals, and duplicate qualified names are rejected:
 
 ```bash
 vars apply --pin-file /run/secrets/vars-pin <<'VARS'
@@ -136,7 +136,7 @@ group stripe {
 VARS
 ```
 
-The plaintext fragment exists only in the command input. Secret declarations are encrypted before `config.vars` is replaced.
+The plaintext fragment exists only in the command input. Secret declarations are encrypted before `config.vars` is replaced. Existing declaration order is preserved; new declarations append to their target scope. Public/schema/value/metadata from a listed declaration replace that declaration as a unit.
 
 </Accordion>
 <Accordion title="ls — list variables">

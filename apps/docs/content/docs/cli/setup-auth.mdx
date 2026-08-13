@@ -86,7 +86,7 @@ vars rotate \
   --yes
 ```
 
-Generates a new encryption key, re-encrypts every `*.vars` file, and replaces the envelope. `--yes` is required in non-interactive mode when owner PINs will be invalidated.
+Generates a new encryption key, re-encrypts every locked `*.vars` file in memory, and replaces the envelope. It never creates an unlocked file. `--yes` is required in non-interactive mode when owner PINs will be invalidated.
 
 </Accordion>
 </Accordions>
@@ -104,7 +104,7 @@ Owner-scoped PINs for team access control. See [Multi-PIN](/docs/security/multi-
 vars pin create <owner>
 ```
 
-Creates a scoped PIN for an owner. Requires the master PIN. The CLI derives a sub-key from the master key, wraps it with the new PIN, and re-encrypts fields tagged with that owner.
+Creates a scoped PIN for an owner. Requires the master PIN. The CLI derives a sub-key from the master key, wraps it with the new PIN, and migrates fields tagged with that owner entirely in memory before atomically publishing the owner envelope. It never creates an unlocked file.
 
 ```bash
 # Create a PIN for the backend team

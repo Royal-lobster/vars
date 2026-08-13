@@ -9,7 +9,7 @@ import {
 	encryptVarsContent,
 } from "@dotvars/node";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mutateVarsFile } from "../utils/locked-mutation.js";
+import { mutateVarsFile } from "../utils/vars-source-mutation.js";
 
 function encryptedValue(content: string, target: string): string {
 	const line = content
@@ -135,6 +135,25 @@ describe("locked vars mutations", () => {
 		expect(content).toContain('public DSN : z.string().url() = "https://example.test/1"');
 		expect(content).not.toContain("sentry-secret");
 		expect(decrypt(encryptedValue(content, "AUTH_TOKEN"), key)).toBe("sentry-secret");
+	});
+
+	it("rejects duplicate qualified names in an apply patch", async () => {
+		const before = readFileSync(file, "utf8");
+		await expect(
+			mutateVarsFile(
+				file,
+				{
+					kind: "apply",
+					patch: `group sentry {
+  AUTH_TOKEN = "first"
+  AUTH_TOKEN = "second"
+}
+`,
+				},
+				{ pinFile, keyFile },
+			),
+		).rejects.toThrow("Duplicate declaration");
+		expect(readFileSync(file, "utf8")).toBe(before);
 	});
 
 	it("leaves the locked file unchanged when an apply patch is invalid", async () => {

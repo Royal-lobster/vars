@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findVarsFile, KEY_CREDENTIAL_ARGUMENTS } from "../utils/context.js";
-import { mutateVarsFile } from "../utils/locked-mutation.js";
+import { mutateVarsFile } from "../utils/vars-source-mutation.js";
 
 export default defineCommand({
 	meta: { name: "apply", description: "Atomically upsert a .vars fragment from stdin" },

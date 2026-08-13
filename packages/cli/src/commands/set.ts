@@ -4,7 +4,7 @@ import { parse } from "@dotvars/core";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findVarsFile, KEY_CREDENTIAL_ARGUMENTS } from "../utils/context.js";
-import { mutateVarsFile, readValueFile } from "../utils/locked-mutation.js";
+import { mutateVarsFile, readValueFile } from "../utils/vars-source-mutation.js";
 
 export default defineCommand({
 	meta: { name: "set", description: "Update a variable without unlocking the vars file" },

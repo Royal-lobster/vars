@@ -1,10 +1,15 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { generateTypeScript } from "@dotvars/core";
-import { resolveAllEnvs, resolveUseChain, toCanonicalPath } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findAllVarsFiles, findVarsFile, getProjectRoot } from "../utils/context.js";
+import {
+	detectGeneratedPlatform,
+	generateForFileOrThrow,
+	type GeneratedPlatform,
+} from "../utils/generated-output.js";
+
+export { detectGeneratedPlatform };
+export type { GeneratedPlatform };
 
 export default defineCommand({
 	meta: { name: "gen", description: "Generate TypeScript types from .vars files" },
@@ -41,10 +46,6 @@ export default defineCommand({
 	},
 });
 
-export type GeneratedPlatform = "node" | "serverless" | "deno" | "static";
-
-const GENERATED_PLATFORM_RE = /^\/\/ @vars-platform: (node|serverless|deno|static)$/m;
-
 export function resolvePlatformArg(
 	platform: unknown,
 	rawArgs: string[],
@@ -63,14 +64,6 @@ export function resolvePlatformArg(
 	return typeof platform === "string" ? platform : "node";
 }
 
-export function detectGeneratedPlatform(filePath: string): GeneratedPlatform | null {
-	const generatedPath = toCanonicalPath(filePath).replace(/\.vars$/, ".generated.ts");
-	if (!existsSync(generatedPath)) return null;
-	const content = readFileSync(generatedPath, "utf8");
-	const match = content.match(GENERATED_PLATFORM_RE);
-	return (match?.[1] as GeneratedPlatform | undefined) ?? null;
-}
-
 export function generateForFile(filePath: string, platform: string) {
 	if (platform === "cloudflare") {
 		console.error(
@@ -87,23 +80,4 @@ export function generateForFile(filePath: string, platform: string) {
 		console.error(pc.red(`  ✗ ${filePath}: ${err.message}`));
 		process.exitCode = 1;
 	}
-}
-
-export function generateForFileOrThrow(filePath: string, platform: string): string {
-	let code: string;
-	if (platform === "serverless") {
-		const byEnv = resolveAllEnvs(filePath);
-		const envNames = Object.keys(byEnv);
-		const ref = byEnv[envNames[0]];
-		code = generateTypeScript(ref, { platform: "serverless", byEnv });
-	} else {
-		const resolved = resolveUseChain(filePath, { env: "dev" });
-		code = generateTypeScript(resolved, {
-			platform: platform as "node" | "serverless" | "deno" | "static",
-		});
-	}
-	const outPath = toCanonicalPath(filePath).replace(/\.vars$/, ".generated.ts");
-	writeFileSync(outPath, code);
-	console.log(pc.green(`  ✓ ${outPath}`));
-	return outPath;
 }

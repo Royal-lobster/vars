@@ -51,6 +51,17 @@ export const KEY_CREDENTIAL_ARGUMENTS = {
 export interface KeyCredentials {
 	pin?: string;
 	pinFile?: string;
+	/** Prefer the encrypted envelope even when the VARS_KEY compatibility fallback is set. */
+	preferEnvelope?: boolean;
+}
+
+/** Preserve credential precedence consistently across every CLI command. */
+export function keyCredentialsFromArgs(args: Record<string, unknown>): KeyCredentials {
+	return {
+		pin: typeof args.pin === "string" ? args.pin : undefined,
+		pinFile: typeof args["pin-file"] === "string" ? args["pin-file"] : undefined,
+		preferEnvelope: typeof args["key-file"] === "string",
+	};
 }
 
 export interface CliContext {
@@ -160,9 +171,15 @@ export async function requireKey(
 	command?: string,
 	credentials: KeyCredentials = {},
 ): Promise<KeyResult> {
-	// First: try VARS_KEY env var (works in CI/non-TTY)
-	const envKey = getKeyFromEnv();
-	if (envKey) return { key: envKey, scope: "master" };
+	const suppliedPin = resolveSuppliedPin(credentials);
+	const envelopePreferred =
+		credentials.preferEnvelope === true ||
+		suppliedPin !== undefined ||
+		process.env.VARS_KEY_FILE !== undefined;
+	if (!envelopePreferred) {
+		const envKey = getKeyFromEnv();
+		if (envKey) return { key: envKey, scope: "master" };
+	}
 
 	if (!keyFilePath || !existsSync(keyFilePath)) {
 		throw new Error("No encryption key found. Run `vars key init` first.");
@@ -176,7 +193,7 @@ export async function requireKey(
 	}
 
 	// Explicit flags override environment credentials for this invocation.
-	let pin = resolveSuppliedPin(credentials);
+	let pin = suppliedPin;
 	if (!pin && process.stdin.isTTY) {
 		const result = await prompts.password({ message: "Enter PIN:" });
 		if (prompts.isCancel(result)) process.exit(0);

@@ -2,16 +2,17 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import * as prompts from "@clack/prompts";
 import {
 	createMasterKey,
+	decryptVarsContent,
 	encryptMasterKey,
-	hideFile,
+	encryptVarsContent,
 	isUnlockedPath,
 	parseKeyFile,
-	showFile,
 	toLockedPath,
 	toUnlockedPath,
 } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
+import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import {
 	findAllVarsFiles,
 	getProjectRoot,
@@ -71,6 +72,7 @@ export default defineCommand({
 		const { key: oldKey, scope } = await requireKey(keyFile, "vars rotate", {
 			pin: args.pin,
 			pinFile: args["pin-file"],
+			preferEnvelope: typeof args["key-file"] === "string",
 		});
 		if (scope !== "master") {
 			console.error(pc.red("  Only the master PIN can rotate keys."));
@@ -108,31 +110,46 @@ export async function rotateFiles(
 	encryptedKey: string,
 ): Promise<void> {
 	const originals = new Map<string, Buffer>();
-	for (const path of files) {
-		originals.set(path, readFileSync(path));
-		const counterpart = isUnlockedPath(path) ? toLockedPath(path) : toUnlockedPath(path);
+	const updates = new Map<string, { source: string; content: string }>();
+	for (const file of files) {
+		const destination = isUnlockedPath(file) ? toLockedPath(file) : file;
+		const counterpart = isUnlockedPath(file) ? destination : toUnlockedPath(file);
+		originals.set(file, readFileSync(file));
 		if (existsSync(counterpart)) originals.set(counterpart, readFileSync(counterpart));
+
+		const content = readFileSync(file, "utf8");
+		const plaintext = content.includes("enc:v2:")
+			? await decryptVarsContent(content, oldKey, "master")
+			: content;
+		updates.set(destination, {
+			source: file,
+			content: await encryptVarsContent(plaintext, newKey, "master", destination),
+		});
 	}
 	const originalKey = readFileSync(keyFile);
+
 	try {
-		// Save the recoverable new key before any file uses it.
-		writeFileSync(keyFile, `${encryptedKey}\n`);
-		for (const f of files) {
-			if (readFileSync(f, "utf8").includes("enc:v2:")) {
-				const unlocked = await showFile(f, oldKey, "master");
-				await hideFile(unlocked, newKey, "master");
-				console.log(pc.green(`  ✓ Re-encrypted ${f}`));
-			}
+		for (const [destination, update] of updates) {
+			atomicWriteFileSync(destination, update.content);
+			if (update.source !== destination && existsSync(update.source)) rmSync(update.source);
+			console.log(pc.green(`  ✓ Re-encrypted ${destination}`));
 		}
+		atomicWriteFileSync(keyFile, `${encryptedKey}\n`);
 	} catch (error) {
-		writeFileSync(keyFile, originalKey);
-		for (const path of files) {
-			const counterpart = isUnlockedPath(path) ? toLockedPath(path) : toUnlockedPath(path);
-			if (!originals.has(counterpart) && existsSync(counterpart)) rmSync(counterpart);
+		for (const [destination, update] of updates) {
+			if (!originals.has(destination) && existsSync(destination)) rmSync(destination);
+			if (
+				update.source !== destination &&
+				!originals.has(update.source) &&
+				existsSync(update.source)
+			) {
+				rmSync(update.source);
+			}
 		}
 		for (const [path, content] of originals) {
 			writeFileSync(path, content);
 		}
+		writeFileSync(keyFile, originalKey);
 		throw error;
 	}
 }

@@ -1,7 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { type Declaration, type VariableDecl, normalizeSchema, parse } from "@dotvars/core";
-import { encryptVarsContent, isLocalPath, isUnlockedPath } from "@dotvars/node";
-import { detectGeneratedPlatform, generateForFileOrThrow } from "../commands/gen.js";
+import { encryptVarsContent, isLocalPath, isUnlockedPath, toCanonicalPath } from "@dotvars/node";
+import { detectGeneratedPlatform, generateForFileOrThrow } from "./generated-output.js";
 import { atomicWriteFileSync } from "./atomic-write.js";
 import type { KeyCredentials } from "./context.js";
 import { requireKey, resolveKeyFile } from "./context.js";
@@ -45,38 +45,55 @@ interface VariableMatch {
 	group: string | null;
 }
 
+export function mutateVarsSource(
+	content: string,
+	file: string,
+	mutation: VarsMutation,
+): MutationResult & { content: string } {
+	const targets = mutationTargets(mutation);
+	const duplicates = targets.filter((target, index) => targets.indexOf(target) !== index);
+	if (duplicates.length > 0) {
+		throw new Error(`Duplicate declaration in vars apply input: ${duplicates[0]}`);
+	}
+	switch (mutation.kind) {
+		case "add":
+			return {
+				content: addVariable(content, file, mutation),
+				targets: [mutation.target],
+				encrypted: false,
+			};
+		case "set":
+			return {
+				content: setVariable(content, file, mutation.target, mutation.values),
+				targets: [mutation.target],
+				encrypted: false,
+			};
+		case "remove":
+			return {
+				content: removeVariable(content, file, mutation.target),
+				targets: [mutation.target],
+				encrypted: false,
+			};
+		case "apply": {
+			const applied = applyPatch(content, file, mutation.patch);
+			return { ...applied, encrypted: false };
+		}
+	}
+}
+
 export async function mutateVarsFile(
 	file: string,
 	mutation: VarsMutation,
 	credentials: MutationCredentials = {},
 ): Promise<MutationResult> {
 	const original = readFileSync(file, "utf8");
-	let updated: string;
-	let targets: string[];
-
-	switch (mutation.kind) {
-		case "add":
-			updated = addVariable(original, file, mutation);
-			targets = [mutation.target];
-			break;
-		case "set":
-			updated = setVariable(original, file, mutation.target, mutation.values);
-			targets = [mutation.target];
-			break;
-		case "remove":
-			updated = removeVariable(original, file, mutation.target);
-			targets = [mutation.target];
-			break;
-		case "apply": {
-			const applied = applyPatch(original, file, mutation.patch);
-			updated = applied.content;
-			targets = applied.targets;
-			break;
-		}
-	}
+	const transformed = mutateVarsSource(original, file, mutation);
+	let updated = transformed.content;
+	const targets = transformed.targets;
 
 	const locked = !isUnlockedPath(file) && !isLocalPath(file);
 	const needsEncryption = locked && hasPlaintextSecrets(updated, file);
+	const changedPlaintextSecret = needsEncryption;
 	if (needsEncryption) {
 		const keyFile = resolveKeyFile(file, credentials.keyFile);
 		const { key, scope } = await requireKey(keyFile, `vars ${mutation.kind}`, credentials);
@@ -93,12 +110,25 @@ export async function mutateVarsFile(
 		}
 	}
 
+	const platform = locked ? detectGeneratedPlatform(file) : null;
+	const generatedPath = toCanonicalPath(file).replace(/\.vars$/, ".generated.ts");
+	const generatedOriginal =
+		platform && existsSync(generatedPath) ? readFileSync(generatedPath, "utf8") : undefined;
 	atomicWriteFileSync(file, updated.endsWith("\n") ? updated : `${updated}\n`);
-	if (locked) {
-		const platform = detectGeneratedPlatform(file);
-		if (platform) generateForFileOrThrow(file, platform);
+	if (platform) {
+		try {
+			generateForFileOrThrow(file, platform);
+		} catch (error) {
+			atomicWriteFileSync(file, original);
+			if (generatedOriginal === undefined) {
+				if (existsSync(generatedPath)) rmSync(generatedPath);
+			} else {
+				atomicWriteFileSync(generatedPath, generatedOriginal);
+			}
+			throw error;
+		}
 	}
-	return { targets, encrypted: needsEncryption };
+	return { targets, encrypted: changedPlaintextSecret };
 }
 
 export function parseVariableTarget(input: string): VariableTarget {
@@ -180,6 +210,15 @@ function setVariable(
 	if (metadata) appendTrailingMetadata(replacement, metadata);
 	lines.splice(start, end - start + 1, ...replacement);
 	return lines.join("\n");
+}
+function mutationTargets(mutation: VarsMutation): string[] {
+	if (mutation.kind !== "apply") return [mutation.target];
+	const parsed = parseOrThrow(mutation.patch, "<stdin>");
+	return parsed.ast.declarations.flatMap((declaration) =>
+		declaration.kind === "variable"
+			? [declaration.name]
+			: declaration.declarations.map((variable) => `${declaration.name}.${variable.name}`),
+	);
 }
 
 function removeVariable(content: string, file: string, targetInput: string): string {

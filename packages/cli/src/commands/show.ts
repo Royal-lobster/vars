@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { isUnlockedPath, showFile, toCanonicalPath, toUnlockedPath } from "@dotvars/node";
+import { showFile, toCanonicalPath, toUnlockedPath } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
@@ -42,6 +42,7 @@ export default defineCommand({
 		const { key, scope } = await requireKey(keyFile, `vars show ${args.file ?? file}`, {
 			pin: args.pin,
 			pinFile: args["pin-file"],
+			preferEnvelope: typeof args["key-file"] === "string",
 		});
 		const resultPath = await showFile(file, key, scope);
 		console.log(pc.green(`  ✓ Decrypted → ${resultPath}`));

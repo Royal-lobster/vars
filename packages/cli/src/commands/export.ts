@@ -61,6 +61,7 @@ export default defineCommand({
 				({ key, scope } = await requireKey(keyFile, `vars export --env ${env}`, {
 					pin: args.pin,
 					pinFile: args["pin-file"],
+					preferEnvelope: typeof args["key-file"] === "string",
 				}));
 			}
 			return { key, scope };

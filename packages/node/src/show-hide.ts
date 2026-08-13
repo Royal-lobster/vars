@@ -5,17 +5,11 @@ import { isUnlockedPath, toLockedPath, toUnlockedPath } from "./unlocked-path.js
 
 export type KeyScope = "master" | { owner: string };
 
-export async function showFile(filePath: string, key: Buffer, scope?: KeyScope): Promise<string> {
-	const unlockedPath = isUnlockedPath(filePath) ? filePath : toUnlockedPath(filePath);
-
-	if (!isUnlockedPath(filePath) && existsSync(filePath)) {
-		if (existsSync(unlockedPath)) {
-			throw new Error(`Refusing to overwrite existing unlocked file: ${unlockedPath}`);
-		}
-		renameSync(filePath, unlockedPath);
-	}
-
-	const content = readFileSync(unlockedPath, "utf8");
+export async function decryptVarsContent(
+	content: string,
+	key: Buffer,
+	scope?: KeyScope,
+): Promise<string> {
 	const lines = content.split("\n");
 	const result: string[] = [];
 	const effectiveScope = scope ?? "master";
@@ -37,20 +31,32 @@ export async function showFile(filePath: string, key: Buffer, scope?: KeyScope):
 				}
 				const decrypted = decrypt(encrypted, decryptKey);
 				result.push(`${prefix}${serializeDecrypted(decrypted)}${suffix}`);
+			} else if (parsed?.owner === effectiveScope.owner) {
+				const decrypted = decrypt(encrypted, key);
+				result.push(`${prefix}${serializeDecrypted(decrypted)}${suffix}`);
 			} else {
-				if (parsed?.owner === effectiveScope.owner) {
-					const decrypted = decrypt(encrypted, key);
-					result.push(`${prefix}${serializeDecrypted(decrypted)}${suffix}`);
-				} else {
-					result.push(line);
-				}
+				result.push(line);
 			}
 			continue;
 		}
 		result.push(line);
 	}
 
-	writeFileSync(unlockedPath, result.join("\n"));
+	return result.join("\n");
+}
+
+export async function showFile(filePath: string, key: Buffer, scope?: KeyScope): Promise<string> {
+	const unlockedPath = isUnlockedPath(filePath) ? filePath : toUnlockedPath(filePath);
+
+	if (!isUnlockedPath(filePath) && existsSync(filePath)) {
+		if (existsSync(unlockedPath)) {
+			throw new Error(`Refusing to overwrite existing unlocked file: ${unlockedPath}`);
+		}
+		renameSync(filePath, unlockedPath);
+	}
+
+	const content = readFileSync(unlockedPath, "utf8");
+	writeFileSync(unlockedPath, await decryptVarsContent(content, key, scope));
 	return unlockedPath;
 }
 

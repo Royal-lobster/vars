@@ -9,7 +9,7 @@ import {
 	requireKey,
 	resolveKeyFile,
 } from "../utils/context.js";
-import { detectGeneratedPlatform, generateForFileOrThrow } from "./gen.js";
+import { detectGeneratedPlatform, generateForFileOrThrow } from "../utils/generated-output.js";
 
 export default defineCommand({
 	meta: { name: "hide", description: "Human workflow: encrypt files opened with vars show" },
@@ -29,6 +29,7 @@ export default defineCommand({
 		const { key, scope } = await requireKey(keyFile, "vars hide", {
 			pin: args.pin,
 			pinFile: args["pin-file"],
+			preferEnvelope: typeof args["key-file"] === "string",
 		});
 		const regenerationFailures = await hideUnlockedFiles(unlocked, key, scope);
 		if (regenerationFailures > 0) {
@@ -66,9 +67,11 @@ export function regenerateGeneratedForLockedFile(filePath: string): void {
 	const existingPlatform = detectGeneratedPlatform(filePath);
 	if (existingPlatform) {
 		try {
-			generateForFileOrThrow(filePath, existingPlatform);
-		} catch (err: any) {
-			throw new Error(`regeneration failed for ${filePath}: ${err.message}`);
+			const generatedPath = generateForFileOrThrow(filePath, existingPlatform);
+			console.log(pc.green(`  ✓ ${generatedPath}`));
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			throw new Error(`regeneration failed for ${filePath}: ${message}`);
 		}
 	}
 }

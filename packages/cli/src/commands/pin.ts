@@ -1,9 +1,17 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import * as prompts from "@clack/prompts";
 import { parse } from "@dotvars/core";
-import { deriveOwnerKey, encryptMasterKey, hideFile, parseKeyFile, showFile } from "@dotvars/node";
+import {
+	decryptVarsContent,
+	deriveOwnerKey,
+	encryptMasterKey,
+	encryptVarsContent,
+	isUnlockedPath,
+	parseKeyFile,
+} from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
+import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import {
 	findAllVarsFiles,
 	getProjectRoot,
@@ -70,6 +78,7 @@ export default defineCommand({
 				const { key: masterKey, scope } = await requireKey(keyFile, `vars pin create ${owner}`, {
 					pin: args.pin,
 					pinFile: args["pin-file"],
+					preferEnvelope: typeof args["key-file"] === "string",
 				});
 				if (scope !== "master") {
 					console.error(pc.red("  Owner PINs cannot create other owner PINs. Use the master PIN."));
@@ -96,31 +105,45 @@ export default defineCommand({
 				// Wrap owner key with PIN
 				const encryptedOwnerKey = await encryptMasterKey(ownerKey, ownerPin, owner);
 
-				// Re-encrypt owner fields across all .vars files
+				// Prepare every owner-field migration in memory. Never create an unlocked file.
 				const root = getProjectRoot();
 				const files = findAllVarsFiles(root);
-				let reEncrypted = 0;
-				for (const f of files) {
-					const content = readFileSync(f, "utf8");
-					const parsed = parse(content, f);
-					const hasOwner = parsed.ast.declarations.some((d) => {
-						if (d.kind === "variable") return d.metadata?.owner === owner;
-						if (d.kind === "group") return d.declarations.some((v) => v.metadata?.owner === owner);
+				const updates = new Map<string, { original: string; updated: string }>();
+				for (const file of files) {
+					const content = readFileSync(file, "utf8");
+					const parsed = parse(content, file);
+					const hasOwner = parsed.ast.declarations.some((declaration) => {
+						if (declaration.kind === "variable") return declaration.metadata?.owner === owner;
+						if (declaration.kind === "group") {
+							return declaration.declarations.some(
+								(variable) => variable.metadata?.owner === owner,
+							);
+						}
 						return false;
 					});
-					if (hasOwner) {
-						const unlocked = await showFile(f, masterKey, "master");
-						await hideFile(unlocked, masterKey, "master");
-						reEncrypted++;
+					if (hasOwner && !isUnlockedPath(file)) {
+						const plaintext = await decryptVarsContent(content, masterKey, "master");
+						const updated = await encryptVarsContent(plaintext, masterKey, "master", file);
+						updates.set(file, { original: content, updated });
 					}
 				}
 
-				// Publish the PIN only after every owner field is safely migrated.
-				writeFileSync(keyFile, `${keyContent}\n${encryptedOwnerKey}\n`);
+				try {
+					for (const [file, update] of updates) {
+						atomicWriteFileSync(file, update.updated);
+					}
+					// Publish the PIN only after every owner field is safely migrated.
+					atomicWriteFileSync(keyFile, `${keyContent}\n${encryptedOwnerKey}\n`);
+				} catch (error) {
+					for (const [file, update] of updates) {
+						atomicWriteFileSync(file, update.original);
+					}
+					throw error;
+				}
 
 				console.log(pc.green(`  ✓ PIN created for owner "${owner}"`));
-				if (reEncrypted > 0) {
-					console.log(pc.dim(`  Re-encrypted ${reEncrypted} file(s) with owner-scoped keys`));
+				if (updates.size > 0) {
+					console.log(pc.dim(`  Re-encrypted ${updates.size} file(s) with owner-scoped keys`));
 				}
 				console.log(
 					pc.dim(

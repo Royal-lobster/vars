@@ -70,6 +70,7 @@ export default defineCommand({
 				const { key, scope } = await requireKey(keyFile, "vars key export", {
 					pin: args.pin,
 					pinFile: args["pin-file"],
+					preferEnvelope: typeof args["key-file"] === "string",
 				});
 				if (scope !== "master") {
 					console.error(pc.red("  Only the master PIN can export the key."));
