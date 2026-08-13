@@ -30,6 +30,22 @@ icon: Terminal
 | Variable | Description |
 |----------|-------------|
 | `VARS_KEY` | Base64-encoded master key — bypasses PIN prompt. Required for CI/CD. Get it with `vars key export`. |
+| `VARS_PIN` | PIN for trusted non-interactive use. Overridden by `--pin`; may expose all secrets available to that PIN. |
+
+## Trusted automation
+
+Commands that set or unlock a PIN accept `--pin <pin>`:
+
+```bash
+vars init --pin "$PIN"
+vars show config.vars --pin "$PIN"
+vars hide --pin "$PIN"
+vars run --env dev --pin "$PIN" -- npm start
+```
+
+This bypasses the interactive prompt so a trusted coding agent or automation process can initialize, edit, encrypt, and run a project. Once an agent receives a PIN, it can decrypt every secret available to that PIN.
+
+<Callout type="warn">Command-line arguments can appear in process listings, shell history, agent transcripts, and command logs. Prefer an owner-scoped PIN when possible. Use `VARS_KEY` for CI/CD.</Callout>
 
 ## Guides
 

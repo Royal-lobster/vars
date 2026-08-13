@@ -4,16 +4,19 @@ import * as prompts from "@clack/prompts";
 import { createMasterKey, encryptMasterKey } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findKeyFile, getProjectRoot, requireKey } from "../utils/context.js";
+import { findKeyFile, getProjectRoot, PIN_ARGUMENT, requireKey } from "../utils/context.js";
 
 export default defineCommand({
 	meta: { name: "key", description: "Manage encryption keys" },
 	subCommands: {
 		init: defineCommand({
 			meta: { name: "init", description: "Create a new encryption key" },
-			async run() {
-				if (!process.stdin.isTTY) {
-					console.error("This command requires an interactive terminal.");
+			args: {
+				pin: PIN_ARGUMENT,
+			},
+			async run({ args }) {
+				if (!args.pin && !process.env.VARS_PIN && !process.stdin.isTTY) {
+					console.error("This command requires an interactive terminal or --pin.");
 					process.exit(1);
 				}
 				const root = getProjectRoot();
@@ -22,13 +25,17 @@ export default defineCommand({
 					console.log(pc.yellow("  Key already exists at .varskey"));
 					return;
 				}
-				const pin = await prompts.password({ message: "Set a PIN:" });
-				if (prompts.isCancel(pin)) process.exit(0);
-				const confirm = await prompts.password({ message: "Confirm PIN:" });
-				if (prompts.isCancel(confirm)) process.exit(0);
-				if (pin !== confirm) {
-					console.error(pc.red("PINs do not match"));
-					process.exit(1);
+				let pin = (args.pin as string | undefined) ?? process.env.VARS_PIN;
+				if (!pin) {
+					const promptedPin = await prompts.password({ message: "Set a PIN:" });
+					if (prompts.isCancel(promptedPin)) process.exit(0);
+					const confirm = await prompts.password({ message: "Confirm PIN:" });
+					if (prompts.isCancel(confirm)) process.exit(0);
+					if (promptedPin !== confirm) {
+						console.error(pc.red("PINs do not match"));
+						process.exit(1);
+					}
+					pin = promptedPin as string;
 				}
 				const key = await createMasterKey();
 				const encrypted = await encryptMasterKey(key, pin as string);
@@ -38,9 +45,12 @@ export default defineCommand({
 		}),
 		export: defineCommand({
 			meta: { name: "export", description: "Print base64 master key for CI" },
-			async run() {
-				if (!process.stdin.isTTY) {
-					console.error("This command requires an interactive terminal.");
+			args: {
+				pin: PIN_ARGUMENT,
+			},
+			async run({ args }) {
+				if (!args.pin && !process.env.VARS_PIN && !process.stdin.isTTY) {
+					console.error("This command requires an interactive terminal or --pin.");
 					process.exit(1);
 				}
 				const keyFile = findKeyFile(process.cwd());
@@ -48,7 +58,7 @@ export default defineCommand({
 					console.error(pc.red("No key found"));
 					process.exit(1);
 				}
-				const { key, scope } = await requireKey(keyFile, "vars key export");
+				const { key, scope } = await requireKey(keyFile, "vars key export", args.pin);
 				if (scope !== "master") {
 					console.error(pc.red("  Only the master PIN can export the key."));
 					process.exit(1);

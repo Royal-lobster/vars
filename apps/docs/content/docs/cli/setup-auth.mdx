@@ -27,11 +27,14 @@ If `config.vars` already exists but `.varskey` is missing (e.g., a fresh clone),
 |------|-------|-------------|
 | `--file <path>` | `-f` | Path to the `.env` file to import (default: `.env`) |
 | `--env <name>` | | Environment name for imported values (default: `dev`) |
+| `--pin <pin>` | | Set the PIN non-interactively for trusted automation |
 
 ```bash
 # Import from a non-default path, label values as "staging"
 vars init --file .env.staging --env staging
 ```
+
+<Callout type="warn">`--pin` exposes the PIN in process arguments and may expose it through shell history or agent logs. Anyone controlling that process can decrypt every secret available to the PIN.</Callout>
 
 ---
 

@@ -1,9 +1,12 @@
 import { execSync } from "node:child_process";
-import { mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getProjectRoot } from "../utils/context.js";
+import { decryptMasterKey, encryptMasterKey } from "@dotvars/node";
+import { runCommand } from "citty";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import initCommand from "../commands/init.js";
+import { getProjectRoot, requireKey } from "../utils/context.js";
 
 function makeTmpDir(): string {
 	const dir = join(tmpdir(), `vars-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -69,5 +72,49 @@ describe("getProjectRoot", () => {
 		// repo has no package.json anywhere; getProjectRoot must stop at the git
 		// root instead of returning outerPkg.
 		expect(getProjectRoot(subdir)).toBe(repo);
+	});
+});
+
+describe("--pin", () => {
+	let tmp: string;
+	let originalEnvPin: string | undefined;
+
+	beforeEach(() => {
+		tmp = makeTmpDir();
+		originalEnvPin = process.env.VARS_PIN;
+	});
+
+	afterEach(() => {
+		if (originalEnvPin === undefined) {
+			// biome-ignore lint/performance/noDelete: restore actual absence, not the string "undefined"
+			delete process.env.VARS_PIN;
+		} else {
+			process.env.VARS_PIN = originalEnvPin;
+		}
+		vi.restoreAllMocks();
+		rmSync(tmp, { recursive: true, force: true });
+	});
+
+	it("takes precedence over VARS_PIN when unlocking a key", async () => {
+		const masterKey = Buffer.alloc(32, 7);
+		const keyPath = join(tmp, ".varskey");
+		const encryptedKey = await encryptMasterKey(masterKey, "argument-pin");
+		writeFileSync(keyPath, `${encryptedKey}\n`);
+		process.env.VARS_PIN = "environment-pin";
+
+		const result = await requireKey(keyPath, "vars show", "argument-pin");
+
+		expect(result).toEqual({ key: masterKey, scope: "master" });
+	});
+
+	it("initializes without a TTY when supplied", async () => {
+		writeFileSync(join(tmp, "package.json"), JSON.stringify({ dependencies: { zod: "^3.24.0" } }));
+		vi.spyOn(process, "cwd").mockReturnValue(tmp);
+
+		await runCommand(initCommand, { rawArgs: ["--pin", "agent-pin"] });
+
+		const encryptedKey = readFileSync(join(tmp, ".varskey"), "utf8").trim();
+		await expect(decryptMasterKey(encryptedKey, "agent-pin")).resolves.toHaveLength(32);
+		expect(existsSync(join(tmp, "config.unlocked.vars"))).toBe(true);
 	});
 });

@@ -18,6 +18,11 @@ export interface KeyResult {
 	scope: KeyScope;
 }
 
+export const PIN_ARGUMENT = {
+	type: "string",
+	description: "PIN for non-interactive use (unsafe: visible in process arguments)",
+} as const;
+
 export interface CliContext {
 	varsFilePath: string;
 	keyFilePath: string | null;
@@ -113,8 +118,12 @@ export function findKeyFile(startDir: string): string | null {
 	}
 }
 
-/** Get encryption key — from env var or by prompting for PIN */
-export async function requireKey(keyFilePath: string | null, command?: string): Promise<KeyResult> {
+/** Get encryption key — from an explicit PIN, environment, or prompt */
+export async function requireKey(
+	keyFilePath: string | null,
+	command?: string,
+	suppliedPin?: string,
+): Promise<KeyResult> {
 	// First: try VARS_KEY env var (works in CI/non-TTY)
 	const envKey = getKeyFromEnv();
 	if (envKey) return { key: envKey, scope: "master" };
@@ -130,11 +139,12 @@ export async function requireKey(keyFilePath: string | null, command?: string): 
 		throw new Error("Key file is empty. Run `vars key init` first.");
 	}
 
-	// Get PIN
+	// Get PIN. An explicit argument overrides VARS_PIN for this invocation.
 	let pin: string;
-	const envPin = process.env.VARS_PIN;
-	if (envPin) {
-		pin = envPin;
+	if (suppliedPin !== undefined) {
+		pin = suppliedPin;
+	} else if (process.env.VARS_PIN) {
+		pin = process.env.VARS_PIN;
 	} else if (process.stdin.isTTY) {
 		const result = await prompts.password({ message: "Enter PIN:" });
 		if (prompts.isCancel(result)) process.exit(0);

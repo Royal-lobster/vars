@@ -3,7 +3,13 @@ import { relative, resolve } from "node:path";
 import { type KeyScope, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findKeyFile, findVarsFile, requireKey, resolveEnv } from "../utils/context.js";
+import {
+	findKeyFile,
+	findVarsFile,
+	PIN_ARGUMENT,
+	requireKey,
+	resolveEnv,
+} from "../utils/context.js";
 import { resolveEnvValue } from "../utils/resolve-env-value.js";
 
 export default defineCommand({
@@ -12,6 +18,7 @@ export default defineCommand({
 		env: { type: "string", required: true, alias: "e", description: "Target environment" },
 		param: { type: "string", description: "Param values (key=value), repeatable" },
 		file: { type: "string", alias: "f", description: ".vars file path" },
+		pin: PIN_ARGUMENT,
 	},
 	async run({ args, rawArgs }) {
 		const env = resolveEnv(args.env);
@@ -58,6 +65,7 @@ export default defineCommand({
 				({ key, scope } = await requireKey(
 					keyFile,
 					`vars run --env ${env} -- ${rawArgs.slice(rawArgs.indexOf("--") + 1).join(" ")}`,
+					args.pin,
 				));
 			}
 			return { key, scope };

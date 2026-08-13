@@ -13,15 +13,17 @@ import { createMasterKey, encryptMasterKey, resolveUseChain, toUnlockedPath } fr
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { buildHeaderComment } from "../utils/build-header-comment.js";
-import { getGitRoot, getProjectRoot } from "../utils/context.js";
+import { getGitRoot, getProjectRoot, PIN_ARGUMENT } from "../utils/context.js";
 import { ALL_PUBLIC_PREFIXES, detectFramework } from "../utils/detect-framework.js";
 import { migrateFromEnv } from "../utils/migrate-from-env.js";
 import { HOOK_MARKER, HOOK_SCRIPT, resolveHookPath } from "../utils/pre-commit-hook.js";
 
 export default defineCommand({
 	meta: { name: "init", description: "Initialize vars in the current project" },
-	args: {},
-	async run() {
+	args: {
+		pin: PIN_ARGUMENT,
+	},
+	async run({ args }) {
 		const root = getProjectRoot();
 		const keyPath = join(root, ".varskey");
 
@@ -32,20 +34,28 @@ export default defineCommand({
 
 		prompts.intro(pc.bold("vars init"));
 
-		if (!process.stdin.isTTY) {
-			console.error(pc.red("vars init requires an interactive terminal to set a PIN."));
-			console.error(pc.dim("Run this command directly in your terminal, not in a script."));
+		const suppliedPin = (args.pin as string | undefined) ?? process.env.VARS_PIN;
+		if (!suppliedPin && !process.stdin.isTTY) {
+			console.error(pc.red("vars init requires an interactive terminal or --pin to set a PIN."));
+			console.error(
+				pc.dim("Run this command directly in your terminal, or pass --pin for trusted automation."),
+			);
 			process.exit(1);
 		}
 
-		// 1. Set PIN
-		const pin = await prompts.password({ message: "Set a PIN to protect your encryption key:" });
-		if (prompts.isCancel(pin)) process.exit(0);
-		const confirm = await prompts.password({ message: "Confirm PIN:" });
-		if (prompts.isCancel(confirm)) process.exit(0);
-		if (pin !== confirm) {
-			console.error(pc.red("  PINs do not match. Try again."));
-			process.exit(1);
+		let pin = suppliedPin;
+		if (!pin) {
+			const promptedPin = await prompts.password({
+				message: "Set a PIN to protect your encryption key:",
+			});
+			if (prompts.isCancel(promptedPin)) process.exit(0);
+			const confirm = await prompts.password({ message: "Confirm PIN:" });
+			if (prompts.isCancel(confirm)) process.exit(0);
+			if (promptedPin !== confirm) {
+				console.error(pc.red("  PINs do not match. Try again."));
+				process.exit(1);
+			}
+			pin = promptedPin as string;
 		}
 
 		// 2. Create key

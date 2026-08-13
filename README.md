@@ -126,6 +126,10 @@ vars ls                # list files and variables
 vars export --env prod # export as dotenv/json/k8s-secret
 vars key init          # create encryption key
 vars doctor            # diagnose setup
+
+# Trusted automation (PIN is visible in process arguments and command logs)
+vars init --pin "$PIN"
+vars hide --pin "$PIN"
 ```
 
 </details>

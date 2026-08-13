@@ -4,7 +4,13 @@ import { parse } from "@dotvars/core";
 import { deriveOwnerKey, encryptMasterKey, hideFile, parseKeyFile, showFile } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findAllVarsFiles, findKeyFile, getProjectRoot, requireKey } from "../utils/context.js";
+import {
+	findAllVarsFiles,
+	findKeyFile,
+	getProjectRoot,
+	PIN_ARGUMENT,
+	requireKey,
+} from "../utils/context.js";
 
 export default defineCommand({
 	meta: { name: "pin", description: "Manage owner PINs" },
@@ -17,6 +23,7 @@ export default defineCommand({
 					required: true,
 					description: "Owner name (e.g., backend-team)",
 				},
+				pin: PIN_ARGUMENT,
 			},
 			async run({ args }) {
 				if (!process.stdin.isTTY) {
@@ -51,7 +58,11 @@ export default defineCommand({
 
 				// Require master PIN
 				console.log(pc.dim("  Authenticate with master PIN to create owner PIN"));
-				const { key: masterKey, scope } = await requireKey(keyFile, `vars pin create ${owner}`);
+				const { key: masterKey, scope } = await requireKey(
+					keyFile,
+					`vars pin create ${owner}`,
+					args.pin,
+				);
 				if (scope !== "master") {
 					console.error(pc.red("  Owner PINs cannot create other owner PINs. Use the master PIN."));
 					process.exit(1);

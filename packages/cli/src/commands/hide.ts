@@ -6,14 +6,17 @@ import {
 	findKeyFile,
 	findUnlockedVarsFiles,
 	getProjectRoot,
+	PIN_ARGUMENT,
 	requireKey,
 } from "../utils/context.js";
 import { detectGeneratedPlatform, generateForFileOrThrow } from "./gen.js";
 
 export default defineCommand({
 	meta: { name: "hide", description: "Encrypt all unlocked .vars files" },
-	args: {},
-	async run() {
+	args: {
+		pin: PIN_ARGUMENT,
+	},
+	async run({ args }) {
 		const root = getProjectRoot();
 		const unlocked = findUnlockedVarsFiles(root);
 
@@ -23,7 +26,7 @@ export default defineCommand({
 		}
 
 		const keyFile = findKeyFile(process.cwd());
-		const { key, scope } = await requireKey(keyFile, "vars hide");
+		const { key, scope } = await requireKey(keyFile, "vars hide", args.pin);
 		const regenerationFailures = await hideUnlockedFiles(unlocked, key, scope);
 		if (regenerationFailures > 0) {
 			console.error(

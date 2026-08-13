@@ -12,12 +12,20 @@ import {
 } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findAllVarsFiles, findKeyFile, getProjectRoot, requireKey } from "../utils/context.js";
+import {
+	findAllVarsFiles,
+	findKeyFile,
+	getProjectRoot,
+	PIN_ARGUMENT,
+	requireKey,
+} from "../utils/context.js";
 
 export default defineCommand({
 	meta: { name: "rotate", description: "Rotate the encryption key" },
-	args: {},
-	async run() {
+	args: {
+		pin: PIN_ARGUMENT,
+	},
+	async run({ args }) {
 		if (!process.stdin.isTTY) {
 			console.error("This command requires an interactive terminal.");
 			process.exit(1);
@@ -47,7 +55,7 @@ export default defineCommand({
 		}
 
 		// Decrypt with old key (must be master)
-		const { key: oldKey, scope } = await requireKey(keyFile, "vars rotate");
+		const { key: oldKey, scope } = await requireKey(keyFile, "vars rotate", args.pin);
 		if (scope !== "master") {
 			console.error(pc.red("  Only the master PIN can rotate keys."));
 			process.exit(1);
