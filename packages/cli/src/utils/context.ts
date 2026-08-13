@@ -55,15 +55,6 @@ export interface KeyCredentials {
 	preferEnvelope?: boolean;
 }
 
-/** Preserve credential precedence consistently across every CLI command. */
-export function keyCredentialsFromArgs(args: Record<string, unknown>): KeyCredentials {
-	return {
-		pin: typeof args.pin === "string" ? args.pin : undefined,
-		pinFile: typeof args["pin-file"] === "string" ? args["pin-file"] : undefined,
-		preferEnvelope: typeof args["key-file"] === "string",
-	};
-}
-
 export interface CliContext {
 	varsFilePath: string;
 	keyFilePath: string | null;
