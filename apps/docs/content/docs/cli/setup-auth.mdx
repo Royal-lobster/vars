@@ -28,13 +28,14 @@ If `config.vars` already exists but `.varskey` is missing (e.g., a fresh clone),
 | `--file <path>` | `-f` | Path to the `.env` file to import (default: `.env`) |
 | `--env <name>` | | Environment name for imported values (default: `dev`) |
 | `--pin <pin>` | | Set the PIN non-interactively for trusted automation |
+| `--pin-file <path>` | | Read the PIN from a file; preferred for automation |
 
 ```bash
 # Import from a non-default path, label values as "staging"
 vars init --file .env.staging --env staging
 ```
 
-<Callout type="warn">`--pin` exposes the PIN in process arguments and may expose it through shell history or agent logs. Anyone controlling that process can decrypt every secret available to the PIN.</Callout>
+<Callout type="warn">`--pin` exposes the PIN in process arguments and may expose it through shell history or agent logs. Prefer `--pin-file` with a mode-0600 file for trusted automation.</Callout>
 
 ---
 
@@ -52,38 +53,40 @@ vars key init
 Generates a new `.varskey` file. Run this on a fresh clone that already has a `config.vars` committed.
 
 </Accordion>
-<Accordion title="key export — export key for CI">
+<Accordion title="key import — provision an encrypted envelope">
+
+```bash
+vars key import /run/secrets/project.varskey
+```
+
+Copies a valid encrypted key envelope into the project without exposing the raw master key. A PIN alone cannot recreate an existing project's master key; a fresh workspace needs both the envelope and its PIN.
+
+</Accordion>
+<Accordion title="key export — raw key compatibility escape hatch">
 
 ```bash
 vars key export
 ```
 
-Prints the base64-encoded master key to stdout. Requires the master PIN; owner PINs cannot export. Use this to set the `VARS_KEY` environment variable in CI where there's no interactive PIN prompt.
+Prints the raw base64 master key. Use this only for CI systems that cannot provision an encrypted envelope plus PIN file. Owner PINs cannot export.
 
-```bash
-# Copy key to clipboard, then paste into your CI secrets
-vars key export | pbcopy
-```
-
-<Callout type="warn">This outputs your raw encryption key. Only use it to set CI secrets. Never share it over Slack, email, or commit it to git.</Callout>
+<Callout type="warn">The exported value bypasses the PIN/envelope model. Prefer `VARS_KEY_FILE` plus `VARS_PIN_FILE`; never place raw key output in agent prompts, logs, or repository files.</Callout>
 
 </Accordion>
 <Accordion title="key rotate — re-encrypt with a new key">
 
 ```bash
-vars key rotate
+# Human flow
+vars rotate
+
+# Trusted automation
+vars rotate \
+  --pin-file /run/secrets/old-pin \
+  --new-pin-file /run/secrets/new-pin \
+  --yes
 ```
 
-Generates a new encryption key, re-encrypts values in every `*.vars` file, and replaces `.varskey`. The old key is overwritten.
-
-Before rotating, export your current key as a backup:
-
-```bash
-vars key export > vars-key.bak
-vars key rotate
-```
-
-After rotating, re-export the key to update your CI secrets.
+Generates a new encryption key, re-encrypts every `*.vars` file, and replaces the envelope. `--yes` is required in non-interactive mode when owner PINs will be invalidated.
 
 </Accordion>
 </Accordions>
@@ -107,8 +110,12 @@ Creates a scoped PIN for an owner. Requires the master PIN. The CLI derives a su
 # Create a PIN for the backend team
 vars pin create backend-team
 
-# The backend team can now use their PIN with show/hide
-vars show   # enter backend-team PIN → only their fields decrypt
+# Trusted automation: master credential and new owner credential stay in files
+vars pin create backend-team \
+  --pin-file /run/secrets/master-pin \
+  --new-pin-file /run/secrets/backend-pin
+
+# Humans can use show/hide; agents should use targeted add/set/remove/apply commands.
 ```
 
 Owner names may only contain letters, digits, hyphens, and underscores.

@@ -1,14 +1,33 @@
-import { parse } from "@dotvars/core";
-import { describe, expect, it } from "vitest";
-import { findDeclarationLine } from "../commands/remove.js";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { mutateVarsFile } from "../utils/locked-mutation.js";
 
 describe("remove", () => {
-	it("uses the parsed declaration line instead of matching multiline value text", () => {
-		const source = `OTHER = """
+	const directories: string[] = [];
+
+	afterEach(() => {
+		for (const directory of directories) rmSync(directory, { recursive: true, force: true });
+	});
+
+	it("removes the parsed declaration instead of matching multiline value text", async () => {
+		const directory = join(tmpdir(), `vars-remove-${Date.now()}`);
+		directories.push(directory);
+		mkdirSync(directory);
+		const file = join(directory, "config.unlocked.vars");
+		writeFileSync(
+			file,
+			`OTHER = """
 FOO = "example"
 """
 FOO = "real"
-`;
-		expect(findDeclarationLine(parse(source).ast.declarations, "FOO")).toBe(4);
+`,
+		);
+
+		await mutateVarsFile(file, { kind: "remove", target: "FOO" });
+
+		expect(readFileSync(file, "utf8")).toContain('FOO = "example"');
+		expect(readFileSync(file, "utf8")).not.toContain('FOO = "real"');
 	});
 });

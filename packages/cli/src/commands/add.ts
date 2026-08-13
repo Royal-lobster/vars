@@ -1,142 +1,98 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import * as prompts from "@clack/prompts";
-import { normalizeSchema, parse } from "@dotvars/core";
+import { parse } from "@dotvars/core";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findVarsFile } from "../utils/context.js";
-import { serializeVarsStringOrArray } from "../utils/vars-edit.js";
-
-function buildVariableBlock(
-	name: string,
-	isPublic: boolean,
-	schema: string,
-	values: Record<string, string>,
-): string[] {
-	const lines: string[] = [];
-	const prefix = isPublic ? "public " : "";
-	const schemaStr = schema !== "z.string()" ? ` : ${schema}` : "";
-
-	if (Object.keys(values).length === 0) {
-		lines.push(`${prefix}${name}${schemaStr}`);
-	} else if (Object.keys(values).length === 1 && values.default) {
-		lines.push(`${prefix}${name}${schemaStr} = ${serializeVarsStringOrArray(values.default)}`);
-	} else {
-		lines.push(`${prefix}${name}${schemaStr} {`);
-		for (const [env, val] of Object.entries(values)) {
-			lines.push(`  ${env} = ${serializeVarsStringOrArray(val)}`);
-		}
-		lines.push("}");
-	}
-
-	return lines;
-}
-
-function parseEnvValues(args: Record<string, unknown>, envs: string[]): Record<string, string> {
-	const values: Record<string, string> = {};
-
-	// Check --value for single/default value
-	if (args.value) {
-		if (envs.length <= 1) {
-			values.default = args.value as string;
-		} else {
-			// Apply --value to all envs
-			for (const env of envs) {
-				values[env] = args.value as string;
-			}
-		}
-	}
-
-	// Check --<env> flags (e.g., --dev, --staging, --prod) — override --value
-	for (const env of envs) {
-		if (args[env]) {
-			values[env] = args[env] as string;
-		}
-	}
-
-	return values;
-}
+import { findVarsFile, KEY_CREDENTIAL_ARGUMENTS } from "../utils/context.js";
+import { mutateVarsFile, readValueFile } from "../utils/locked-mutation.js";
 
 export default defineCommand({
-	meta: { name: "add", description: "Add a variable to a .vars file" },
+	meta: { name: "add", description: "Add a variable without unlocking the vars file" },
 	args: {
-		name: { type: "positional", required: true, description: "Variable name (UPPER_SNAKE_CASE)" },
-		file: { type: "string", alias: "f" },
-		public: { type: "boolean", description: "Mark as public (non-secret)" },
-		schema: { type: "string", alias: "s", description: "Zod schema (e.g. z.string().url())" },
-		value: {
-			type: "string",
-			alias: "v",
-			description: "Value (applies to all envs, or use --dev/--prod)",
+		name: {
+			type: "positional",
+			required: true,
+			description: "Variable target (NAME or group.NAME)",
 		},
-		dev: { type: "string", description: "Value for dev environment" },
-		staging: { type: "string", description: "Value for staging environment" },
-		prod: { type: "string", description: "Value for prod environment" },
+		file: { type: "string", alias: "f" },
+		public: { type: "boolean", description: "Keep the value plaintext in the repository" },
+		schema: { type: "string", alias: "s", description: "Zod schema (e.g. z.string().url())" },
+		value: { type: "string", alias: "v", description: "Value for every environment" },
+		"value-file": { type: "string", description: "Read the value from a file" },
+		dev: { type: "string", description: "Value for dev" },
+		staging: { type: "string", description: "Value for staging" },
+		prod: { type: "string", description: "Value for prod" },
+		"dev-file": { type: "string", description: "Read the dev value from a file" },
+		"staging-file": { type: "string", description: "Read the staging value from a file" },
+		"prod-file": { type: "string", description: "Read the prod value from a file" },
+		...KEY_CREDENTIAL_ARGUMENTS,
 	},
 	async run({ args }) {
-		const file = args.file ? resolve(args.file as string) : findVarsFile(process.cwd());
-		if (!file) {
-			console.error(pc.red("No .vars file found"));
-			process.exit(1);
-		}
-
-		const name = args.name as string;
-		if (!/^[A-Z][A-Z0-9_]*$/.test(name)) {
-			console.error(pc.red("Variable name must be UPPER_SNAKE_CASE"));
-			process.exit(1);
-		}
-
-		const content = readFileSync(file, "utf8");
-		const result = parse(content, file);
-		const envs = result.ast.envs.length > 0 ? result.ast.envs : ["default"];
-
-		const isNonInteractive =
+		const file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
+		if (!file) throw new Error("No .vars file found");
+		const parsed = parse(readFileSync(file, "utf8"), file);
+		const envs = parsed.ast.envs.length > 0 ? parsed.ast.envs : ["default"];
+		const nonInteractive =
 			!process.stdin.isTTY ||
 			args.public !== undefined ||
 			args.schema ||
 			args.value ||
-			args.dev ||
-			args.staging ||
-			args.prod;
+			args["value-file"] ||
+			envs.some((env) => args[env] || args[`${env}-file`]);
 
 		let isPublic: boolean;
 		let schema: string;
 		let values: Record<string, string>;
-
-		if (isNonInteractive) {
+		if (nonInteractive) {
 			isPublic = args.public === true;
-			schema = (args.schema as string) || "z.string()";
-			values = parseEnvValues(args, envs);
+			schema = args.schema || "z.string()";
+			values = collectValues(args, envs);
 		} else {
 			const publicAnswer = await prompts.confirm({
-				message: "Is this a public (non-secret) variable?",
+				message: "Is this public (repository-readable)?",
 			});
 			if (prompts.isCancel(publicAnswer)) process.exit(0);
-			isPublic = publicAnswer as boolean;
-
+			isPublic = publicAnswer;
 			const schemaAnswer = await prompts.text({
-				message: "Zod schema (or press Enter for z.string()):",
+				message: "Zod schema:",
 				placeholder: "z.string()",
 				defaultValue: "z.string()",
 			});
 			if (prompts.isCancel(schemaAnswer)) process.exit(0);
-			schema = schemaAnswer as string;
-
+			schema = schemaAnswer;
 			values = {};
 			for (const env of envs) {
-				const val = await prompts.text({
-					message: `Value for ${env} (or skip):`,
-					defaultValue: "",
-				});
-				if (prompts.isCancel(val)) process.exit(0);
-				if (val) values[env] = val as string;
+				const answer = await prompts.text({ message: `Value for ${env} (or skip):` });
+				if (prompts.isCancel(answer)) process.exit(0);
+				if (answer) values[env] = answer;
 			}
 		}
-		normalizeSchema(schema);
 
-		const lines = buildVariableBlock(name, isPublic, schema, values);
-		const newContent = `${content.trimEnd()}\n\n${lines.join("\n")}\n`;
-		writeFileSync(file, newContent);
-		console.log(pc.green(`  ✓ Added ${name} to ${file}`));
+		const result = await mutateVarsFile(
+			file,
+			{ kind: "add", target: args.name, public: isPublic, schema, values },
+			{ pin: args.pin, pinFile: args["pin-file"], keyFile: args["key-file"] },
+		);
+		const encryption = result.encrypted ? " and encrypted" : "";
+		console.log(pc.green(`  ✓ Added ${args.name}${encryption} in ${file}`));
 	},
 });
+
+function collectValues(args: Record<string, unknown>, envs: string[]): Record<string, string> {
+	if (args.value && args["value-file"]) throw new Error("Use either --value or --value-file");
+	const values: Record<string, string> = {};
+	const shared = args["value-file"] ? readValueFile(String(args["value-file"])) : args.value;
+	if (shared !== undefined) {
+		if (envs.length <= 1) values.default = String(shared);
+		else for (const env of envs) values[env] = String(shared);
+	}
+	for (const env of envs) {
+		const direct = args[env];
+		const file = args[`${env}-file`];
+		if (direct && file) throw new Error(`Use either --${env} or --${env}-file`);
+		if (file) values[env] = readValueFile(String(file));
+		else if (direct !== undefined) values[env] = String(direct);
+	}
+	return values;
+}

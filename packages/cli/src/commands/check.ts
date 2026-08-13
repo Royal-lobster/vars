@@ -4,7 +4,12 @@ import { decrypt, deriveOwnerKey, getKeyFromEnv, resolveUseChain } from "@dotvar
 import type { KeyScope } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findKeyFile, findVarsFile, PIN_ARGUMENT, requireKey } from "../utils/context.js";
+import {
+	findVarsFile,
+	KEY_CREDENTIAL_ARGUMENTS,
+	requireKey,
+	resolveKeyFile,
+} from "../utils/context.js";
 import { checkExpiry, formatExpiryMessage } from "../utils/expiry.js";
 
 export function validationIssue(secret: boolean, issues?: Array<{ message: string }>): string {
@@ -20,7 +25,7 @@ export default defineCommand({
 	args: {
 		file: { type: "string", alias: "f", description: ".vars file to check" },
 		env: { type: "string", description: "Specific environment to check" },
-		pin: PIN_ARGUMENT,
+		...KEY_CREDENTIAL_ARGUMENTS,
 		failOnExpiring: {
 			type: "string",
 			description: "Exit non-zero if any secret expires within N days (CI-friendly)",
@@ -35,7 +40,7 @@ export default defineCommand({
 
 		let key: Buffer | null = getKeyFromEnv();
 		let keyScope: KeyScope = "master";
-		const keyFile = findKeyFile(file);
+		const keyFile = resolveKeyFile(file, args["key-file"]);
 
 		let errors = 0;
 		let warnings = 0;
@@ -58,7 +63,10 @@ export default defineCommand({
 				if (secret) {
 					if (!key && keyFile) {
 						try {
-							({ key, scope: keyScope } = await requireKey(keyFile, "vars check", args.pin));
+							({ key, scope: keyScope } = await requireKey(keyFile, "vars check", {
+								pin: args.pin,
+								pinFile: args["pin-file"],
+							}));
 						} catch {
 							/* skip */
 						}

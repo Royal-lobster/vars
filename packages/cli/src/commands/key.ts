@@ -1,10 +1,18 @@
-import { existsSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import * as prompts from "@clack/prompts";
-import { createMasterKey, encryptMasterKey } from "@dotvars/node";
+import { createMasterKey, encryptMasterKey, parseKeyFile } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findKeyFile, getProjectRoot, PIN_ARGUMENT, requireKey } from "../utils/context.js";
+import {
+	getProjectRoot,
+	KEY_CREDENTIAL_ARGUMENTS,
+	PIN_ARGUMENT,
+	PIN_FILE_ARGUMENT,
+	requireKey,
+	resolveKeyFile,
+	resolveSuppliedPin,
+} from "../utils/context.js";
 
 export default defineCommand({
 	meta: { name: "key", description: "Manage encryption keys" },
@@ -13,10 +21,12 @@ export default defineCommand({
 			meta: { name: "init", description: "Create a new encryption key" },
 			args: {
 				pin: PIN_ARGUMENT,
+				"pin-file": PIN_FILE_ARGUMENT,
 			},
 			async run({ args }) {
-				if (!args.pin && !process.env.VARS_PIN && !process.stdin.isTTY) {
-					console.error("This command requires an interactive terminal or --pin.");
+				const suppliedPin = resolveSuppliedPin({ pin: args.pin, pinFile: args["pin-file"] });
+				if (!suppliedPin && !process.stdin.isTTY) {
+					console.error("This command requires an interactive terminal, --pin, or --pin-file.");
 					process.exit(1);
 				}
 				const root = getProjectRoot();
@@ -25,7 +35,7 @@ export default defineCommand({
 					console.log(pc.yellow("  Key already exists at .varskey"));
 					return;
 				}
-				let pin = (args.pin as string | undefined) ?? process.env.VARS_PIN;
+				let pin = suppliedPin;
 				if (!pin) {
 					const promptedPin = await prompts.password({ message: "Set a PIN:" });
 					if (prompts.isCancel(promptedPin)) process.exit(0);
@@ -44,26 +54,54 @@ export default defineCommand({
 			},
 		}),
 		export: defineCommand({
-			meta: { name: "export", description: "Print base64 master key for CI" },
+			meta: {
+				name: "export",
+				description: "Print raw base64 master key (compatibility escape hatch)",
+			},
 			args: {
-				pin: PIN_ARGUMENT,
+				...KEY_CREDENTIAL_ARGUMENTS,
 			},
 			async run({ args }) {
-				if (!args.pin && !process.env.VARS_PIN && !process.stdin.isTTY) {
-					console.error("This command requires an interactive terminal or --pin.");
-					process.exit(1);
-				}
-				const keyFile = findKeyFile(process.cwd());
+				const keyFile = resolveKeyFile(process.cwd(), args["key-file"]);
 				if (!keyFile) {
 					console.error(pc.red("No key found"));
 					process.exit(1);
 				}
-				const { key, scope } = await requireKey(keyFile, "vars key export", args.pin);
+				const { key, scope } = await requireKey(keyFile, "vars key export", {
+					pin: args.pin,
+					pinFile: args["pin-file"],
+				});
 				if (scope !== "master") {
 					console.error(pc.red("  Only the master PIN can export the key."));
 					process.exit(1);
 				}
 				console.log(key.toString("base64"));
+			},
+		}),
+		import: defineCommand({
+			meta: { name: "import", description: "Import an encrypted .varskey envelope" },
+			args: {
+				source: {
+					type: "positional",
+					required: true,
+					description: "Encrypted key envelope path",
+				},
+			},
+			async run({ args }) {
+				const root = getProjectRoot();
+				const destination = join(root, ".varskey");
+				if (existsSync(destination)) {
+					console.error(pc.red("A .varskey envelope already exists in this project."));
+					process.exit(1);
+				}
+				const source = resolve(args.source);
+				const content = readFileSync(source, "utf8").trim();
+				if (parseKeyFile(content).length === 0) {
+					console.error(pc.red(`No valid key entries found in ${source}`));
+					process.exit(1);
+				}
+				writeFileSync(destination, `${content}\n`, { mode: 0o600, flag: "wx" });
+				console.log(pc.green(`  ✓ Imported encrypted key envelope → ${destination}`));
 			},
 		}),
 	},

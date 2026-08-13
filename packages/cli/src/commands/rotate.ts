@@ -14,23 +14,30 @@ import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
 	findAllVarsFiles,
-	findKeyFile,
 	getProjectRoot,
-	PIN_ARGUMENT,
+	KEY_CREDENTIAL_ARGUMENTS,
+	NEW_PIN_ARGUMENT,
+	NEW_PIN_FILE_ARGUMENT,
 	requireKey,
+	resolveExplicitPin,
+	resolveKeyFile,
 } from "../utils/context.js";
 
 export default defineCommand({
 	meta: { name: "rotate", description: "Rotate the encryption key" },
 	args: {
-		pin: PIN_ARGUMENT,
+		...KEY_CREDENTIAL_ARGUMENTS,
+		"new-pin": NEW_PIN_ARGUMENT,
+		"new-pin-file": NEW_PIN_FILE_ARGUMENT,
+		yes: { type: "boolean", description: "Confirm owner PIN invalidation" },
 	},
 	async run({ args }) {
-		if (!process.stdin.isTTY) {
-			console.error("This command requires an interactive terminal.");
+		const newPin = resolveExplicitPin({ pin: args["new-pin"], pinFile: args["new-pin-file"] });
+		if (!newPin && !process.stdin.isTTY) {
+			console.error("Provide --new-pin or --new-pin-file for non-interactive use.");
 			process.exit(1);
 		}
-		const keyFile = findKeyFile(process.cwd());
+		const keyFile = resolveKeyFile(process.cwd(), args["key-file"]);
 		if (!keyFile) {
 			console.error(pc.red("No key found"));
 			process.exit(1);
@@ -50,31 +57,44 @@ export default defineCommand({
 			console.log(
 				pc.dim("  You'll need to re-run `vars pin create` for each owner after rotation."),
 			);
-			const proceed = await prompts.confirm({ message: "Continue?" });
-			if (prompts.isCancel(proceed) || !proceed) process.exit(0);
+			if (!args.yes) {
+				if (!process.stdin.isTTY) {
+					console.error(pc.red("Pass --yes to confirm owner PIN invalidation."));
+					process.exit(1);
+				}
+				const proceed = await prompts.confirm({ message: "Continue?" });
+				if (prompts.isCancel(proceed) || !proceed) process.exit(0);
+			}
 		}
 
 		// Decrypt with old key (must be master)
-		const { key: oldKey, scope } = await requireKey(keyFile, "vars rotate", args.pin);
+		const { key: oldKey, scope } = await requireKey(keyFile, "vars rotate", {
+			pin: args.pin,
+			pinFile: args["pin-file"],
+		});
 		if (scope !== "master") {
 			console.error(pc.red("  Only the master PIN can rotate keys."));
 			process.exit(1);
 		}
 
 		// Create new key + PIN
-		const pin = await prompts.password({ message: "Set new PIN:" });
-		if (prompts.isCancel(pin)) process.exit(0);
-		const confirm = await prompts.password({ message: "Confirm new PIN:" });
-		if (prompts.isCancel(confirm)) process.exit(0);
-		if (pin !== confirm) {
-			console.error(pc.red("PINs do not match"));
-			process.exit(1);
+		let replacementPin = newPin;
+		if (!replacementPin) {
+			const promptedPin = await prompts.password({ message: "Set new PIN:" });
+			if (prompts.isCancel(promptedPin)) process.exit(0);
+			const confirm = await prompts.password({ message: "Confirm new PIN:" });
+			if (prompts.isCancel(confirm)) process.exit(0);
+			if (promptedPin !== confirm) {
+				console.error(pc.red("PINs do not match"));
+				process.exit(1);
+			}
+			replacementPin = promptedPin as string;
 		}
 
 		const newKey = await createMasterKey();
 		const root = getProjectRoot();
 		const files = findAllVarsFiles(root);
-		const encryptedKey = await encryptMasterKey(newKey, pin as string);
+		const encryptedKey = await encryptMasterKey(newKey, replacementPin);
 		await rotateFiles(files, keyFile, oldKey, newKey, encryptedKey);
 		console.log(pc.green("\n  ✓ Key rotated. Share the new .varskey + PIN with teammates."));
 	},

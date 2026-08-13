@@ -6,7 +6,7 @@ import { decryptMasterKey, encryptMasterKey } from "@dotvars/node";
 import { runCommand } from "citty";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import initCommand from "../commands/init.js";
-import { getProjectRoot, requireKey } from "../utils/context.js";
+import { getProjectRoot, requireKey, resolveKeyFile } from "../utils/context.js";
 
 function makeTmpDir(): string {
 	const dir = join(tmpdir(), `vars-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -102,7 +102,21 @@ describe("--pin", () => {
 		writeFileSync(keyPath, `${encryptedKey}\n`);
 		process.env.VARS_PIN = "environment-pin";
 
-		const result = await requireKey(keyPath, "vars show", "argument-pin");
+		const result = await requireKey(keyPath, "vars show", { pin: "argument-pin" });
+
+		expect(result).toEqual({ key: masterKey, scope: "master" });
+	});
+
+	it("reads a PIN from a file and resolves an external key envelope", async () => {
+		const masterKey = Buffer.alloc(32, 9);
+		const keyPath = join(tmp, "project-envelope");
+		const pinPath = join(tmp, "pin");
+		writeFileSync(keyPath, `${await encryptMasterKey(masterKey, "file-pin")}\n`);
+		writeFileSync(pinPath, "file-pin\n");
+
+		const result = await requireKey(resolveKeyFile(tmp, keyPath), "vars run", {
+			pinFile: pinPath,
+		});
 
 		expect(result).toEqual({ key: masterKey, scope: "master" });
 	});
@@ -115,6 +129,10 @@ describe("--pin", () => {
 
 		const encryptedKey = readFileSync(join(tmp, ".varskey"), "utf8").trim();
 		await expect(decryptMasterKey(encryptedKey, "agent-pin")).resolves.toHaveLength(32);
-		expect(existsSync(join(tmp, "config.unlocked.vars"))).toBe(true);
+		expect(existsSync(join(tmp, "config.vars"))).toBe(true);
+		expect(existsSync(join(tmp, "config.unlocked.vars"))).toBe(false);
+		expect(readFileSync(join(tmp, "config.vars"), "utf8")).not.toContain(
+			"postgres://user:pass@localhost",
+		);
 	});
 });

@@ -19,6 +19,7 @@ icon: Terminal
 | `vars ls` | List all .vars files with lock state and var count |
 | `vars ls <file>` | List variables in a file with metadata |
 | `vars export --env <env>` | Export as dotenv, json, or k8s-secret format |
+| `vars apply` | Atomically upsert a `.vars` fragment from stdin without unlocking |
 | `vars key init` | Create a new encryption key |
 | `vars key rotate` | Rotate the encryption key |
 | `vars key fingerprint` | Print the key fingerprint |
@@ -29,23 +30,31 @@ icon: Terminal
 
 | Variable | Description |
 |----------|-------------|
-| `VARS_KEY` | Base64-encoded master key — bypasses PIN prompt. Required for CI/CD. Get it with `vars key export`. |
+| `VARS_KEY` | Raw base64 master key compatibility escape hatch for CI systems that cannot provision an envelope. |
 | `VARS_PIN` | PIN for trusted non-interactive use. Overridden by `--pin`; may expose all secrets available to that PIN. |
+| `VARS_PIN_FILE` | Path to a PIN file. Preferred over `VARS_PIN` for trusted automation. |
+| `VARS_KEY_FILE` | Path to an encrypted key envelope. Defaults to the nearest `.varskey`. |
 
 ## Trusted automation
 
-Commands that set or unlock a PIN accept `--pin <pin>`:
+Commands that set or unlock a PIN accept `--pin <pin>` or the safer `--pin-file <path>`. Commands also accept `--key-file <path>` when the encrypted key envelope is provisioned outside the project:
 
 ```bash
-vars init --pin "$PIN"
-vars show config.vars --pin "$PIN"
-vars hide --pin "$PIN"
-vars run --env dev --pin "$PIN" -- npm start
+vars init --pin-file /run/secrets/vars-pin
+vars run --env dev \
+  --key-file /run/secrets/project.varskey \
+  --pin-file /run/secrets/vars-pin \
+  -- npm start
+
+# Existing package scripts
+VARS_KEY_FILE=/run/secrets/project.varskey \
+VARS_PIN_FILE=/run/secrets/vars-pin \
+pnpm start
 ```
 
-This bypasses the interactive prompt so a trusted coding agent or automation process can initialize, edit, encrypt, and run a project. Once an agent receives a PIN, it can decrypt every secret available to that PIN.
+Trusted agents should mutate locked files with `vars add`, `vars set`, `vars remove`, or `vars apply`. `vars show` and `vars hide` are the human editor workflow.
 
-<Callout type="warn">Command-line arguments can appear in process listings, shell history, agent transcripts, and command logs. Prefer an owner-scoped PIN when possible. Use `VARS_KEY` for CI/CD.</Callout>
+<Callout type="warn">`--pin` can appear in process listings, shell history, agent transcripts, and command logs. Prefer `--pin-file` with a mode-0600 file. The PIN and encrypted key envelope are both required; vars does not derive the master key directly from the PIN.</Callout>
 
 ## Guides
 

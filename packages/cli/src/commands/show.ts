@@ -3,13 +3,18 @@ import { resolve } from "node:path";
 import { isUnlockedPath, showFile, toCanonicalPath, toUnlockedPath } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findKeyFile, findVarsFile, PIN_ARGUMENT, requireKey } from "../utils/context.js";
+import {
+	findVarsFile,
+	KEY_CREDENTIAL_ARGUMENTS,
+	requireKey,
+	resolveKeyFile,
+} from "../utils/context.js";
 
 export default defineCommand({
-	meta: { name: "show", description: "Decrypt a .vars file (renames to .unlocked.vars)" },
+	meta: { name: "show", description: "Human workflow: decrypt a file for editor access" },
 	args: {
 		file: { type: "positional", required: false, description: ".vars file to decrypt" },
-		pin: PIN_ARGUMENT,
+		...KEY_CREDENTIAL_ARGUMENTS,
 	},
 	async run({ args }) {
 		const file = args.file ? resolve(args.file) : findVarsFile(process.cwd());
@@ -33,8 +38,11 @@ export default defineCommand({
 			process.exit(1);
 		}
 
-		const keyFile = findKeyFile(file);
-		const { key, scope } = await requireKey(keyFile, `vars show ${args.file ?? file}`, args.pin);
+		const keyFile = resolveKeyFile(file, args["key-file"]);
+		const { key, scope } = await requireKey(keyFile, `vars show ${args.file ?? file}`, {
+			pin: args.pin,
+			pinFile: args["pin-file"],
+		});
 		const resultPath = await showFile(file, key, scope);
 		console.log(pc.green(`  ✓ Decrypted → ${resultPath}`));
 	},

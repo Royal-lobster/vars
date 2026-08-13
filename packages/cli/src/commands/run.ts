@@ -4,11 +4,11 @@ import { type KeyScope, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
-	findKeyFile,
 	findVarsFile,
-	PIN_ARGUMENT,
+	KEY_CREDENTIAL_ARGUMENTS,
 	requireKey,
 	resolveEnv,
+	resolveKeyFile,
 } from "../utils/context.js";
 import { resolveEnvValue } from "../utils/resolve-env-value.js";
 
@@ -18,7 +18,7 @@ export default defineCommand({
 		env: { type: "string", required: true, alias: "e", description: "Target environment" },
 		param: { type: "string", description: "Param values (key=value), repeatable" },
 		file: { type: "string", alias: "f", description: ".vars file path" },
-		pin: PIN_ARGUMENT,
+		...KEY_CREDENTIAL_ARGUMENTS,
 	},
 	async run({ args, rawArgs }) {
 		const env = resolveEnv(args.env);
@@ -61,11 +61,11 @@ export default defineCommand({
 		let scope: KeyScope = "master";
 		const getKey = async () => {
 			if (!key) {
-				const keyFile = findKeyFile(file);
+				const keyFile = resolveKeyFile(file, args["key-file"]);
 				({ key, scope } = await requireKey(
 					keyFile,
 					`vars run --env ${env} -- ${rawArgs.slice(rawArgs.indexOf("--") + 1).join(" ")}`,
-					args.pin,
+					{ pin: args.pin, pinFile: args["pin-file"] },
 				));
 			}
 			return { key, scope };
@@ -106,5 +106,9 @@ export function childEnv(vars: Record<string, string>, env: string): NodeJS.Proc
 	delete inherited.VARS_KEY;
 	// biome-ignore lint/performance/noDelete: omitted unlock secrets must not reach the child
 	delete inherited.VARS_PIN;
+	// biome-ignore lint/performance/noDelete: omitted credential path must not reach the child
+	delete inherited.VARS_PIN_FILE;
+	// biome-ignore lint/performance/noDelete: omitted envelope path must not reach the child
+	delete inherited.VARS_KEY_FILE;
 	return { ...inherited, ...vars, VARS_ENV: env };
 }

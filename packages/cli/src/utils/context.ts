@@ -20,8 +20,38 @@ export interface KeyResult {
 
 export const PIN_ARGUMENT = {
 	type: "string",
-	description: "PIN for non-interactive use (unsafe: visible in process arguments)",
+	description: "PIN for trusted non-interactive use (unsafe: visible in process arguments)",
 } as const;
+
+export const PIN_FILE_ARGUMENT = {
+	type: "string",
+	description: "Read the PIN from a file (preferred for trusted automation)",
+} as const;
+
+export const NEW_PIN_ARGUMENT = {
+	type: "string",
+	description: "New PIN for trusted non-interactive use (unsafe: visible in process arguments)",
+} as const;
+
+export const NEW_PIN_FILE_ARGUMENT = {
+	type: "string",
+	description: "Read the new PIN from a file",
+} as const;
+export const KEY_FILE_ARGUMENT = {
+	type: "string",
+	description: "Encrypted key envelope path (default: nearest .varskey)",
+} as const;
+
+export const KEY_CREDENTIAL_ARGUMENTS = {
+	pin: PIN_ARGUMENT,
+	"pin-file": PIN_FILE_ARGUMENT,
+	"key-file": KEY_FILE_ARGUMENT,
+} as const;
+
+export interface KeyCredentials {
+	pin?: string;
+	pinFile?: string;
+}
 
 export interface CliContext {
 	varsFilePath: string;
@@ -118,11 +148,17 @@ export function findKeyFile(startDir: string): string | null {
 	}
 }
 
-/** Get encryption key — from an explicit PIN, environment, or prompt */
+/** Resolve an explicit encrypted key envelope or find the nearest .varskey. */
+export function resolveKeyFile(startDir: string, suppliedPath?: string): string | null {
+	const configuredPath = suppliedPath ?? process.env.VARS_KEY_FILE;
+	return configuredPath ? resolve(configuredPath) : findKeyFile(startDir);
+}
+
+/** Get encryption key — from an explicit PIN source, environment, or prompt */
 export async function requireKey(
 	keyFilePath: string | null,
 	command?: string,
-	suppliedPin?: string,
+	credentials: KeyCredentials = {},
 ): Promise<KeyResult> {
 	// First: try VARS_KEY env var (works in CI/non-TTY)
 	const envKey = getKeyFromEnv();
@@ -139,24 +175,20 @@ export async function requireKey(
 		throw new Error("Key file is empty. Run `vars key init` first.");
 	}
 
-	// Get PIN. An explicit argument overrides VARS_PIN for this invocation.
-	let pin: string;
-	if (suppliedPin !== undefined) {
-		pin = suppliedPin;
-	} else if (process.env.VARS_PIN) {
-		pin = process.env.VARS_PIN;
-	} else if (process.stdin.isTTY) {
+	// Explicit flags override environment credentials for this invocation.
+	let pin = resolveSuppliedPin(credentials);
+	if (!pin && process.stdin.isTTY) {
 		const result = await prompts.password({ message: "Enter PIN:" });
 		if (prompts.isCancel(result)) process.exit(0);
 		pin = result as string;
-	} else {
+	} else if (!pin) {
 		const commandDesc = command ?? "vars (unknown command)";
 		const agentPin = requestAgentApproval(commandDesc);
 		if (!agentPin) {
 			throw new Error(
 				"PIN approval denied or no dialog available.\n" +
-					"Set VARS_KEY environment variable with your base64-encoded master key.\n" +
-					"Get it with: vars key export",
+					"Provide the encrypted key envelope plus --pin-file or VARS_PIN_FILE.\n" +
+					"Use VARS_KEY only for CI compatibility when an envelope cannot be provisioned.",
 			);
 		}
 		pin = agentPin;
@@ -175,6 +207,28 @@ export async function requireKey(
 	}
 
 	throw new Error("Invalid PIN");
+}
+
+/** Resolve a non-interactive PIN without falling back to a human prompt. */
+export function resolveSuppliedPin(credentials: KeyCredentials = {}): string | undefined {
+	const explicit = resolveExplicitPin(credentials);
+	if (explicit !== undefined) return explicit;
+	if (process.env.VARS_PIN) return process.env.VARS_PIN;
+	if (process.env.VARS_PIN_FILE) return readPinFile(process.env.VARS_PIN_FILE);
+	return undefined;
+}
+
+/** Resolve only explicit PIN flags, excluding ambient environment credentials. */
+export function resolveExplicitPin(credentials: KeyCredentials = {}): string | undefined {
+	if (credentials.pin !== undefined) return credentials.pin;
+	if (credentials.pinFile !== undefined) return readPinFile(credentials.pinFile);
+	return undefined;
+}
+
+function readPinFile(path: string): string {
+	const pin = readFileSync(resolve(path), "utf8").trim();
+	if (!pin) throw new Error(`PIN file is empty: ${path}`);
+	return pin;
 }
 
 /** Resolve environment name with common aliases */

@@ -12,13 +12,15 @@ When you run `vars init`, two things are created:
 
 The PIN is never stored anywhere. It goes through **Argon2id** — a memory-hard, brute-force-resistant KDF — to derive a wrapping key. That wrapping key decrypts the master key, the master key decrypts your values, and then the wrapping key is discarded.
 
-The master key never touches disk in plaintext. Knowing the PIN is the only way to get it.
+The master key never touches disk in plaintext. The PIN does not derive or recreate it: decryption requires both the PIN and the project-specific encrypted key envelope.
 
 By default, vars prompts for the PIN at the terminal every time it needs to decrypt (`vars show`, `vars hide`, `vars run`). The PIN is not cached or stored by vars.
 
-For trusted automation, PIN-taking commands also accept `--pin <pin>` and the `VARS_PIN` environment variable. An explicit `--pin` takes precedence over `VARS_PIN`. This deliberately gives the process—and any agent controlling it—access to the encrypted values.
+For trusted automation, PIN-taking commands accept `--pin-file <path>` and `VARS_PIN_FILE`; these are preferred because only the file path appears in process arguments or the environment. `--key-file <path>` and `VARS_KEY_FILE` select an externally provisioned encrypted envelope.
 
-<Callout type="warn">A PIN passed with `--pin` is visible in process arguments and may be recorded in shell history, agent transcripts, and command logs. Use it only when you trust the automation with every secret that PIN can decrypt. Prefer an owner-scoped PIN when the automation needs only part of the file.</Callout>
+`--pin <pin>` and `VARS_PIN` remain convenient escape hatches. Explicit flags take precedence over environment credentials.
+
+<Callout type="warn">A PIN passed with `--pin` is visible in process arguments and may be recorded in shell history, agent transcripts, and command logs. Use a mode-0600 PIN file and an owner-scoped PIN whenever possible.</Callout>
 
 This two-layer design means changing your PIN only re-encrypts the 32-byte master key — not every secret in the file.
 

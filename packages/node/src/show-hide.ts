@@ -54,12 +54,13 @@ export async function showFile(filePath: string, key: Buffer, scope?: KeyScope):
 	return unlockedPath;
 }
 
-export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope): Promise<string> {
-	const lockedPath = isUnlockedPath(filePath) ? toLockedPath(filePath) : filePath;
-	const readPath = filePath;
-
-	const content = readFileSync(readPath, "utf8");
-	const parsed = parse(content, readPath);
+export async function encryptVarsContent(
+	content: string,
+	key: Buffer,
+	scope?: KeyScope,
+	filePath = "<memory>",
+): Promise<string> {
+	const parsed = parse(content, filePath);
 	if (parsed.errors.length > 0) {
 		throw new Error(`Cannot safely encrypt invalid vars file: ${parsed.errors[0]!.message}`);
 	}
@@ -266,9 +267,16 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 		result.push(line);
 	}
 
-	writeFileSync(readPath, result.join("\n"));
-	if (isUnlockedPath(readPath) && readPath !== lockedPath) {
-		renameSync(readPath, lockedPath);
+	return result.join("\n");
+}
+
+export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope): Promise<string> {
+	const lockedPath = isUnlockedPath(filePath) ? toLockedPath(filePath) : filePath;
+	const content = readFileSync(filePath, "utf8");
+	const encrypted = await encryptVarsContent(content, key, scope, filePath);
+	writeFileSync(filePath, encrypted);
+	if (isUnlockedPath(filePath) && filePath !== lockedPath) {
+		renameSync(filePath, lockedPath);
 	}
 	return lockedPath;
 }

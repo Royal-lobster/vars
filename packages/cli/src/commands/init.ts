@@ -9,11 +9,23 @@ import {
 import { join, resolve } from "node:path";
 import * as prompts from "@clack/prompts";
 import { generateTypeScript } from "@dotvars/core";
-import { createMasterKey, encryptMasterKey, resolveUseChain, toUnlockedPath } from "@dotvars/node";
+import {
+	createMasterKey,
+	encryptMasterKey,
+	encryptVarsContent,
+	resolveUseChain,
+	toUnlockedPath,
+} from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { buildHeaderComment } from "../utils/build-header-comment.js";
-import { getGitRoot, getProjectRoot, PIN_ARGUMENT } from "../utils/context.js";
+import {
+	getGitRoot,
+	getProjectRoot,
+	PIN_ARGUMENT,
+	PIN_FILE_ARGUMENT,
+	resolveSuppliedPin,
+} from "../utils/context.js";
 import { ALL_PUBLIC_PREFIXES, detectFramework } from "../utils/detect-framework.js";
 import { migrateFromEnv } from "../utils/migrate-from-env.js";
 import { HOOK_MARKER, HOOK_SCRIPT, resolveHookPath } from "../utils/pre-commit-hook.js";
@@ -22,6 +34,7 @@ export default defineCommand({
 	meta: { name: "init", description: "Initialize vars in the current project" },
 	args: {
 		pin: PIN_ARGUMENT,
+		"pin-file": PIN_FILE_ARGUMENT,
 	},
 	async run({ args }) {
 		const root = getProjectRoot();
@@ -34,12 +47,11 @@ export default defineCommand({
 
 		prompts.intro(pc.bold("vars init"));
 
-		const suppliedPin = (args.pin as string | undefined) ?? process.env.VARS_PIN;
+		const suppliedPin = resolveSuppliedPin({ pin: args.pin, pinFile: args["pin-file"] });
+		const lockedInitialization = suppliedPin !== undefined;
 		if (!suppliedPin && !process.stdin.isTTY) {
-			console.error(pc.red("vars init requires an interactive terminal or --pin to set a PIN."));
-			console.error(
-				pc.dim("Run this command directly in your terminal, or pass --pin for trusted automation."),
-			);
+			console.error(pc.red("vars init requires an interactive terminal, --pin, or --pin-file."));
+			console.error(pc.dim("Run directly in a terminal or provide a PIN for trusted automation."));
 			process.exit(1);
 		}
 
@@ -63,16 +75,16 @@ export default defineCommand({
 		const encryptedKey = await encryptMasterKey(masterKey, pin as string);
 		writeFileSync(keyPath, `${encryptedKey}\n`, { mode: 0o600, flag: "wx" });
 
-		// 3. Create starter config.unlocked.vars (unlocked state for editing)
+		// 3. Create a locked config for automation or an unlocked config for human editing.
 		const canonicalPath = join(root, "config.vars");
-		const configPath = toUnlockedPath(canonicalPath);
-		if (!existsSync(canonicalPath) && !existsSync(configPath)) {
+		const unlockedPath = toUnlockedPath(canonicalPath);
+		const configPath = lockedInitialization ? canonicalPath : unlockedPath;
+		if (!existsSync(canonicalPath) && !existsSync(unlockedPath)) {
 			const envCandidates = [".env", ".env.local", ".env.example", ".env.sample"];
 			const envFile = envCandidates.map((f) => join(root, f)).find((f) => existsSync(f));
 			let content: string;
 
 			if (envFile) {
-				// Detect framework to determine public var prefixes
 				const framework = detectFramework(root);
 				const publicPrefixes = framework ? framework.publicPrefixes : ALL_PUBLIC_PREFIXES;
 				if (framework) {
@@ -81,7 +93,6 @@ export default defineCommand({
 						: "no public var prefixes";
 					console.log(pc.dim(`  Detected ${framework.name} — ${prefixMsg}`));
 				}
-				// Migrate from .env
 				content = migrateFromEnv(readFileSync(envFile, "utf8"), publicPrefixes);
 				console.log(pc.dim("  Migrated from .env"));
 			} else {
@@ -99,7 +110,10 @@ public PORT : z.number() = 3000
 DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 `;
 			}
-			writeFileSync(configPath, content);
+			const initialContent = lockedInitialization
+				? await encryptVarsContent(content, masterKey, "master", canonicalPath)
+				: content;
+			writeFileSync(configPath, initialContent);
 		}
 
 		// 4. Install zod if not already present
@@ -193,7 +207,11 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 		}
 
 		prompts.outro(
-			pc.green("vars initialized! Edit config.unlocked.vars, then run `vars hide` to encrypt."),
+			pc.green(
+				lockedInitialization
+					? "vars initialized with config.vars locked. Use vars add/set/apply for targeted edits."
+					: "vars initialized! Edit config.unlocked.vars, then run `vars hide` to encrypt.",
+			),
 		);
 	},
 });

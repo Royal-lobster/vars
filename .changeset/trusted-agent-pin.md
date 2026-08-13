@@ -2,4 +2,4 @@
 "dotvars": minor
 ---
 
-Add `--pin` support for trusted non-interactive setup and secret access. Explicit PIN arguments override `VARS_PIN`, while the existing interactive approval flow remains the default.
+Add an agent-first workflow for trusted automation: PIN files and external encrypted key envelopes, non-interactive owner PIN creation and key rotation, targeted locked-file `add`/`set`/`remove` mutations with integration-qualified names, and atomic `vars apply`. Explicit credentials override environment credentials while interactive approval remains the human default.

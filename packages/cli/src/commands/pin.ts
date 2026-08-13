@@ -6,10 +6,13 @@ import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
 	findAllVarsFiles,
-	findKeyFile,
 	getProjectRoot,
-	PIN_ARGUMENT,
+	KEY_CREDENTIAL_ARGUMENTS,
+	NEW_PIN_ARGUMENT,
+	NEW_PIN_FILE_ARGUMENT,
 	requireKey,
+	resolveExplicitPin,
+	resolveKeyFile,
 } from "../utils/context.js";
 
 export default defineCommand({
@@ -23,15 +26,21 @@ export default defineCommand({
 					required: true,
 					description: "Owner name (e.g., backend-team)",
 				},
-				pin: PIN_ARGUMENT,
+				...KEY_CREDENTIAL_ARGUMENTS,
+				"new-pin": NEW_PIN_ARGUMENT,
+				"new-pin-file": NEW_PIN_FILE_ARGUMENT,
 			},
 			async run({ args }) {
-				if (!process.stdin.isTTY) {
-					console.error("This command requires an interactive terminal.");
+				const newPin = resolveExplicitPin({
+					pin: args["new-pin"],
+					pinFile: args["new-pin-file"],
+				});
+				if (!newPin && !process.stdin.isTTY) {
+					console.error("Provide --new-pin or --new-pin-file for non-interactive use.");
 					process.exit(1);
 				}
 
-				const keyFile = findKeyFile(process.cwd());
+				const keyFile = resolveKeyFile(process.cwd(), args["key-file"]);
 				if (!keyFile) {
 					console.error(pc.red("No key found. Run `vars init` first."));
 					process.exit(1);
@@ -58,11 +67,10 @@ export default defineCommand({
 
 				// Require master PIN
 				console.log(pc.dim("  Authenticate with master PIN to create owner PIN"));
-				const { key: masterKey, scope } = await requireKey(
-					keyFile,
-					`vars pin create ${owner}`,
-					args.pin,
-				);
+				const { key: masterKey, scope } = await requireKey(keyFile, `vars pin create ${owner}`, {
+					pin: args.pin,
+					pinFile: args["pin-file"],
+				});
 				if (scope !== "master") {
 					console.error(pc.red("  Owner PINs cannot create other owner PINs. Use the master PIN."));
 					process.exit(1);
@@ -72,17 +80,21 @@ export default defineCommand({
 				const ownerKey = await deriveOwnerKey(masterKey, owner);
 
 				// Set owner PIN
-				const pin = await prompts.password({ message: `Set PIN for ${owner}:` });
-				if (prompts.isCancel(pin)) process.exit(0);
-				const confirm = await prompts.password({ message: "Confirm PIN:" });
-				if (prompts.isCancel(confirm)) process.exit(0);
-				if (pin !== confirm) {
-					console.error(pc.red("  PINs do not match"));
-					process.exit(1);
+				let ownerPin = newPin;
+				if (!ownerPin) {
+					const promptedPin = await prompts.password({ message: `Set PIN for ${owner}:` });
+					if (prompts.isCancel(promptedPin)) process.exit(0);
+					const confirm = await prompts.password({ message: "Confirm PIN:" });
+					if (prompts.isCancel(confirm)) process.exit(0);
+					if (promptedPin !== confirm) {
+						console.error(pc.red("  PINs do not match"));
+						process.exit(1);
+					}
+					ownerPin = promptedPin as string;
 				}
 
 				// Wrap owner key with PIN
-				const encryptedOwnerKey = await encryptMasterKey(ownerKey, pin as string, owner);
+				const encryptedOwnerKey = await encryptMasterKey(ownerKey, ownerPin, owner);
 
 				// Re-encrypt owner fields across all .vars files
 				const root = getProjectRoot();
@@ -111,7 +123,9 @@ export default defineCommand({
 					console.log(pc.dim(`  Re-encrypted ${reEncrypted} file(s) with owner-scoped keys`));
 				}
 				console.log(
-					pc.dim("  Share the PIN with the owner. They can use it with `vars show` / `vars hide`."),
+					pc.dim(
+						"  Share the PIN with the owner for targeted vars commands; show/hide remain available for human editing.",
+					),
 				);
 			},
 		}),

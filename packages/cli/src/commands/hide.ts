@@ -3,18 +3,18 @@ import type { KeyScope } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
-	findKeyFile,
 	findUnlockedVarsFiles,
 	getProjectRoot,
-	PIN_ARGUMENT,
+	KEY_CREDENTIAL_ARGUMENTS,
 	requireKey,
+	resolveKeyFile,
 } from "../utils/context.js";
 import { detectGeneratedPlatform, generateForFileOrThrow } from "./gen.js";
 
 export default defineCommand({
-	meta: { name: "hide", description: "Encrypt all unlocked .vars files" },
+	meta: { name: "hide", description: "Human workflow: encrypt files opened with vars show" },
 	args: {
-		pin: PIN_ARGUMENT,
+		...KEY_CREDENTIAL_ARGUMENTS,
 	},
 	async run({ args }) {
 		const root = getProjectRoot();
@@ -25,8 +25,11 @@ export default defineCommand({
 			return;
 		}
 
-		const keyFile = findKeyFile(process.cwd());
-		const { key, scope } = await requireKey(keyFile, "vars hide", args.pin);
+		const keyFile = resolveKeyFile(process.cwd(), args["key-file"]);
+		const { key, scope } = await requireKey(keyFile, "vars hide", {
+			pin: args.pin,
+			pinFile: args["pin-file"],
+		});
 		const regenerationFailures = await hideUnlockedFiles(unlocked, key, scope);
 		if (regenerationFailures > 0) {
 			console.error(
