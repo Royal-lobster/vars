@@ -127,8 +127,13 @@ export async function rotateFiles(
 		});
 	}
 	const originalKey = readFileSync(keyFile);
+	const originalEnvelope = originalKey.toString("utf8").trimEnd();
+	const transitionalEnvelope = `${originalEnvelope}\n${encryptedKey}\n`;
 
 	try {
+		// Persist both keys before any file changes. A hard interruption can never lose
+		// the key required by either the old or newly re-encrypted files.
+		atomicWriteFileSync(keyFile, transitionalEnvelope);
 		for (const [destination, update] of updates) {
 			atomicWriteFileSync(destination, update.content);
 			if (update.source !== destination && existsSync(update.source)) rmSync(update.source);

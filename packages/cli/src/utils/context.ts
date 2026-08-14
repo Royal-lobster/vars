@@ -55,6 +55,21 @@ export interface KeyCredentials {
 	preferEnvelope?: boolean;
 }
 
+export function createKeyLoader(
+	startDir: string,
+	command: string,
+	args: Record<string, unknown>,
+): () => Promise<KeyResult> {
+	return () => {
+		const suppliedKeyFile = typeof args["key-file"] === "string" ? args["key-file"] : undefined;
+		return requireKey(resolveKeyFile(startDir, suppliedKeyFile), command, {
+			pin: typeof args.pin === "string" ? args.pin : undefined,
+			pinFile: typeof args["pin-file"] === "string" ? args["pin-file"] : undefined,
+			preferEnvelope: suppliedKeyFile !== undefined,
+		});
+	};
+}
+
 export interface CliContext {
 	varsFilePath: string;
 	keyFilePath: string | null;

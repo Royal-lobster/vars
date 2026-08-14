@@ -66,7 +66,7 @@ vars hide -f staging.vars
 
 ## Locked-file edits
 
-`add`, `set`, `remove`, and `apply` modify `config.vars` directly. Secret inputs are encrypted before replacement, and these commands never create `config.unlocked.vars`. If matching generated TypeScript output exists, vars regenerates it before completing; a regeneration failure restores both files.
+`add`, `set`, `remove`, and `apply` modify a locked `config.vars` directly. Secret inputs are encrypted before replacement, and these commands never create `config.unlocked.vars`. If a human has already opened the file with `vars show`, locked mutations stop and ask you to run `vars hide` first rather than writing new plaintext. If matching generated TypeScript output exists, vars regenerates it before completing; a regeneration failure restores both files.
 
 Qualified names keep public and secret values together by integration:
 
@@ -125,7 +125,7 @@ Updates a variable without unlocking the file. Environment flags and their `-fil
 </Accordion>
 <Accordion title="apply — atomically upsert an integration">
 
-`apply` reads variable and group declarations from stdin. Omitted variables remain unchanged. Imports, params, checks, conditionals, and duplicate qualified names are rejected:
+`apply` reads variable and group declarations from stdin. Omitted variables remain unchanged. Environment declarations, imports, params, checks, conditionals, and duplicate qualified names are rejected:
 
 ```bash
 vars apply --pin-file /run/secrets/vars-pin <<'VARS'
@@ -136,7 +136,7 @@ group stripe {
 VARS
 ```
 
-The plaintext fragment exists only in the command input. Secret declarations are encrypted before `config.vars` is replaced. Existing declaration order is preserved; new declarations append to their target scope. Public/schema/value/metadata from a listed declaration replace that declaration as a unit.
+The plaintext fragment exists only in the command input. Secret declarations are encrypted before `config.vars` is replaced. Existing declaration order is preserved; new declarations append to their exact target scope: `NAME` is top-level and `group.NAME` is grouped. Existing metadata, including `owner`, is preserved when the patch omits metadata; metadata supplied by the patch replaces the existing metadata.
 
 </Accordion>
 <Accordion title="ls — list variables">

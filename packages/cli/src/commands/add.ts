@@ -4,8 +4,9 @@ import * as prompts from "@clack/prompts";
 import { parse } from "@dotvars/core";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findVarsFile, KEY_CREDENTIAL_ARGUMENTS } from "../utils/context.js";
-import { mutateVarsFile, readValueFile } from "../utils/vars-source-mutation.js";
+import { createKeyLoader, findVarsFile, KEY_CREDENTIAL_ARGUMENTS } from "../utils/context.js";
+import { collectMutationValues } from "../utils/mutation-values.js";
+import { mutateVarsFile } from "../utils/vars-source-mutation.js";
 
 export default defineCommand({
 	meta: { name: "add", description: "Add a variable without unlocking the vars file" },
@@ -47,7 +48,7 @@ export default defineCommand({
 		if (nonInteractive) {
 			isPublic = args.public === true;
 			schema = args.schema || "z.string()";
-			values = collectValues(args, envs);
+			values = collectMutationValues(args, envs, { broadcastShared: true, required: false });
 		} else {
 			const publicAnswer = await prompts.confirm({
 				message: "Is this public (repository-readable)?",
@@ -72,27 +73,9 @@ export default defineCommand({
 		const result = await mutateVarsFile(
 			file,
 			{ kind: "add", target: args.name, public: isPublic, schema, values },
-			{ pin: args.pin, pinFile: args["pin-file"], keyFile: args["key-file"] },
+			{ getKey: createKeyLoader(file, "vars add", args) },
 		);
 		const encryption = result.encrypted ? " and encrypted" : "";
 		console.log(pc.green(`  ✓ Added ${args.name}${encryption} in ${file}`));
 	},
 });
-
-function collectValues(args: Record<string, unknown>, envs: string[]): Record<string, string> {
-	if (args.value && args["value-file"]) throw new Error("Use either --value or --value-file");
-	const values: Record<string, string> = {};
-	const shared = args["value-file"] ? readValueFile(String(args["value-file"])) : args.value;
-	if (shared !== undefined) {
-		if (envs.length <= 1) values.default = String(shared);
-		else for (const env of envs) values[env] = String(shared);
-	}
-	for (const env of envs) {
-		const direct = args[env];
-		const file = args[`${env}-file`];
-		if (direct && file) throw new Error(`Use either --${env} or --${env}-file`);
-		if (file) values[env] = readValueFile(String(file));
-		else if (direct !== undefined) values[env] = String(direct);
-	}
-	return values;
-}

@@ -25,7 +25,7 @@ import {
 	getProjectRoot,
 	PIN_ARGUMENT,
 	PIN_FILE_ARGUMENT,
-	resolveSuppliedPin,
+	resolveExplicitPin,
 } from "../utils/context.js";
 import { ALL_PUBLIC_PREFIXES, detectFramework } from "../utils/detect-framework.js";
 import { migrateFromEnv } from "../utils/migrate-from-env.js";
@@ -40,15 +40,23 @@ export default defineCommand({
 	async run({ args }) {
 		const root = getProjectRoot();
 		const keyPath = join(root, ".varskey");
+		const canonicalPath = join(root, "config.vars");
+		const unlockedPath = toUnlockedPath(canonicalPath);
 
 		if (existsSync(keyPath)) {
 			console.log(pc.yellow("  vars is already initialized (.varskey exists)"));
 			return;
 		}
+		if (existsSync(canonicalPath) || existsSync(unlockedPath)) {
+			throw new Error(
+				"Cannot initialize a new key while a vars config already exists. " +
+					"Import the matching envelope with `vars key import`, or remove the config to start over.",
+			);
+		}
 
 		prompts.intro(pc.bold("vars init"));
 
-		const suppliedPin = resolveSuppliedPin({ pin: args.pin, pinFile: args["pin-file"] });
+		const suppliedPin = resolveExplicitPin({ pin: args.pin, pinFile: args["pin-file"] });
 		const lockedInitialization = suppliedPin !== undefined;
 		if (!suppliedPin && !process.stdin.isTTY) {
 			console.error(pc.red("vars init requires an interactive terminal, --pin, or --pin-file."));
@@ -76,47 +84,41 @@ export default defineCommand({
 		const encryptedKey = await encryptMasterKey(masterKey, pin as string);
 
 		// 3. Create a locked config for automation or an unlocked config for human editing.
-		const canonicalPath = join(root, "config.vars");
-		const unlockedPath = toUnlockedPath(canonicalPath);
+		// The absence check above guarantees this is a new config.
 		const configPath = lockedInitialization ? canonicalPath : unlockedPath;
-		let initialContent: string | undefined;
-		if (!existsSync(canonicalPath) && !existsSync(unlockedPath)) {
-			const envCandidates = [".env", ".env.local", ".env.example", ".env.sample"];
-			const envFile = envCandidates
-				.map((file) => join(root, file))
-				.find((file) => existsSync(file));
-			let content: string;
+		const envCandidates = [".env", ".env.local", ".env.example", ".env.sample"];
+		const envFile = envCandidates.map((file) => join(root, file)).find((file) => existsSync(file));
+		let content: string;
 
-			if (envFile) {
-				const framework = detectFramework(root);
-				const publicPrefixes = framework ? framework.publicPrefixes : ALL_PUBLIC_PREFIXES;
-				if (framework) {
-					const prefixMsg = publicPrefixes.length
-						? `using ${publicPrefixes.join(", ")} prefix${publicPrefixes.length > 1 ? "es" : ""}`
-						: "no public var prefixes";
-					console.log(pc.dim(`  Detected ${framework.name} — ${prefixMsg}`));
-				}
-				content = migrateFromEnv(readFileSync(envFile, "utf8"), publicPrefixes);
-				console.log(pc.dim("  Migrated from .env"));
-			} else {
-				const header = buildHeaderComment({
-					source: "boilerplate",
-					publicVarNames: [],
-					totalVarCount: 0,
-					detectedPrefixes: [],
-				});
-				content = `${header}
+		if (envFile) {
+			const framework = detectFramework(root);
+			const publicPrefixes = framework ? framework.publicPrefixes : ALL_PUBLIC_PREFIXES;
+			if (framework) {
+				const prefixMsg = publicPrefixes.length
+					? `using ${publicPrefixes.join(", ")} prefix${publicPrefixes.length > 1 ? "es" : ""}`
+					: "no public var prefixes";
+				console.log(pc.dim(`  Detected ${framework.name} — ${prefixMsg}`));
+			}
+			content = migrateFromEnv(readFileSync(envFile, "utf8"), publicPrefixes);
+			console.log(pc.dim("  Migrated from .env"));
+		} else {
+			const header = buildHeaderComment({
+				source: "boilerplate",
+				publicVarNames: [],
+				totalVarCount: 0,
+				detectedPrefixes: [],
+			});
+			content = `${header}
 env(dev, staging, prod)
 
 public APP_NAME = "my-app"
 public PORT : z.number() = 3000
 DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 `;
-			}
-			initialContent = lockedInitialization
-				? await encryptVarsContent(content, masterKey, "master", canonicalPath)
-				: content;
 		}
+		const initialContent = lockedInitialization
+			? await encryptVarsContent(content, masterKey, "master", canonicalPath)
+			: content;
 
 		publishInitialization(keyPath, configPath, encryptedKey, initialContent);
 

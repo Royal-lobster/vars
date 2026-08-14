@@ -1,17 +1,18 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import * as prompts from "@clack/prompts";
-import { createMasterKey, encryptMasterKey, parseKeyFile } from "@dotvars/node";
+import { createMasterKey, encryptMasterKey, isUnlockedPath, parseKeyFile } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
+	findAllVarsFiles,
 	getProjectRoot,
 	KEY_CREDENTIAL_ARGUMENTS,
 	PIN_ARGUMENT,
 	PIN_FILE_ARGUMENT,
 	requireKey,
 	resolveKeyFile,
-	resolveSuppliedPin,
+	resolveExplicitPin,
 } from "../utils/context.js";
 
 export default defineCommand({
@@ -24,7 +25,7 @@ export default defineCommand({
 				"pin-file": PIN_FILE_ARGUMENT,
 			},
 			async run({ args }) {
-				const suppliedPin = resolveSuppliedPin({ pin: args.pin, pinFile: args["pin-file"] });
+				const suppliedPin = resolveExplicitPin({ pin: args.pin, pinFile: args["pin-file"] });
 				if (!suppliedPin && !process.stdin.isTTY) {
 					console.error("This command requires an interactive terminal, --pin, or --pin-file.");
 					process.exit(1);
@@ -34,6 +35,12 @@ export default defineCommand({
 				if (existsSync(keyPath)) {
 					console.log(pc.yellow("  Key already exists at .varskey"));
 					return;
+				}
+				if (findAllVarsFiles(root).some((file) => !isUnlockedPath(file))) {
+					throw new Error(
+						"Cannot create a new key while locked .vars files exist. " +
+							"Import the matching envelope with `vars key import`.",
+					);
 				}
 				let pin = suppliedPin;
 				if (!pin) {

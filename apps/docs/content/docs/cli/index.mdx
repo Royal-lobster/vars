@@ -14,16 +14,16 @@ icon: Terminal
 | `vars hide` | Encrypt all unlocked .vars files |
 | `vars run --env <env> -- cmd` | Run a command with decrypted env vars injected |
 | `vars check [-f file]` | Validate schemas and run check blocks |
-| `vars add <name>` | Interactively add a variable |
-| `vars remove <name>` | Remove a variable from a .vars file |
+| `vars add <name>` | Add a variable directly to a locked file |
+| `vars set <name>` | Update a variable directly in a locked file |
+| `vars remove <name>` | Remove a variable directly from a locked file |
 | `vars ls` | List all .vars files with lock state and var count |
 | `vars ls <file>` | List variables in a file with metadata |
 | `vars export --env <env>` | Export as dotenv, json, or k8s-secret format |
 | `vars apply` | Atomically upsert a `.vars` fragment from stdin without unlocking |
 | `vars key init` | Create a new encryption key |
-| `vars key rotate` | Rotate the encryption key |
-| `vars key fingerprint` | Print the key fingerprint |
-| `vars key export` | Print base64 master key for CI |
+| `vars rotate` | Rotate the encryption key |
+| `vars key export` | Print the raw base64 master key as a compatibility escape hatch |
 | `vars doctor` | Diagnose your vars setup |
 
 ## Environment
@@ -32,7 +32,7 @@ icon: Terminal
 |----------|-------------|
 | `VARS_KEY` | Raw base64 master key compatibility escape hatch for CI systems that cannot provision an envelope. |
 | `VARS_PIN` | PIN for trusted non-interactive use. Overridden by `--pin`; may expose all secrets available to that PIN. |
-| `VARS_PIN_FILE` | Path to a PIN file. Preferred over `VARS_PIN` for trusted automation. |
+| `VARS_PIN_FILE` | Path to a PIN file. Recommended instead of `VARS_PIN` for trusted automation; `VARS_PIN` wins if both are set. |
 | `VARS_KEY_FILE` | Path to an encrypted key envelope. Defaults to the nearest `.varskey`. |
 
 ## Trusted automation

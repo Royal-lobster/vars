@@ -1,10 +1,15 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { type Declaration, type VariableDecl, normalizeSchema, parse } from "@dotvars/core";
-import { encryptVarsContent, isLocalPath, isUnlockedPath, toCanonicalPath } from "@dotvars/node";
+import {
+	encryptVarsContent,
+	type KeyScope,
+	isLocalPath,
+	isUnlockedPath,
+	toCanonicalPath,
+	toUnlockedPath,
+} from "@dotvars/node";
 import { detectGeneratedPlatform, generateForFileOrThrow } from "./generated-output.js";
 import { atomicWriteFileSync } from "./atomic-write.js";
-import type { KeyCredentials } from "./context.js";
-import { requireKey, resolveKeyFile } from "./context.js";
 import {
 	appendTrailingMetadata,
 	findDeclarationEndLine,
@@ -31,8 +36,8 @@ export type VarsMutation =
 	| { kind: "remove"; target: string }
 	| { kind: "apply"; patch: string };
 
-export interface MutationCredentials extends KeyCredentials {
-	keyFile?: string;
+export interface MutationOptions {
+	getKey?: () => Promise<{ key: Buffer; scope: KeyScope }>;
 }
 
 export interface MutationResult {
@@ -84,24 +89,35 @@ export function mutateVarsSource(
 export async function mutateVarsFile(
 	file: string,
 	mutation: VarsMutation,
-	credentials: MutationCredentials = {},
+	options: MutationOptions = {},
 ): Promise<MutationResult> {
+	const unlocked = isUnlockedPath(file) ? file : toUnlockedPath(file);
+	if (!isLocalPath(file) && existsSync(unlocked)) {
+		throw new Error(`Refusing locked mutation while ${unlocked} is open. Run vars hide first.`);
+	}
 	const original = readFileSync(file, "utf8");
 	const transformed = mutateVarsSource(original, file, mutation);
 	let updated = transformed.content;
 	const targets = transformed.targets;
 
 	const locked = !isUnlockedPath(file) && !isLocalPath(file);
-	const needsEncryption = locked && hasPlaintextSecrets(updated, file);
-	const changedPlaintextSecret = needsEncryption;
-	if (needsEncryption) {
-		const keyFile = resolveKeyFile(file, credentials.keyFile);
-		const { key, scope } = await requireKey(keyFile, `vars ${mutation.kind}`, credentials);
+	const originalPlaintext = locked
+		? collectPlaintextSecrets(original, file)
+		: new Map<string, string>();
+	const changedPlaintextSecret =
+		locked && hasNewPlaintextSecret(originalPlaintext, collectPlaintextSecrets(updated, file));
+	if (changedPlaintextSecret) {
+		if (!options.getKey) {
+			throw new Error("This mutation introduces a secret value and requires an encryption key.");
+		}
+		const { key, scope } = await options.getKey();
 		updated = await encryptVarsContent(updated, key, scope, file);
-		if (hasPlaintextSecrets(updated, file)) {
-			throw new Error(
-				"The supplied PIN scope cannot encrypt every changed secret; no changes were written.",
-			);
+		if (hasNewPlaintextSecret(originalPlaintext, collectPlaintextSecrets(updated, file))) {
+			const reason =
+				scope === "master"
+					? "The new secret could not be encrypted; only quoted string secrets are supported"
+					: "The supplied owner PIN cannot encrypt every changed secret";
+			throw new Error(`${reason}; no changes were written.`);
 		}
 	} else {
 		const result = parse(updated, file);
@@ -146,11 +162,6 @@ export function parseVariableTarget(input: string): VariableTarget {
 		throw new Error("Group name may contain letters, digits, hyphens, and underscores");
 	}
 	return { group, name };
-}
-
-export function readValueFile(path: string): string {
-	const value = readFileSync(path, "utf8");
-	return value.endsWith("\n") ? value.slice(0, -1) : value;
 }
 
 function addVariable(
@@ -240,11 +251,18 @@ function applyPatch(
 ): { content: string; targets: string[] } {
 	const parsedPatch = parseOrThrow(patch, "<stdin>");
 	if (
+		parsedPatch.ast.envs.length > 0 ||
 		parsedPatch.ast.imports.length > 0 ||
 		parsedPatch.ast.params.length > 0 ||
-		parsedPatch.ast.checks.length > 0
+		parsedPatch.ast.checks.length > 0 ||
+		parsedPatch.ast.declarations.some((declaration) => {
+			const variables = declaration.kind === "group" ? declaration.declarations : [declaration];
+			return variables.some((variable) => containsConditional(variable.value));
+		})
 	) {
-		throw new Error("vars apply accepts variable and group declarations only");
+		throw new Error(
+			"vars apply accepts only variable and group declarations without conditional values",
+		);
 	}
 
 	let updated = content;
@@ -258,12 +276,7 @@ function applyPatch(
 		}
 		for (const variable of declaration.declarations) {
 			const target = `${declaration.name}.${variable.name}`;
-			updated = upsertRawDeclaration(
-				updated,
-				file,
-				target,
-				extractDeclaration(patch, variable).replace(/^\s+/, ""),
-			);
+			updated = upsertRawDeclaration(updated, file, target, extractDeclaration(patch, variable));
 			targets.push(target);
 		}
 	}
@@ -279,63 +292,88 @@ function upsertRawDeclaration(
 ): string {
 	const target = parseVariableTarget(targetInput);
 	const parsed = parseOrThrow(content, file);
-	const match = findVariable(parsed.ast.declarations, target);
-	if (!match) {
-		const rawParsed = parseOrThrow(
-			target.group ? `group ${target.group} {\n  ${raw.replace(/\n/g, "\n  ")}\n}` : raw,
-			"<patch>",
-		);
-		const variable = target.group
-			? rawParsed.ast.declarations[0]?.kind === "group"
-				? rawParsed.ast.declarations[0].declarations[0]
-				: undefined
-			: rawParsed.ast.declarations[0]?.kind === "variable"
-				? rawParsed.ast.declarations[0]
-				: undefined;
-		if (!variable) throw new Error(`Invalid declaration for ${targetInput}`);
-		return addVariable(content, file, {
-			kind: "add",
-			target: targetInput,
-			public: variable.public,
-			schema: variable.schema ?? "z.string()",
-			values: valuesFromVariable(variable),
-		});
-	}
+	const match = findVariableExact(parsed.ast.declarations, target);
+	const normalizedRaw = dedentDeclaration(raw);
+	if (!match) return insertRawDeclaration(content, file, target, normalizedRaw);
 
 	const lines = content.split("\n");
 	const start = match.variable.line - 1;
 	const end = findDeclarationEndLine(content, start);
 	const indent = match.group ? "  " : "";
-	lines.splice(start, end - start + 1, ...raw.split("\n").map((line) => `${indent}${line}`));
+	const replacement = normalizedRaw.split("\n").map((line) => `${indent}${line}`);
+	const existingMetadata = trailingMetadata(lines.slice(start, end + 1).join("\n"));
+	if (!trailingMetadata(normalizedRaw) && existingMetadata) {
+		appendTrailingMetadata(replacement, existingMetadata);
+	}
+	lines.splice(start, end - start + 1, ...replacement);
 	return lines.join("\n");
 }
 
 function extractDeclaration(source: string, variable: VariableDecl): string {
 	const lines = source.split("\n");
 	const start = variable.line - 1;
-	return lines.slice(start, findDeclarationEndLine(source, start) + 1).join("\n");
+	return dedentDeclaration(
+		lines.slice(start, findDeclarationEndLine(source, start) + 1).join("\n"),
+	);
 }
 
-function valuesFromVariable(variable: VariableDecl): Record<string, string> {
-	if (!variable.value) return {};
-	if (variable.value.kind === "env_block") {
-		return Object.fromEntries(
-			variable.value.entries.map((entry) => [
-				entry.env === "*" ? "default" : entry.env,
-				valueAsString(entry.value),
-			]),
+function dedentDeclaration(raw: string): string {
+	const lines = raw.split("\n");
+	const indentation = lines
+		.filter((line) => line.trim().length > 0)
+		.map((line) => line.match(/^\s*/)?.[0].length ?? 0);
+	const commonIndent = indentation.length > 0 ? Math.min(...indentation) : 0;
+	return lines.map((line) => line.slice(Math.min(commonIndent, line.length))).join("\n");
+}
+
+function containsConditional(value: VariableDecl["value"]): boolean {
+	if (!value) return false;
+	if (value.kind === "conditional") return true;
+	if (value.kind === "env_block") {
+		return value.entries.some((entry) => containsConditional(entry.value));
+	}
+	return false;
+}
+
+function insertRawDeclaration(
+	content: string,
+	file: string,
+	target: VariableTarget,
+	raw: string,
+): string {
+	const parsed = parseOrThrow(content, file);
+	const lines = content.trimEnd().split("\n");
+	if (!target.group) return `${lines.join("\n")}\n\n${raw}\n`;
+
+	const group = parsed.ast.declarations.find(
+		(declaration) => declaration.kind === "group" && declaration.name === target.group,
+	);
+	const indented = raw.split("\n").map((line) => `  ${line}`);
+	if (!group || group.kind !== "group") {
+		return `${lines.join("\n")}\n\ngroup ${target.group} {\n${indented.join("\n")}\n}\n`;
+	}
+	const groupEnd = findDeclarationEndLine(content, group.line - 1);
+	lines.splice(groupEnd, 0, "", ...indented);
+	return `${lines.join("\n")}\n`;
+}
+
+function findVariableExact(
+	declarations: Declaration[],
+	target: VariableTarget,
+): VariableMatch | null {
+	if (target.group) {
+		const group = declarations.find(
+			(declaration) => declaration.kind === "group" && declaration.name === target.group,
 		);
+		if (!group || group.kind !== "group") return null;
+		const variable = group.declarations.find((item) => item.name === target.name);
+		return variable ? { variable, group: group.name } : null;
 	}
-	return { default: valueAsString(variable.value) };
-}
-
-function valueAsString(value: NonNullable<VariableDecl["value"]>): string {
-	if (value.kind === "encrypted") return value.raw;
-	if (value.kind === "literal") {
-		return Array.isArray(value.value) ? JSON.stringify(value.value) : String(value.value);
-	}
-	if (value.kind === "interpolated") return value.template;
-	throw new Error("vars apply does not yet support conditional values");
+	const topLevel = declarations.find(
+		(declaration): declaration is VariableDecl =>
+			declaration.kind === "variable" && declaration.name === target.name,
+	);
+	return topLevel ? { variable: topLevel, group: null } : null;
 }
 
 function findVariable(declarations: Declaration[], target: VariableTarget): VariableMatch | null {
@@ -449,6 +487,8 @@ function buildUpdatedBlock(
 			result.push(
 				`${prefix}${variable.name}${schemaStr} = ${serializeParsedVarsValue(value.value)} {`,
 			);
+		} else if (value?.kind === "encrypted") {
+			result.push(`${prefix}${variable.name}${schemaStr} = ${value.raw} {`);
 		} else {
 			result.push(`${prefix}${variable.name}${schemaStr} {`);
 		}
@@ -462,24 +502,68 @@ function buildUpdatedBlock(
 	return result.map((line) => indent + line);
 }
 
-function hasPlaintextSecrets(content: string, file: string): boolean {
+type PlaintextSecretMap = Map<string, string>;
+
+function collectPlaintextSecrets(content: string, file: string): PlaintextSecretMap {
 	const parsed = parseOrThrow(content, file);
+	const plaintext = new Map<string, string>();
 	for (const declaration of parsed.ast.declarations) {
+		const group = declaration.kind === "group" ? declaration.name : "";
 		const variables = declaration.kind === "group" ? declaration.declarations : [declaration];
 		for (const variable of variables) {
-			if (!variable.public && valueContainsPlaintext(variable.value)) return true;
+			if (!variable.public) {
+				collectPlaintextValue(variable.value, `${group}\0${variable.name}\0default`, plaintext);
+			}
 		}
 	}
-	return false;
+	return plaintext;
 }
 
-function valueContainsPlaintext(value: VariableDecl["value"]): boolean {
-	if (!value || value.kind === "encrypted") return false;
+function collectPlaintextValue(
+	value: VariableDecl["value"] | undefined,
+	path: string,
+	plaintext: PlaintextSecretMap,
+): void {
+	if (!value || value.kind === "encrypted") return;
+	if (value.kind === "literal") {
+		plaintext.set(path, JSON.stringify(["literal", value.value]));
+		return;
+	}
+	if (value.kind === "interpolated") {
+		plaintext.set(path, JSON.stringify(["interpolated", value.template]));
+		return;
+	}
 	if (value.kind === "env_block") {
-		return value.entries.some((entry) => valueContainsPlaintext(entry.value));
+		for (const [index, entry] of value.entries.entries()) {
+			const condition = entry.when ? `${entry.when.param}=${entry.when.value}` : "";
+			collectPlaintextValue(
+				entry.value,
+				`${path}\0env:${entry.env}:${condition}:${index}`,
+				plaintext,
+			);
+		}
+		return;
 	}
-	if (value.kind === "conditional") {
-		return true;
+	for (const [index, clause] of value.whens.entries()) {
+		const clausePath = `${path}\0when:${clause.param}=${clause.value}:${index}`;
+		if (Array.isArray(clause.result)) {
+			for (const [entryIndex, entry] of clause.result.entries()) {
+				collectPlaintextValue(
+					entry.value,
+					`${clausePath}\0env:${entry.env}:${entryIndex}`,
+					plaintext,
+				);
+			}
+		} else {
+			collectPlaintextValue(clause.result, clausePath, plaintext);
+		}
 	}
-	return true;
+	collectPlaintextValue(value.fallback, `${path}\0fallback`, plaintext);
+}
+
+function hasNewPlaintextSecret(original: PlaintextSecretMap, updated: PlaintextSecretMap): boolean {
+	for (const [site, value] of updated) {
+		if (original.get(site) !== value) return true;
+	}
+	return false;
 }

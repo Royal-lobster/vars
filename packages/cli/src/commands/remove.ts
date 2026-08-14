@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findVarsFile, KEY_CREDENTIAL_ARGUMENTS } from "../utils/context.js";
+import { createKeyLoader, findVarsFile, KEY_CREDENTIAL_ARGUMENTS } from "../utils/context.js";
 import { mutateVarsFile } from "../utils/vars-source-mutation.js";
 
 export default defineCommand({
@@ -21,7 +21,7 @@ export default defineCommand({
 		await mutateVarsFile(
 			file,
 			{ kind: "remove", target: args.name },
-			{ pin: args.pin, pinFile: args["pin-file"], keyFile: args["key-file"] },
+			{ getKey: createKeyLoader(file, "vars remove", args) },
 		);
 		console.log(pc.green(`  ✓ Removed ${args.name} from ${file}`));
 	},

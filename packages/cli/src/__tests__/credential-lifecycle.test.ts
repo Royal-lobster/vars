@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -27,6 +35,7 @@ describe("non-interactive credential lifecycle", () => {
 			join(directory, ".varskey"),
 			`${await encryptMasterKey(masterKey, "master-pin")}\n`,
 		);
+		chmodSync(join(directory, ".varskey"), 0o600);
 		writeFileSync(join(directory, "master-pin"), "master-pin\n");
 		vi.spyOn(process, "cwd").mockReturnValue(directory);
 	});
@@ -62,6 +71,7 @@ describe("non-interactive credential lifecycle", () => {
 		const entries = parseKeyFile(readFileSync(join(directory, ".varskey"), "utf8"));
 		expect(entries.map((entry) => entry.scope)).toEqual(["master", "owner:backend"]);
 		await expect(decryptMasterKey(entries[1]!.raw, "owner-pin")).resolves.toHaveLength(32);
+		expect(statSync(join(directory, ".varskey")).mode & 0o777).toBe(0o600);
 	});
 
 	it("migrates owner fields without creating an unlocked file", async () => {
@@ -98,6 +108,7 @@ describe("non-interactive credential lifecycle", () => {
 		const entry = parseKeyFile(readFileSync(join(directory, ".varskey"), "utf8"))[0]!;
 		await expect(decryptMasterKey(entry.raw, "master-pin")).rejects.toThrow();
 		await expect(decryptMasterKey(entry.raw, "new-pin")).resolves.toHaveLength(32);
+		expect(statSync(join(directory, ".varskey")).mode & 0o777).toBe(0o600);
 	});
 
 	it("rotates encrypted files without creating an unlocked file", async () => {

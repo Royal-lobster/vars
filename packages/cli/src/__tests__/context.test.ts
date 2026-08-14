@@ -6,6 +6,7 @@ import { decryptMasterKey, encryptMasterKey } from "@dotvars/node";
 import { runCommand } from "citty";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import initCommand, { publishInitialization } from "../commands/init.js";
+import keyCommand from "../commands/key.js";
 import { getProjectRoot, requireKey, resolveKeyFile } from "../utils/context.js";
 
 function makeTmpDir(): string {
@@ -155,6 +156,40 @@ describe("--pin", () => {
 		expect(readFileSync(join(tmp, "config.vars"), "utf8")).not.toContain(
 			"postgres://user:pass@localhost",
 		);
+	});
+
+	it("does not use an ambient VARS_PIN when creating a project", async () => {
+		writeFileSync(join(tmp, "package.json"), JSON.stringify({ dependencies: { zod: "^3.24.0" } }));
+		process.env.VARS_PIN = "ambient-pin";
+		vi.spyOn(process, "cwd").mockReturnValue(tmp);
+		vi.spyOn(process, "exit").mockImplementation((() => {
+			throw new Error("exit");
+		}) as never);
+
+		await expect(runCommand(initCommand, { rawArgs: [] })).rejects.toThrow("exit");
+		expect(existsSync(join(tmp, ".varskey"))).toBe(false);
+	});
+
+	it("does not replace a missing envelope for an existing vars config", async () => {
+		writeFileSync(join(tmp, "package.json"), "{}");
+		writeFileSync(join(tmp, "config.vars"), "SECRET = enc:v2:existing\n");
+		vi.spyOn(process, "cwd").mockReturnValue(tmp);
+
+		await expect(runCommand(initCommand, { rawArgs: ["--pin", "new-pin"] })).rejects.toThrow(
+			"Import the matching envelope",
+		);
+		expect(existsSync(join(tmp, ".varskey"))).toBe(false);
+	});
+
+	it("does not create a new key for existing locked vars files", async () => {
+		writeFileSync(join(tmp, "package.json"), "{}");
+		writeFileSync(join(tmp, "config.vars"), "SECRET = enc:v2:existing\n");
+		vi.spyOn(process, "cwd").mockReturnValue(tmp);
+
+		await expect(runCommand(keyCommand, { rawArgs: ["init", "--pin", "new-pin"] })).rejects.toThrow(
+			"Import the matching envelope",
+		);
+		expect(existsSync(join(tmp, ".varskey"))).toBe(false);
 	});
 });
 

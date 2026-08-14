@@ -18,7 +18,7 @@ By default, vars prompts for the PIN at the terminal every time it needs to decr
 
 For trusted automation, PIN-taking commands accept `--pin-file <path>` and `VARS_PIN_FILE`; these are preferred because only the file path appears in process arguments or the environment. `--key-file <path>` and `VARS_KEY_FILE` select an externally provisioned encrypted envelope.
 
-`--pin`, `--pin-file`, and `--key-file` take precedence over ambient credentials. `VARS_KEY_FILE` plus `VARS_PIN_FILE` take precedence over `VARS_KEY`. The raw `VARS_KEY` compatibility fallback is used only when no envelope credential was selected.
+`--pin` takes precedence over `--pin-file`, followed by `VARS_PIN` and `VARS_PIN_FILE`. `--key-file` takes precedence over `VARS_KEY_FILE`, then vars finds the nearest `.varskey`. Selecting any PIN or key-file source makes the encrypted envelope take precedence over the raw `VARS_KEY` compatibility fallback.
 
 <Callout type="warn">A PIN passed with `--pin` is visible in process arguments and may be recorded in shell history, agent transcripts, and command logs. Use a mode-0600 PIN file and an owner-scoped PIN whenever possible.</Callout>
 
@@ -52,4 +52,4 @@ Each line is self-contained. You can delete lines to create scoped key files for
 vars rotate
 ```
 
-Generates a new master key, re-encrypts all values in memory, and prompts for a new PIN. Locked files are replaced atomically; rotation never creates `*.unlocked.vars`. If owner PIN entries exist, `vars rotate` warns that they'll be invalidated and asks for confirmation. After rotation, re-run `vars pin create` for each owner.
+Generates a new master key, re-encrypts all values in memory, and prompts for a new PIN. Locked files are replaced atomically, and any open `*.unlocked.vars` editing session is encrypted and closed. During rotation, `.varskey` temporarily contains encrypted entries for both the old and new master keys so an interruption cannot lose the key needed by either file state. If owner PIN entries exist, `vars rotate` warns that they'll be invalidated and asks for confirmation. After rotation, re-run `vars pin create` for each owner.

@@ -1,6 +1,7 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { generateTypeScript } from "@dotvars/core";
 import { resolveAllEnvs, resolveUseChain, toCanonicalPath } from "@dotvars/node";
+import { atomicWriteFileSync } from "./atomic-write.js";
 
 export type GeneratedPlatform = "node" | "serverless" | "deno" | "static";
 
@@ -28,6 +29,6 @@ export function generateForFileOrThrow(filePath: string, platform: string): stri
 		});
 	}
 	const outPath = toCanonicalPath(filePath).replace(/\.vars$/, ".generated.ts");
-	writeFileSync(outPath, code);
+	atomicWriteFileSync(outPath, code);
 	return outPath;
 }

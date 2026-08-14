@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findVarsFile, KEY_CREDENTIAL_ARGUMENTS } from "../utils/context.js";
+import { createKeyLoader, findVarsFile, KEY_CREDENTIAL_ARGUMENTS } from "../utils/context.js";
 import { mutateVarsFile } from "../utils/vars-source-mutation.js";
 
 export default defineCommand({
@@ -24,7 +24,7 @@ export default defineCommand({
 		const result = await mutateVarsFile(
 			file,
 			{ kind: "apply", patch },
-			{ pin: args.pin, pinFile: args["pin-file"], keyFile: args["key-file"] },
+			{ getKey: createKeyLoader(file, "vars apply", args) },
 		);
 		const encryption = result.encrypted ? " and encrypted secrets" : "";
 		console.log(

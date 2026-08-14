@@ -15,7 +15,7 @@ vars key export
 VARS_KEY=<base64-master-key> vars run --env prod -- node server.js
 ```
 
-`VARS_KEY` bypasses the PIN prompt. Treat it like a root credential — store it in your CI secrets manager, rotate it with `vars key rotate`, and never commit it.
+`VARS_KEY` bypasses the PIN prompt. Treat it like a root credential — store it in your CI secrets manager, rotate it with `vars rotate`, and never commit it.
 
 ---
 
