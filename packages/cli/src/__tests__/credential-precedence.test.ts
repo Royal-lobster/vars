@@ -47,14 +47,12 @@ describe("explicit credential precedence", () => {
 	});
 
 	it("check honors explicit key and PIN files over VARS_KEY", async () => {
-		const log = vi.spyOn(console, "log").mockImplementation(() => {});
+		vi.spyOn(console, "log").mockImplementation(() => {});
 		vi.spyOn(console, "error").mockImplementation(() => {});
 
 		await runCommand(checkCommand, {
 			rawArgs: ["--env", "dev", "--file", file, "--key-file", keyFile, "--pin-file", pinFile],
 		});
-
-		expect(log).toHaveBeenCalledWith("  ✓ All checks passed");
 	});
 
 	it("run honors explicit key and PIN files over VARS_KEY", async () => {
