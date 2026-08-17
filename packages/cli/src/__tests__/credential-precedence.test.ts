@@ -58,7 +58,7 @@ describe("explicit credential precedence", () => {
 	it("run honors explicit key and PIN files over VARS_KEY", async () => {
 		const output = join(directory, "run-output");
 		const script = `require("node:fs").writeFileSync(${JSON.stringify(output)}, process.env.SECRET)`;
-		vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
+		const exit = vi.spyOn(process, "exit").mockImplementation((() => undefined) as never);
 
 		await runCommand(runVarsCommand, {
 			rawArgs: [
@@ -77,6 +77,7 @@ describe("explicit credential precedence", () => {
 			],
 		});
 		await vi.waitFor(() => expect(existsSync(output)).toBe(true));
+		await vi.waitFor(() => expect(exit).toHaveBeenCalledWith(0));
 
 		expect(readFileSync(output, "utf8")).toBe("correct");
 	});
