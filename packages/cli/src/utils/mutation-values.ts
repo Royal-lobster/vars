@@ -33,9 +33,7 @@ export function collectMutationValues(
 
 	const values: Record<string, string> = {};
 	const shared =
-		args["value-file"] !== undefined
-			? readValueFile(String(args["value-file"]))
-			: args.value;
+		args["value-file"] !== undefined ? readValueFile(String(args["value-file"])) : args.value;
 	if (shared !== undefined) {
 		if (options.broadcastShared && envs.length > 1) {
 			for (const env of envs) values[env] = String(shared);
@@ -62,5 +60,5 @@ export function collectMutationValues(
 
 export function readValueFile(path: string): string {
 	const value = readFileSync(path, "utf8");
-	return value.endsWith("\n") ? value.slice(0, -1) : value;
+	return value.replace(/\r?\n$/, "");
 }

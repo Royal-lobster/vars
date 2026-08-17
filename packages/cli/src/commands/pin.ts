@@ -13,11 +13,11 @@ import { defineCommand } from "citty";
 import pc from "picocolors";
 import { atomicWriteFileSync } from "../utils/atomic-write.js";
 import {
-	findAllVarsFiles,
-	getProjectRoot,
 	KEY_CREDENTIAL_ARGUMENTS,
 	NEW_PIN_ARGUMENT,
 	NEW_PIN_FILE_ARGUMENT,
+	findAllVarsFiles,
+	getProjectRoot,
 	requireKey,
 	resolveExplicitPin,
 	resolveKeyFile,

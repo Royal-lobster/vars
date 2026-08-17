@@ -5,14 +5,14 @@ import { createMasterKey, encryptMasterKey, isUnlockedPath, parseKeyFile } from 
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
-	findAllVarsFiles,
-	getProjectRoot,
 	KEY_CREDENTIAL_ARGUMENTS,
 	PIN_ARGUMENT,
 	PIN_FILE_ARGUMENT,
+	findAllVarsFiles,
+	getProjectRoot,
 	requireKey,
-	resolveKeyFile,
 	resolveExplicitPin,
+	resolveKeyFile,
 } from "../utils/context.js";
 
 export default defineCommand({
@@ -69,6 +69,19 @@ export default defineCommand({
 				...KEY_CREDENTIAL_ARGUMENTS,
 			},
 			async run({ args }) {
+				const explicitPin = resolveExplicitPin({
+					pin: args.pin,
+					pinFile: args["pin-file"],
+				});
+				if (
+					!explicitPin &&
+					(process.env.VARS_PIN || process.env.VARS_PIN_FILE) &&
+					!process.stdin.isTTY
+				) {
+					throw new Error(
+						"Master-key export with an ambient PIN requires an interactive terminal or explicit --pin/--pin-file.",
+					);
+				}
 				const keyFile = resolveKeyFile(process.cwd(), args["key-file"]);
 				if (!keyFile) {
 					console.error(pc.red("No key found"));

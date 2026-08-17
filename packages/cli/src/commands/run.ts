@@ -1,11 +1,11 @@
 import { spawn } from "node:child_process";
 import { relative, resolve } from "node:path";
-import { type KeyScope, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
+import { type KeyScope, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
-	findVarsFile,
 	KEY_CREDENTIAL_ARGUMENTS,
+	findVarsFile,
 	requireKey,
 	resolveEnv,
 	resolveKeyFile,
@@ -57,7 +57,7 @@ export default defineCommand({
 			process.exit(1);
 		}
 
-		let key: Buffer | null = getKeyFromEnv();
+		let key: Buffer | null = null;
 		let scope: KeyScope = "master";
 		const getKey = async () => {
 			if (!key) {

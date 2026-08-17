@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { createKeyLoader, findVarsFile, KEY_CREDENTIAL_ARGUMENTS } from "../utils/context.js";
+import { KEY_CREDENTIAL_ARGUMENTS, createKeyLoader, findVarsFile } from "../utils/context.js";
 import { mutateVarsFile } from "../utils/vars-source-mutation.js";
 
 export default defineCommand({

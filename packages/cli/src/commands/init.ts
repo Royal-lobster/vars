@@ -21,10 +21,10 @@ import { defineCommand } from "citty";
 import pc from "picocolors";
 import { buildHeaderComment } from "../utils/build-header-comment.js";
 import {
-	getGitRoot,
-	getProjectRoot,
 	PIN_ARGUMENT,
 	PIN_FILE_ARGUMENT,
+	getGitRoot,
+	getProjectRoot,
 	resolveExplicitPin,
 } from "../utils/context.js";
 import { ALL_PUBLIC_PREFIXES, detectFramework } from "../utils/detect-framework.js";

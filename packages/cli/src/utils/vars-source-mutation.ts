@@ -1,15 +1,15 @@
 import { existsSync, readFileSync, rmSync } from "node:fs";
 import { type Declaration, type VariableDecl, normalizeSchema, parse } from "@dotvars/core";
 import {
-	encryptVarsContent,
 	type KeyScope,
+	encryptVarsContent,
 	isLocalPath,
 	isUnlockedPath,
 	toCanonicalPath,
 	toUnlockedPath,
 } from "@dotvars/node";
-import { detectGeneratedPlatform, generateForFileOrThrow } from "./generated-output.js";
 import { atomicWriteFileSync } from "./atomic-write.js";
+import { detectGeneratedPlatform, generateForFileOrThrow } from "./generated-output.js";
 import {
 	appendTrailingMetadata,
 	findDeclarationEndLine,
@@ -92,7 +92,7 @@ export async function mutateVarsFile(
 	options: MutationOptions = {},
 ): Promise<MutationResult> {
 	const unlocked = isUnlockedPath(file) ? file : toUnlockedPath(file);
-	if (!isLocalPath(file) && existsSync(unlocked)) {
+	if (!isUnlockedPath(file) && !isLocalPath(file) && existsSync(unlocked)) {
 		throw new Error(`Refusing locked mutation while ${unlocked} is open. Run vars hide first.`);
 	}
 	const original = readFileSync(file, "utf8");
@@ -449,15 +449,29 @@ function buildUpdatedBlock(
 	) {
 		result = [`${prefix}${variable.name}${schemaStr} = ${serializeVarsValue(envUpdates.default)}`];
 	} else if (value?.kind === "env_block") {
-		const existingEntries = new Map<string, string>();
+		const existingEntries: string[][] = [];
 		const defaultEntry = value.entries.find((entry) => entry.env === "*");
-		for (const entry of value.entries) {
-			if (entry.env === "*") continue;
-			existingEntries.set(entry.env, lines[entry.line - 1]!.trim());
-		}
-		for (const [env, updatedValue] of Object.entries(envUpdates)) {
-			if (env !== "default")
-				existingEntries.set(env, `${env} = ${serializeVarsValue(updatedValue)}`);
+		const source = lines.join("\n");
+		const seenLines = new Set<number>();
+		for (const entry of [...value.entries].sort((a, b) => a.line - b.line)) {
+			if (entry.env === "*" || envUpdates[entry.env] !== undefined) continue;
+			let start = entry.line - 1;
+			if (entry.when) {
+				while (
+					start > variable.line - 1 &&
+					!lines[start]!.includes(`when ${entry.when.param} = ${entry.when.value}`)
+				) {
+					start--;
+				}
+			}
+			if (seenLines.has(start)) continue;
+			seenLines.add(start);
+			const end = findDeclarationEndLine(source, start);
+			existingEntries.push(
+				lines
+					.slice(start, end + 1)
+					.map((line) => (indent && line.startsWith(indent) ? line.slice(indent.length) : line)),
+			);
 		}
 		result = [];
 		if (envUpdates.default !== undefined) {
@@ -465,17 +479,26 @@ function buildUpdatedBlock(
 				`${prefix}${variable.name}${schemaStr} = ${serializeVarsValue(envUpdates.default)} {`,
 			);
 		} else if (defaultEntry) {
-			const declarationLine = lines[variable.line - 1]!;
-			const match = declarationLine.match(/=\s*.+?(?=\s*\{)/);
+			const defaultValue =
+				defaultEntry.value.kind === "encrypted"
+					? defaultEntry.value.raw
+					: defaultEntry.value.kind === "interpolated"
+						? serializeVarsValue(defaultEntry.value.template)
+						: defaultEntry.value.kind === "literal"
+							? serializeParsedVarsValue(defaultEntry.value.value)
+							: null;
 			result.push(
-				match
-					? `${prefix}${variable.name}${schemaStr} = ${match[0].replace(/^=\s*/, "").trim()} {`
-					: `${prefix}${variable.name}${schemaStr} {`,
+				defaultValue === null
+					? `${prefix}${variable.name}${schemaStr} {`
+					: `${prefix}${variable.name}${schemaStr} = ${defaultValue} {`,
 			);
 		} else {
 			result.push(`${prefix}${variable.name}${schemaStr} {`);
 		}
-		for (const line of existingEntries.values()) result.push(`  ${line}`);
+		for (const entryLines of existingEntries) result.push(...entryLines);
+		for (const [env, updatedValue] of Object.entries(envUpdates)) {
+			if (env !== "default") result.push(`  ${env} = ${serializeVarsValue(updatedValue)}`);
+		}
 		result.push("}");
 	} else if (Object.keys(envUpdates).some((key) => key !== "default")) {
 		result = [];

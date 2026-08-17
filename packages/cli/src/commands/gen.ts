@@ -3,9 +3,9 @@ import { defineCommand } from "citty";
 import pc from "picocolors";
 import { findAllVarsFiles, findVarsFile, getProjectRoot } from "../utils/context.js";
 import {
+	type GeneratedPlatform,
 	detectGeneratedPlatform,
 	generateForFileOrThrow,
-	type GeneratedPlatform,
 } from "../utils/generated-output.js";
 
 export { detectGeneratedPlatform };

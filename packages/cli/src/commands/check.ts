@@ -1,12 +1,12 @@
 import { resolve } from "node:path";
 import { evaluateCheck, isEncrypted, parseEncryptedToken, validateValue } from "@dotvars/core";
-import { decrypt, deriveOwnerKey, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
+import { decrypt, deriveOwnerKey, resolveUseChain } from "@dotvars/node";
 import type { KeyScope } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
-	findVarsFile,
 	KEY_CREDENTIAL_ARGUMENTS,
+	findVarsFile,
 	requireKey,
 	resolveKeyFile,
 } from "../utils/context.js";
@@ -38,7 +38,7 @@ export default defineCommand({
 			process.exit(1);
 		}
 
-		let key: Buffer | null = getKeyFromEnv();
+		let key: Buffer | null = null;
 		let keyScope: KeyScope = "master";
 		const keyFile = resolveKeyFile(file, args["key-file"]);
 
@@ -61,7 +61,7 @@ export default defineCommand({
 				let value = v.value;
 				const secret = isEncrypted(value);
 				if (secret) {
-					if (!key && keyFile) {
+					if (!key) {
 						try {
 							({ key, scope: keyScope } = await requireKey(keyFile, "vars check", {
 								pin: args.pin,

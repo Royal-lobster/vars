@@ -80,10 +80,12 @@ describe("--pin", () => {
 	let tmp: string;
 	const originalEnvKey = process.env.VARS_KEY;
 	let originalEnvPin: string | undefined;
+	let originalEnvPinFile: string | undefined;
 
 	beforeEach(() => {
 		tmp = makeTmpDir();
 		originalEnvPin = process.env.VARS_PIN;
+		originalEnvPinFile = process.env.VARS_PIN_FILE;
 	});
 
 	afterEach(() => {
@@ -98,6 +100,12 @@ describe("--pin", () => {
 			delete process.env.VARS_KEY;
 		} else {
 			process.env.VARS_KEY = originalEnvKey;
+		}
+		if (originalEnvPinFile === undefined) {
+			// biome-ignore lint/performance/noDelete: restore actual absence, not the string "undefined"
+			delete process.env.VARS_PIN_FILE;
+		} else {
+			process.env.VARS_PIN_FILE = originalEnvPinFile;
 		}
 		vi.restoreAllMocks();
 		rmSync(tmp, { recursive: true, force: true });
@@ -127,6 +135,46 @@ describe("--pin", () => {
 		});
 
 		expect(result).toEqual({ key: envelopeKey, scope: "master" });
+	});
+
+	it("falls back to VARS_KEY when an ambient PIN cannot unlock the envelope", async () => {
+		const envKey = Buffer.alloc(32, 2);
+		const keyPath = join(tmp, ".varskey");
+		writeFileSync(keyPath, `${await encryptMasterKey(Buffer.alloc(32, 3), "right-pin")}\n`);
+		process.env.VARS_KEY = envKey.toString("base64");
+		process.env.VARS_PIN = "wrong-pin";
+
+		await expect(requireKey(keyPath, "vars check")).resolves.toEqual({
+			key: envKey,
+			scope: "master",
+		});
+	});
+
+	it("falls back to VARS_KEY for missing or empty ambient PIN files", async () => {
+		const envKey = Buffer.alloc(32, 4);
+		const keyPath = join(tmp, ".varskey");
+		const pinPath = join(tmp, "pin");
+		writeFileSync(keyPath, `${await encryptMasterKey(Buffer.alloc(32, 5), "right-pin")}\n`);
+		process.env.VARS_KEY = envKey.toString("base64");
+		process.env.VARS_PIN_FILE = pinPath;
+
+		await expect(requireKey(keyPath, "vars export")).resolves.toEqual({
+			key: envKey,
+			scope: "master",
+		});
+		writeFileSync(pinPath, "\r\n");
+		await expect(requireKey(keyPath, "vars export")).resolves.toEqual({
+			key: envKey,
+			scope: "master",
+		});
+	});
+
+	it("reports a clear error for a missing ambient PIN file without a fallback", async () => {
+		process.env.VARS_PIN_FILE = join(tmp, "missing-pin");
+
+		await expect(requireKey(join(tmp, ".varskey"), "vars export")).rejects.toThrow(
+			"PIN file not found",
+		);
 	});
 
 	it("reads a PIN from a file and resolves an external key envelope", async () => {

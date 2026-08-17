@@ -4,8 +4,8 @@ import { showFile, toCanonicalPath, toUnlockedPath } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
-	findVarsFile,
 	KEY_CREDENTIAL_ARGUMENTS,
+	findVarsFile,
 	requireKey,
 	resolveKeyFile,
 } from "../utils/context.js";

@@ -177,15 +177,16 @@ export async function requireKey(
 	command?: string,
 	credentials: KeyCredentials = {},
 ): Promise<KeyResult> {
-	const suppliedPin = resolveSuppliedPin(credentials);
+	const explicitPin = resolveExplicitPin(credentials);
 	const envelopePreferred =
 		credentials.preferEnvelope === true ||
-		suppliedPin !== undefined ||
+		explicitPin !== undefined ||
 		process.env.VARS_KEY_FILE !== undefined;
 	if (!envelopePreferred) {
 		const envKey = getKeyFromEnv();
 		if (envKey) return { key: envKey, scope: "master" };
 	}
+	const suppliedPin = explicitPin ?? resolveSuppliedPin();
 
 	if (!keyFilePath || !existsSync(keyFilePath)) {
 		throw new Error("No encryption key found. Run `vars key init` first.");
@@ -249,7 +250,15 @@ export function resolveExplicitPin(credentials: KeyCredentials = {}): string | u
 }
 
 function readPinFile(path: string): string {
-	const pin = readFileSync(resolve(path), "utf8").trim();
+	let pin: string;
+	try {
+		pin = readFileSync(resolve(path), "utf8").trim();
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+			throw new Error(`PIN file not found: ${path}`);
+		}
+		throw error;
+	}
 	if (!pin) throw new Error(`PIN file is empty: ${path}`);
 	return pin;
 }

@@ -3,9 +3,9 @@ import type { KeyScope } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
+	KEY_CREDENTIAL_ARGUMENTS,
 	findUnlockedVarsFiles,
 	getProjectRoot,
-	KEY_CREDENTIAL_ARGUMENTS,
 	requireKey,
 	resolveKeyFile,
 } from "../utils/context.js";

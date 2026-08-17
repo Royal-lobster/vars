@@ -42,6 +42,7 @@ describe("non-interactive credential lifecycle", () => {
 
 	afterEach(() => {
 		vi.restoreAllMocks();
+		vi.unstubAllEnvs();
 		rmSync(directory, { recursive: true, force: true });
 	});
 
@@ -137,5 +138,21 @@ describe("non-interactive credential lifecycle", () => {
 
 		const imported = readFileSync(join(directory, ".varskey"), "utf8");
 		await expect(decryptMasterKey(imported.trim(), "provisioned-pin")).resolves.toEqual(masterKey);
+	});
+
+	it("refuses non-interactive master-key export with an ambient PIN", async () => {
+		vi.stubEnv("VARS_PIN", "master-pin");
+
+		await expect(runCommand(keyCommand, { rawArgs: ["export"] })).rejects.toThrow(
+			"interactive terminal",
+		);
+	});
+
+	it("refuses non-interactive master-key export with an ambient PIN file", async () => {
+		vi.stubEnv("VARS_PIN_FILE", join(directory, "master-pin"));
+
+		await expect(runCommand(keyCommand, { rawArgs: ["export"] })).rejects.toThrow(
+			"interactive terminal",
+		);
 	});
 });

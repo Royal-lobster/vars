@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createMasterKey, decrypt, deriveOwnerKey, encryptVarsContent } from "@dotvars/node";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { collectMutationValues } from "../utils/mutation-values.js";
+import { collectMutationValues, readValueFile } from "../utils/mutation-values.js";
 import { mutateVarsFile, mutateVarsSource } from "../utils/vars-source-mutation.js";
 
 function encryptedValue(content: string, target: string): string {
@@ -170,15 +170,6 @@ describe("locked vars mutations", () => {
 		expect(content).not.toContain("new-secret");
 	});
 
-	it("refuses to mutate an unlocked human-editing file", async () => {
-		const unlocked = join(directory, "config.unlocked.vars");
-		writeFileSync(unlocked, 'SECRET = "plaintext"\n');
-
-		await expect(mutateVarsFile(unlocked, { kind: "remove", target: "SECRET" })).rejects.toThrow(
-			"Run vars hide first",
-		);
-	});
-
 	it("atomically applies grouped public and secret declarations", async () => {
 		await mutateVarsFile(
 			file,
@@ -277,6 +268,89 @@ group service {
 		});
 
 		expect(result.content).toContain('SECRET = "new" (owner = "backend")');
+	});
+
+	it("preserves owner metadata across schema changes in apply", () => {
+		const schemaPatch = mutateVarsSource(
+			'AUTH_TOKEN = "old" (owner = "backend")\n',
+			"config.vars",
+			{ kind: "apply", patch: 'AUTH_TOKEN : z.string() = "new"\n' },
+		).content;
+		const plainPatch = mutateVarsSource(
+			'AUTH_TOKEN : z.string() = "old" (owner = "backend")\n',
+			"config.vars",
+			{ kind: "apply", patch: 'AUTH_TOKEN = "new"\n' },
+		).content;
+
+		expect(schemaPatch).toContain('AUTH_TOKEN : z.string() = "new" (owner = "backend")');
+		expect(plainPatch).toContain('AUTH_TOKEN = "new" (owner = "backend")');
+		expect(plainPatch).not.toContain('() = "old"');
+	});
+
+	it("sets schema variables without treating schema calls as metadata", () => {
+		const result = mutateVarsSource("FOO : z.number() = 1\n", "config.vars", {
+			kind: "set",
+			target: "FOO",
+			values: { default: "2" },
+		});
+
+		expect(result.content).toBe("FOO : z.number() = 2\n");
+	});
+
+	it("preserves conditional variants and multiline env values when setting another env", () => {
+		const source = `env(dev, staging, prod)
+param region : enum(us, eu) = us
+SECRET {
+  dev = "old"
+  staging = """
+line one
+line two
+"""
+  when region = us { prod = "us-secret" }
+  when region = eu { prod = "eu-secret" }
+}
+`;
+		const result = mutateVarsSource(source, "config.vars", {
+			kind: "set",
+			target: "SECRET",
+			values: { dev: "new" },
+		});
+
+		expect(result.content).toContain('dev = "new"');
+		expect(result.content).toContain('staging = """\nline one\nline two\n"""');
+		expect(result.content).toContain('when region = us { prod = "us-secret" }');
+		expect(result.content).toContain('when region = eu { prod = "eu-secret" }');
+	});
+
+	it("preserves a default containing braces when setting an environment", () => {
+		const result = mutateVarsSource(
+			'env(dev, prod)\nTOKEN = "prefix { suffix" {\n  prod = "old"\n}\n',
+			"config.vars",
+			{ kind: "set", target: "TOKEN", values: { prod: "new" } },
+		);
+
+		expect(result.content).toContain('TOKEN = "prefix { suffix" {');
+		expect(result.content).toContain('prod = "new"');
+	});
+
+	it("mutates a non-string value in an unlocked file", async () => {
+		const unlocked = join(directory, "standalone.unlocked.vars");
+		writeFileSync(unlocked, "RETRY_LIMIT : z.number() = 1\n");
+
+		await mutateVarsFile(unlocked, {
+			kind: "set",
+			target: "RETRY_LIMIT",
+			values: { default: "2" },
+		});
+
+		expect(readFileSync(unlocked, "utf8")).toBe("RETRY_LIMIT : z.number() = 2\n");
+	});
+
+	it("strips one CRLF terminator from mutation value files", () => {
+		const valueFile = join(directory, "value");
+		writeFileSync(valueFile, "secret\r\n");
+
+		expect(readValueFile(valueFile)).toBe("secret");
 	});
 
 	it("leaves the locked file unchanged when an apply patch is invalid", async () => {
