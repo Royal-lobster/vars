@@ -18,7 +18,7 @@ By default, vars prompts for the PIN at the terminal every time it needs to decr
 
 For trusted automation, PIN-taking commands accept `--pin-file <path>` and `VARS_PIN_FILE`; these are preferred because only the file path appears in process arguments or the environment. `--key-file <path>` and `VARS_KEY_FILE` select an externally provisioned encrypted envelope.
 
-`--pin` takes precedence over `--pin-file`, followed by `VARS_PIN` and `VARS_PIN_FILE`. `--key-file` takes precedence over `VARS_KEY_FILE`, then vars finds the nearest `.varskey`. Selecting any PIN or key-file source makes the encrypted envelope take precedence over the raw `VARS_KEY` compatibility fallback.
+`--pin` takes precedence over `--pin-file`, followed by `VARS_PIN` and `VARS_PIN_FILE`. `--key-file` takes precedence over `VARS_KEY_FILE`, then vars finds the nearest `.varskey`. Any PIN or key-file source makes the encrypted envelope take precedence over the raw `VARS_KEY` compatibility fallback — for ambient PINs, `VARS_KEY` remains a fallback if the PIN fails to unlock the envelope (vars warns when this happens); explicit `--pin`/`--pin-file` failures always surface as errors. Every non-interactive unlock prints its credential source (e.g. `vars: unlocked via --pin-file`) to stderr so the active source is never invisible; `vars doctor` reports which ambient credentials are set.
 
 <Callout type="warn">A PIN passed with `--pin` is visible in process arguments and may be recorded in shell history, agent transcripts, and command logs. Use a mode-0600 PIN file and an owner-scoped PIN whenever possible.</Callout>
 

@@ -210,6 +210,57 @@ describe("--pin", () => {
 		});
 	});
 
+	it("prefers the envelope over VARS_KEY when a correct ambient PIN is set", async () => {
+		const envelopeKey = Buffer.alloc(32, 9);
+		const keyPath = join(tmp, ".varskey");
+		writeFileSync(keyPath, `${await encryptMasterKey(envelopeKey, "right-pin")}\n`);
+		process.env.VARS_KEY = Buffer.alloc(32, 1).toString("base64");
+		process.env.VARS_PIN = "right-pin";
+
+		await expect(requireKey(keyPath, "vars show")).resolves.toEqual({
+			key: envelopeKey,
+			scope: "master",
+		});
+	});
+
+	it("warns on stderr when falling back from an ambient PIN to VARS_KEY", async () => {
+		const error = vi.spyOn(console, "error").mockImplementation(() => {});
+		const keyPath = join(tmp, ".varskey");
+		writeFileSync(keyPath, `${await encryptMasterKey(Buffer.alloc(32, 3), "right-pin")}\n`);
+		process.env.VARS_KEY = Buffer.alloc(32, 2).toString("base64");
+		process.env.VARS_PIN = "wrong-pin";
+
+		await requireKey(keyPath, "vars check");
+
+		const printed = error.mock.calls.map((c) => c.join(" ")).join("\n");
+		expect(printed).toContain("VARS_PIN");
+		expect(printed).toContain("falling back to VARS_KEY");
+	});
+
+	it("reports the credential source on non-interactive unlock", async () => {
+		const error = vi.spyOn(console, "error").mockImplementation(() => {});
+		const masterKey = Buffer.alloc(32, 6);
+		const keyPath = join(tmp, ".varskey");
+		const pinPath = join(tmp, "pin");
+		writeFileSync(keyPath, `${await encryptMasterKey(masterKey, "file-pin")}\n`);
+		writeFileSync(pinPath, "file-pin\n");
+
+		await requireKey(keyPath, "vars show", { pinFile: pinPath });
+
+		const printed = error.mock.calls.map((c) => c.join(" ")).join("\n");
+		expect(printed).toContain("unlocked via --pin-file");
+	});
+
+	it("surfaces explicit PIN failures instead of falling back to VARS_KEY", async () => {
+		const keyPath = join(tmp, ".varskey");
+		writeFileSync(keyPath, `${await encryptMasterKey(Buffer.alloc(32, 3), "right-pin")}\n`);
+		process.env.VARS_KEY = Buffer.alloc(32, 2).toString("base64");
+
+		await expect(requireKey(keyPath, "vars check", { pin: "wrong-pin" })).rejects.toThrow(
+			"Invalid PIN",
+		);
+	});
+
 	it("falls back to VARS_KEY for missing or empty ambient PIN files", async () => {
 		const envKey = Buffer.alloc(32, 4);
 		const keyPath = join(tmp, ".varskey");

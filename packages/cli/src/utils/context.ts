@@ -11,6 +11,7 @@ import {
 	toLockedPath,
 	toUnlockedPath,
 } from "@dotvars/node";
+import pc from "picocolors";
 import { requestAgentApproval } from "./agent-auth.js";
 
 export interface KeyResult {
@@ -219,7 +220,20 @@ export function resolveKeyFile(startDir: string, suppliedPath?: string): string 
 	return configuredPath ? resolve(configuredPath) : findKeyFile(startDir);
 }
 
-/** Get encryption key — from an explicit PIN source, environment, or prompt */
+/** A PIN plus the source it came from, for precedence and observability. */
+interface ResolvedPin {
+	pin: string;
+	source: "--pin" | "--pin-file" | "VARS_PIN" | "VARS_PIN_FILE";
+}
+
+/** Get encryption key — from an explicit PIN source, environment, or prompt.
+ *
+ *  Precedence: explicit flags → ambient PIN (envelope-first) → VARS_KEY →
+ *  interactive prompt/dialog. When any PIN source is present the envelope is
+ *  tried first; ambient VARS_KEY is only a fallback for ambient-PIN failures
+ *  (never for explicit flags, whose failures must surface), and every
+ *  fallback or non-interactive unlock is reported on stderr so the active
+ *  credential source is never invisible. */
 export async function requireKey(
 	keyFilePath: string | null,
 	command?: string,
@@ -230,13 +244,42 @@ export async function requireKey(
 		credentials.preferEnvelope === true ||
 		explicitPin !== undefined ||
 		process.env.VARS_KEY_FILE !== undefined;
-	if (!envelopePreferred) {
-		const envKey = getKeyFromEnv();
-		if (envKey) return { key: envKey, scope: "master" };
+	const envKey = envelopePreferred ? null : getKeyFromEnv();
+
+	// Ambient PIN, tolerating an unusable PIN file when VARS_KEY can cover it.
+	let ambient: ResolvedPin | undefined;
+	if (explicitPin === undefined) {
+		try {
+			if (process.env.VARS_PIN) {
+				ambient = { pin: process.env.VARS_PIN, source: "VARS_PIN" };
+			} else if (process.env.VARS_PIN_FILE) {
+				ambient = { pin: readPinFile(process.env.VARS_PIN_FILE), source: "VARS_PIN_FILE" };
+			}
+		} catch (error) {
+			if (!envKey) throw error;
+			console.error(
+				pc.yellow(
+					`  vars: ambient PIN file is unusable (${(error as Error).message}); falling back to VARS_KEY.`,
+				),
+			);
+			return { key: envKey, scope: "master" };
+		}
 	}
-	const suppliedPin = explicitPin ?? resolveSuppliedPin();
+
+	if (envKey && !ambient) {
+		console.error(pc.dim("  vars: unlocked via VARS_KEY"));
+		return { key: envKey, scope: "master" };
+	}
+
+	const fallbackToEnvKey = (reason: string): KeyResult | null => {
+		if (!envKey || !ambient) return null;
+		console.error(pc.yellow(`  vars: ${ambient.source} ${reason}; falling back to VARS_KEY.`));
+		return { key: envKey, scope: "master" };
+	};
 
 	if (!keyFilePath || !existsSync(keyFilePath)) {
+		const fallback = fallbackToEnvKey("is set but no key envelope was found");
+		if (fallback) return fallback;
 		throw new Error("No encryption key found. Run `vars key init` first.");
 	}
 
@@ -244,15 +287,24 @@ export async function requireKey(
 	const entries = parseKeyFile(content);
 
 	if (entries.length === 0) {
+		const fallback = fallbackToEnvKey("is set but the key envelope is empty");
+		if (fallback) return fallback;
 		throw new Error("Key file is empty. Run `vars key init` first.");
 	}
 
 	// Explicit flags override environment credentials for this invocation.
-	let pin = suppliedPin;
+	let pin = explicitPin ?? ambient?.pin;
+	let pinSource: ResolvedPin["source"] | undefined =
+		explicitPin !== undefined
+			? credentials.pin !== undefined
+				? "--pin"
+				: "--pin-file"
+			: ambient?.source;
 	if (!pin && process.stdin.isTTY) {
 		const result = await prompts.password({ message: "Enter PIN:" });
 		if (prompts.isCancel(result)) process.exit(0);
 		pin = result as string;
+		pinSource = undefined; // human just typed it — no source line needed
 	} else if (!pin) {
 		const commandDesc = command ?? "vars (unknown command)";
 		const agentPin = requestAgentApproval(commandDesc);
@@ -264,6 +316,7 @@ export async function requireKey(
 			);
 		}
 		pin = agentPin;
+		pinSource = undefined;
 	}
 
 	// Try each entry in the key file
@@ -272,22 +325,16 @@ export async function requireKey(
 			const key = await decryptMasterKey(entry.raw, pin);
 			const scope: KeyScope =
 				entry.scope === "master" ? "master" : { owner: entry.scope.replace("owner:", "") };
+			if (pinSource) console.error(pc.dim(`  vars: unlocked via ${pinSource}`));
 			return { key, scope };
 		} catch {
 			// Wrong PIN for this entry, try next
 		}
 	}
 
+	const fallback = fallbackToEnvKey("did not unlock the key envelope");
+	if (fallback) return fallback;
 	throw new Error("Invalid PIN");
-}
-
-/** Resolve a non-interactive PIN without falling back to a human prompt. */
-export function resolveSuppliedPin(credentials: KeyCredentials = {}): string | undefined {
-	const explicit = resolveExplicitPin(credentials);
-	if (explicit !== undefined) return explicit;
-	if (process.env.VARS_PIN) return process.env.VARS_PIN;
-	if (process.env.VARS_PIN_FILE) return readPinFile(process.env.VARS_PIN_FILE);
-	return undefined;
 }
 
 /** Resolve only explicit PIN flags, excluding ambient environment credentials. */

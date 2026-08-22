@@ -32,7 +32,11 @@ VARS_KEY=<base64-master-key> vars run --env prod -- node server.js
 `VARS_KEY` bypasses the PIN entirely. Treat it like a root credential — store
 it in your CI secrets manager, rotate it with `vars rotate`, and never commit
 it. Explicit `--pin`/`--pin-file`/`--key-file` flags always take precedence
-over ambient `VARS_KEY`.
+over ambient `VARS_KEY`. When an ambient PIN (`VARS_PIN`/`VARS_PIN_FILE`) and
+`VARS_KEY` are both set, the envelope is tried first and `VARS_KEY` is used
+only if the PIN fails — with a warning, so a typo'd PIN never goes unnoticed.
+Prefer `VARS_PIN_FILE` over `VARS_PIN`; the raw-PIN variable persists in shell
+sessions and CI logs.
 
 ---
 

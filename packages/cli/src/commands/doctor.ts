@@ -64,6 +64,28 @@ export default defineCommand({
 			issues++;
 		}
 
+		// Report ambient credential sources so precedence is never invisible.
+		const ambientSources = ["VARS_KEY", "VARS_PIN", "VARS_PIN_FILE", "VARS_KEY_FILE"].filter(
+			(name) => process.env[name],
+		);
+		if (ambientSources.length > 0) {
+			console.log(pc.dim(`  ambient credentials set: ${ambientSources.join(", ")}`));
+			if (
+				process.env.VARS_KEY &&
+				(process.env.VARS_PIN || process.env.VARS_PIN_FILE) &&
+				!process.env.VARS_KEY_FILE
+			) {
+				console.log(
+					pc.yellow(
+						"  ⚠ VARS_KEY and an ambient PIN are both set — the envelope is tried first, VARS_KEY only on PIN failure",
+					),
+				);
+			}
+			if (process.env.VARS_PIN) {
+				console.log(pc.yellow("  ⚠ VARS_PIN is set — prefer VARS_PIN_FILE with a mode-0600 file"));
+			}
+		}
+
 		// Check .gitignore
 		const gitignorePath = join(root, ".gitignore");
 		if (existsSync(gitignorePath)) {
