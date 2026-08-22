@@ -55,15 +55,32 @@ That's the complete deploy-time config. No per-secret `wrangler secret put`.
 
 ## Local dev
 
+`wrangler dev` (and `@cloudflare/vite-plugin`) assembles the Worker's `env`
+binding from your wrangler config `vars` plus `.dev.vars` — it does **not**
+inherit the parent process environment. Wrapping the dev server in
+`vars run` therefore does not deliver `VARS_KEY` to the Worker runtime.
+
+Until env-scoped keys ship, the only local channel is `.dev.vars`:
+
+```bash
+# .dev.vars (must be gitignored — wrangler's default init does this)
+VARS_KEY=<output of: vars key export>
+VARS_ENV=dev
+```
+
 ```json
 {
   "scripts": {
-    "dev": "vars run --env dev -- wrangler dev"
+    "dev": "wrangler dev"
   }
 }
 ```
 
-`vars run` decrypts using your local `VARS_KEY` / PIN and injects into `process.env`; `wrangler dev` forwards env to the Worker's local `env` binding.
+<Callout type="warn">
+`.dev.vars` then holds the **master key**, which decrypts every environment's
+ciphertexts — not just dev. Confirm `.dev.vars` is in `.gitignore` and treat
+the file like the key itself.
+</Callout>
 
 ## Example config.vars
 

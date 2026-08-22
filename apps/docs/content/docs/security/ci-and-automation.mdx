@@ -3,9 +3,23 @@ title: CI & Automation
 description: Using vars in CI environments and keeping AI agents out.
 ---
 
-## `VARS_KEY` for CI
+## Headless and CI credentials
 
-CI environments cannot enter a PIN interactively. Instead, set the `VARS_KEY` environment variable to the base64-encoded master key:
+CI environments and headless machines cannot enter a PIN interactively. The
+preferred route keeps the key inside its PIN-encrypted envelope and supplies
+the PIN from a file a human provisioned:
+
+```bash
+# Trusted automation (preferred): envelope + PIN file
+vars run --env prod --pin-file /run/secrets/vars-pin -- node server.js
+
+# Or ambient equivalents for wrapper scripts
+VARS_PIN_FILE=/run/secrets/vars-pin vars run --env prod -- node server.js
+VARS_KEY_FILE=/etc/vars/project.varskey VARS_PIN_FILE=/run/secrets/vars-pin vars check
+```
+
+When an envelope cannot be provisioned (e.g. a CI secrets manager that only
+holds strings), fall back to the raw master key:
 
 ```bash
 # Export your master key (run this locally, put the output in your CI secrets)
@@ -15,7 +29,10 @@ vars key export
 VARS_KEY=<base64-master-key> vars run --env prod -- node server.js
 ```
 
-`VARS_KEY` bypasses the PIN prompt. Treat it like a root credential — store it in your CI secrets manager, rotate it with `vars rotate`, and never commit it.
+`VARS_KEY` bypasses the PIN entirely. Treat it like a root credential — store
+it in your CI secrets manager, rotate it with `vars rotate`, and never commit
+it. Explicit `--pin`/`--pin-file`/`--key-file` flags always take precedence
+over ambient `VARS_KEY`.
 
 ---
 
@@ -23,6 +40,6 @@ VARS_KEY=<base64-master-key> vars run --env prod -- node server.js
 
 The PIN prompt goes to a TTY — a real interactive terminal. Automated tools don't have one.
 
-If an AI agent, CI script, or background process tries to run a vars command that needs decryption, it hits the PIN prompt and hangs. There is no flag to skip it and no env var to bypass it (`VARS_KEY` is the one exception, and a human has to set that up deliberately). The prompt is the lock.
+If an AI agent, CI script, or background process tries to run a vars command that needs decryption without credentials, it hits the PIN gate: a system approval dialog on desktop machines, or a hard error on headless ones. The non-interactive paths above (`--pin-file`, `VARS_PIN_FILE`, `VARS_KEY`) all require a human to deliberately provision a credential first — there is no way for an agent to mint one from the repository alone.
 
 File-system access alone is not enough. An AI with tool use, a misconfigured backup, a leaked dotfiles repo — anything that gets your `.vars` file — just sees encrypted blobs and a structure that tells it the names and schemas of your variables, but not their values.
