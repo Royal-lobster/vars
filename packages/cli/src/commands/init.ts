@@ -4,93 +4,123 @@ import {
 	existsSync,
 	mkdirSync,
 	readFileSync,
+	rmSync,
 	writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
 import * as prompts from "@clack/prompts";
 import { generateTypeScript } from "@dotvars/core";
-import { createMasterKey, encryptMasterKey, resolveUseChain, toUnlockedPath } from "@dotvars/node";
+import {
+	createMasterKey,
+	encryptMasterKey,
+	encryptVarsContent,
+	resolveUseChain,
+	toUnlockedPath,
+} from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import { buildHeaderComment } from "../utils/build-header-comment.js";
-import { getGitRoot, getProjectRoot } from "../utils/context.js";
+import {
+	PIN_ARGUMENT,
+	PIN_FILE_ARGUMENT,
+	getGitRoot,
+	getProjectRoot,
+	resolveExplicitPin,
+} from "../utils/context.js";
 import { ALL_PUBLIC_PREFIXES, detectFramework } from "../utils/detect-framework.js";
 import { migrateFromEnv } from "../utils/migrate-from-env.js";
 import { HOOK_MARKER, HOOK_SCRIPT, resolveHookPath } from "../utils/pre-commit-hook.js";
 
 export default defineCommand({
 	meta: { name: "init", description: "Initialize vars in the current project" },
-	args: {},
-	async run() {
+	args: {
+		pin: PIN_ARGUMENT,
+		"pin-file": PIN_FILE_ARGUMENT,
+	},
+	async run({ args }) {
 		const root = getProjectRoot();
 		const keyPath = join(root, ".varskey");
+		const canonicalPath = join(root, "config.vars");
+		const unlockedPath = toUnlockedPath(canonicalPath);
 
 		if (existsSync(keyPath)) {
 			console.log(pc.yellow("  vars is already initialized (.varskey exists)"));
 			return;
 		}
+		if (existsSync(canonicalPath) || existsSync(unlockedPath)) {
+			throw new Error(
+				"Cannot initialize a new key while a vars config already exists. " +
+					"Import the matching envelope with `vars key import`, or remove the config to start over.",
+			);
+		}
 
 		prompts.intro(pc.bold("vars init"));
 
-		if (!process.stdin.isTTY) {
-			console.error(pc.red("vars init requires an interactive terminal to set a PIN."));
-			console.error(pc.dim("Run this command directly in your terminal, not in a script."));
+		const suppliedPin = resolveExplicitPin({ pin: args.pin, pinFile: args["pin-file"] });
+		const lockedInitialization = suppliedPin !== undefined;
+		if (!suppliedPin && !process.stdin.isTTY) {
+			console.error(pc.red("vars init requires an interactive terminal, --pin, or --pin-file."));
+			console.error(pc.dim("Run directly in a terminal or provide a PIN for trusted automation."));
 			process.exit(1);
 		}
 
-		// 1. Set PIN
-		const pin = await prompts.password({ message: "Set a PIN to protect your encryption key:" });
-		if (prompts.isCancel(pin)) process.exit(0);
-		const confirm = await prompts.password({ message: "Confirm PIN:" });
-		if (prompts.isCancel(confirm)) process.exit(0);
-		if (pin !== confirm) {
-			console.error(pc.red("  PINs do not match. Try again."));
-			process.exit(1);
+		let pin = suppliedPin;
+		if (!pin) {
+			const promptedPin = await prompts.password({
+				message: "Set a PIN to protect your encryption key:",
+			});
+			if (prompts.isCancel(promptedPin)) process.exit(0);
+			const confirm = await prompts.password({ message: "Confirm PIN:" });
+			if (prompts.isCancel(confirm)) process.exit(0);
+			if (promptedPin !== confirm) {
+				console.error(pc.red("  PINs do not match. Try again."));
+				process.exit(1);
+			}
+			pin = promptedPin as string;
 		}
 
-		// 2. Create key
+		// 2. Prepare the key and initial config before publishing either one.
 		const masterKey = await createMasterKey();
 		const encryptedKey = await encryptMasterKey(masterKey, pin as string);
-		writeFileSync(keyPath, `${encryptedKey}\n`, { mode: 0o600, flag: "wx" });
 
-		// 3. Create starter config.unlocked.vars (unlocked state for editing)
-		const canonicalPath = join(root, "config.vars");
-		const configPath = toUnlockedPath(canonicalPath);
-		if (!existsSync(canonicalPath) && !existsSync(configPath)) {
-			const envCandidates = [".env", ".env.local", ".env.example", ".env.sample"];
-			const envFile = envCandidates.map((f) => join(root, f)).find((f) => existsSync(f));
-			let content: string;
+		// 3. Create a locked config for automation or an unlocked config for human editing.
+		// The absence check above guarantees this is a new config.
+		const configPath = lockedInitialization ? canonicalPath : unlockedPath;
+		const envCandidates = [".env", ".env.local", ".env.example", ".env.sample"];
+		const envFile = envCandidates.map((file) => join(root, file)).find((file) => existsSync(file));
+		let content: string;
 
-			if (envFile) {
-				// Detect framework to determine public var prefixes
-				const framework = detectFramework(root);
-				const publicPrefixes = framework ? framework.publicPrefixes : ALL_PUBLIC_PREFIXES;
-				if (framework) {
-					const prefixMsg = publicPrefixes.length
-						? `using ${publicPrefixes.join(", ")} prefix${publicPrefixes.length > 1 ? "es" : ""}`
-						: "no public var prefixes";
-					console.log(pc.dim(`  Detected ${framework.name} — ${prefixMsg}`));
-				}
-				// Migrate from .env
-				content = migrateFromEnv(readFileSync(envFile, "utf8"), publicPrefixes);
-				console.log(pc.dim("  Migrated from .env"));
-			} else {
-				const header = buildHeaderComment({
-					source: "boilerplate",
-					publicVarNames: [],
-					totalVarCount: 0,
-					detectedPrefixes: [],
-				});
-				content = `${header}
+		if (envFile) {
+			const framework = detectFramework(root);
+			const publicPrefixes = framework ? framework.publicPrefixes : ALL_PUBLIC_PREFIXES;
+			if (framework) {
+				const prefixMsg = publicPrefixes.length
+					? `using ${publicPrefixes.join(", ")} prefix${publicPrefixes.length > 1 ? "es" : ""}`
+					: "no public var prefixes";
+				console.log(pc.dim(`  Detected ${framework.name} — ${prefixMsg}`));
+			}
+			content = migrateFromEnv(readFileSync(envFile, "utf8"), publicPrefixes);
+			console.log(pc.dim("  Migrated from .env"));
+		} else {
+			const header = buildHeaderComment({
+				source: "boilerplate",
+				publicVarNames: [],
+				totalVarCount: 0,
+				detectedPrefixes: [],
+			});
+			content = `${header}
 env(dev, staging, prod)
 
 public APP_NAME = "my-app"
 public PORT : z.number() = 3000
 DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 `;
-			}
-			writeFileSync(configPath, content);
 		}
+		const initialContent = lockedInitialization
+			? await encryptVarsContent(content, masterKey, "master", canonicalPath)
+			: content;
+
+		publishInitialization(keyPath, configPath, encryptedKey, initialContent);
 
 		// 4. Install zod if not already present
 		const pkgJsonPath = join(root, "package.json");
@@ -183,7 +213,33 @@ DATABASE_URL = "postgres://user:pass@localhost:5432/mydb"
 		}
 
 		prompts.outro(
-			pc.green("vars initialized! Edit config.unlocked.vars, then run `vars hide` to encrypt."),
+			pc.green(
+				lockedInitialization
+					? "vars initialized with config.vars locked. Use vars add/set/apply for targeted edits."
+					: "vars initialized! Edit config.unlocked.vars, then run `vars hide` to encrypt.",
+			),
 		);
 	},
 });
+
+export function publishInitialization(
+	keyPath: string,
+	configPath: string,
+	encryptedKey: string,
+	initialContent?: string,
+): void {
+	let keyCreated = false;
+	let configCreated = false;
+	try {
+		writeFileSync(keyPath, `${encryptedKey}\n`, { mode: 0o600, flag: "wx" });
+		keyCreated = true;
+		if (initialContent !== undefined) {
+			writeFileSync(configPath, initialContent, { flag: "wx" });
+			configCreated = true;
+		}
+	} catch (error) {
+		if (configCreated && existsSync(configPath)) rmSync(configPath);
+		if (keyCreated && existsSync(keyPath)) rmSync(keyPath);
+		throw error;
+	}
+}

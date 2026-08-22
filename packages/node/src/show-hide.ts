@@ -5,17 +5,11 @@ import { isUnlockedPath, toLockedPath, toUnlockedPath } from "./unlocked-path.js
 
 export type KeyScope = "master" | { owner: string };
 
-export async function showFile(filePath: string, key: Buffer, scope?: KeyScope): Promise<string> {
-	const unlockedPath = isUnlockedPath(filePath) ? filePath : toUnlockedPath(filePath);
-
-	if (!isUnlockedPath(filePath) && existsSync(filePath)) {
-		if (existsSync(unlockedPath)) {
-			throw new Error(`Refusing to overwrite existing unlocked file: ${unlockedPath}`);
-		}
-		renameSync(filePath, unlockedPath);
-	}
-
-	const content = readFileSync(unlockedPath, "utf8");
+export async function decryptVarsContent(
+	content: string,
+	key: Buffer,
+	scope?: KeyScope,
+): Promise<string> {
 	const lines = content.split("\n");
 	const result: string[] = [];
 	const effectiveScope = scope ?? "master";
@@ -37,29 +31,42 @@ export async function showFile(filePath: string, key: Buffer, scope?: KeyScope):
 				}
 				const decrypted = decrypt(encrypted, decryptKey);
 				result.push(`${prefix}${serializeDecrypted(decrypted)}${suffix}`);
+			} else if (parsed?.owner === effectiveScope.owner) {
+				const decrypted = decrypt(encrypted, key);
+				result.push(`${prefix}${serializeDecrypted(decrypted)}${suffix}`);
 			} else {
-				if (parsed?.owner === effectiveScope.owner) {
-					const decrypted = decrypt(encrypted, key);
-					result.push(`${prefix}${serializeDecrypted(decrypted)}${suffix}`);
-				} else {
-					result.push(line);
-				}
+				result.push(line);
 			}
 			continue;
 		}
 		result.push(line);
 	}
 
-	writeFileSync(unlockedPath, result.join("\n"));
+	return result.join("\n");
+}
+
+export async function showFile(filePath: string, key: Buffer, scope?: KeyScope): Promise<string> {
+	const unlockedPath = isUnlockedPath(filePath) ? filePath : toUnlockedPath(filePath);
+
+	if (!isUnlockedPath(filePath) && existsSync(filePath)) {
+		if (existsSync(unlockedPath)) {
+			throw new Error(`Refusing to overwrite existing unlocked file: ${unlockedPath}`);
+		}
+		renameSync(filePath, unlockedPath);
+	}
+
+	const content = readFileSync(unlockedPath, "utf8");
+	writeFileSync(unlockedPath, await decryptVarsContent(content, key, scope));
 	return unlockedPath;
 }
 
-export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope): Promise<string> {
-	const lockedPath = isUnlockedPath(filePath) ? toLockedPath(filePath) : filePath;
-	const readPath = filePath;
-
-	const content = readFileSync(readPath, "utf8");
-	const parsed = parse(content, readPath);
+export async function encryptVarsContent(
+	content: string,
+	key: Buffer,
+	scope?: KeyScope,
+	filePath = "<memory>",
+): Promise<string> {
+	const parsed = parse(content, filePath);
 	if (parsed.errors.length > 0) {
 		throw new Error(`Cannot safely encrypt invalid vars file: ${parsed.errors[0]!.message}`);
 	}
@@ -266,9 +273,16 @@ export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope):
 		result.push(line);
 	}
 
-	writeFileSync(readPath, result.join("\n"));
-	if (isUnlockedPath(readPath) && readPath !== lockedPath) {
-		renameSync(readPath, lockedPath);
+	return result.join("\n");
+}
+
+export async function hideFile(filePath: string, key: Buffer, scope?: KeyScope): Promise<string> {
+	const lockedPath = isUnlockedPath(filePath) ? toLockedPath(filePath) : filePath;
+	const content = readFileSync(filePath, "utf8");
+	const encrypted = await encryptVarsContent(content, key, scope, filePath);
+	writeFileSync(filePath, encrypted);
+	if (isUnlockedPath(filePath) && filePath !== lockedPath) {
+		renameSync(filePath, lockedPath);
 	}
 	return lockedPath;
 }

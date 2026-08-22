@@ -19,6 +19,7 @@ const main = defineCommand({
 		add: () => import("./commands/add.js").then((m) => m.default),
 		remove: () => import("./commands/remove.js").then((m) => m.default),
 		set: () => import("./commands/set.js").then((m) => m.default),
+		apply: () => import("./commands/apply.js").then((m) => m.default),
 		key: () => import("./commands/key.js").then((m) => m.default),
 		pin: () => import("./commands/pin.js").then((m) => m.default),
 		ls: () => import("./commands/ls.js").then((m) => m.default),

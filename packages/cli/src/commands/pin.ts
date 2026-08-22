@@ -1,10 +1,27 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import * as prompts from "@clack/prompts";
 import { parse } from "@dotvars/core";
-import { deriveOwnerKey, encryptMasterKey, hideFile, parseKeyFile, showFile } from "@dotvars/node";
+import {
+	decryptVarsContent,
+	deriveOwnerKey,
+	encryptMasterKey,
+	encryptVarsContent,
+	isUnlockedPath,
+	parseKeyFile,
+} from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findAllVarsFiles, findKeyFile, getProjectRoot, requireKey } from "../utils/context.js";
+import { atomicWriteFileSync } from "../utils/atomic-write.js";
+import {
+	KEY_CREDENTIAL_ARGUMENTS,
+	NEW_PIN_ARGUMENT,
+	NEW_PIN_FILE_ARGUMENT,
+	findAllVarsFiles,
+	getProjectRoot,
+	requireKey,
+	resolveExplicitPin,
+	resolveKeyFile,
+} from "../utils/context.js";
 
 export default defineCommand({
 	meta: { name: "pin", description: "Manage owner PINs" },
@@ -17,14 +34,21 @@ export default defineCommand({
 					required: true,
 					description: "Owner name (e.g., backend-team)",
 				},
+				...KEY_CREDENTIAL_ARGUMENTS,
+				"new-pin": NEW_PIN_ARGUMENT,
+				"new-pin-file": NEW_PIN_FILE_ARGUMENT,
 			},
 			async run({ args }) {
-				if (!process.stdin.isTTY) {
-					console.error("This command requires an interactive terminal.");
+				const newPin = resolveExplicitPin({
+					pin: args["new-pin"],
+					pinFile: args["new-pin-file"],
+				});
+				if (!newPin && !process.stdin.isTTY) {
+					console.error("Provide --new-pin or --new-pin-file for non-interactive use.");
 					process.exit(1);
 				}
 
-				const keyFile = findKeyFile(process.cwd());
+				const keyFile = resolveKeyFile(process.cwd(), args["key-file"]);
 				if (!keyFile) {
 					console.error(pc.red("No key found. Run `vars init` first."));
 					process.exit(1);
@@ -51,7 +75,11 @@ export default defineCommand({
 
 				// Require master PIN
 				console.log(pc.dim("  Authenticate with master PIN to create owner PIN"));
-				const { key: masterKey, scope } = await requireKey(keyFile, `vars pin create ${owner}`);
+				const { key: masterKey, scope } = await requireKey(keyFile, `vars pin create ${owner}`, {
+					pin: args.pin,
+					pinFile: args["pin-file"],
+					preferEnvelope: typeof args["key-file"] === "string",
+				});
 				if (scope !== "master") {
 					console.error(pc.red("  Owner PINs cannot create other owner PINs. Use the master PIN."));
 					process.exit(1);
@@ -61,46 +89,66 @@ export default defineCommand({
 				const ownerKey = await deriveOwnerKey(masterKey, owner);
 
 				// Set owner PIN
-				const pin = await prompts.password({ message: `Set PIN for ${owner}:` });
-				if (prompts.isCancel(pin)) process.exit(0);
-				const confirm = await prompts.password({ message: "Confirm PIN:" });
-				if (prompts.isCancel(confirm)) process.exit(0);
-				if (pin !== confirm) {
-					console.error(pc.red("  PINs do not match"));
-					process.exit(1);
+				let ownerPin = newPin;
+				if (!ownerPin) {
+					const promptedPin = await prompts.password({ message: `Set PIN for ${owner}:` });
+					if (prompts.isCancel(promptedPin)) process.exit(0);
+					const confirm = await prompts.password({ message: "Confirm PIN:" });
+					if (prompts.isCancel(confirm)) process.exit(0);
+					if (promptedPin !== confirm) {
+						console.error(pc.red("  PINs do not match"));
+						process.exit(1);
+					}
+					ownerPin = promptedPin as string;
 				}
 
 				// Wrap owner key with PIN
-				const encryptedOwnerKey = await encryptMasterKey(ownerKey, pin as string, owner);
+				const encryptedOwnerKey = await encryptMasterKey(ownerKey, ownerPin, owner);
 
-				// Re-encrypt owner fields across all .vars files
+				// Prepare every owner-field migration in memory. Never create an unlocked file.
 				const root = getProjectRoot();
 				const files = findAllVarsFiles(root);
-				let reEncrypted = 0;
-				for (const f of files) {
-					const content = readFileSync(f, "utf8");
-					const parsed = parse(content, f);
-					const hasOwner = parsed.ast.declarations.some((d) => {
-						if (d.kind === "variable") return d.metadata?.owner === owner;
-						if (d.kind === "group") return d.declarations.some((v) => v.metadata?.owner === owner);
+				const updates = new Map<string, { original: string; updated: string }>();
+				for (const file of files) {
+					const content = readFileSync(file, "utf8");
+					const parsed = parse(content, file);
+					const hasOwner = parsed.ast.declarations.some((declaration) => {
+						if (declaration.kind === "variable") return declaration.metadata?.owner === owner;
+						if (declaration.kind === "group") {
+							return declaration.declarations.some(
+								(variable) => variable.metadata?.owner === owner,
+							);
+						}
 						return false;
 					});
-					if (hasOwner) {
-						const unlocked = await showFile(f, masterKey, "master");
-						await hideFile(unlocked, masterKey, "master");
-						reEncrypted++;
+					if (hasOwner && !isUnlockedPath(file)) {
+						const plaintext = await decryptVarsContent(content, masterKey, "master");
+						const updated = await encryptVarsContent(plaintext, masterKey, "master", file);
+						updates.set(file, { original: content, updated });
 					}
 				}
 
-				// Publish the PIN only after every owner field is safely migrated.
-				writeFileSync(keyFile, `${keyContent}\n${encryptedOwnerKey}\n`);
+				try {
+					for (const [file, update] of updates) {
+						atomicWriteFileSync(file, update.updated);
+					}
+					// Publish the PIN only after every owner field is safely migrated.
+					atomicWriteFileSync(keyFile, `${keyContent}\n${encryptedOwnerKey}\n`);
+				} catch (error) {
+					for (const [file, update] of updates) {
+						atomicWriteFileSync(file, update.original);
+					}
+					throw error;
+				}
 
 				console.log(pc.green(`  ✓ PIN created for owner "${owner}"`));
-				if (reEncrypted > 0) {
-					console.log(pc.dim(`  Re-encrypted ${reEncrypted} file(s) with owner-scoped keys`));
+				if (updates.size > 0) {
+					console.log(pc.dim(`  Re-encrypted ${updates.size} file(s) with owner-scoped keys`));
 				}
 				console.log(
-					pc.dim("  Share the PIN with the owner. They can use it with `vars show` / `vars hide`."),
+					pc.dim(
+						"  Share the PIN with the owner for targeted vars commands; show/hide remain available for human editing.",
+					),
 				);
 			},
 		}),

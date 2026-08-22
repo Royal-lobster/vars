@@ -1,12 +1,32 @@
-import { renameSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { randomBytes } from "node:crypto";
+import { chmodSync, existsSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
+
+export interface AtomicWriteOptions {
+	mode?: number;
+}
 
 /**
- * Write a file atomically by writing to a temp file first, then renaming.
- * This prevents partial writes from corrupting the target file on crash/interrupt.
+ * Atomically replace a file using a collision-safe sibling temp file.
+ * Existing permissions are preserved; new files use the caller's mode or the process umask.
  */
-export function atomicWriteFileSync(filePath: string, content: string): void {
-	const tmpPath = join(dirname(filePath), `.${Date.now()}.tmp`);
-	writeFileSync(tmpPath, content, "utf8");
-	renameSync(tmpPath, filePath);
+export function atomicWriteFileSync(
+	filePath: string,
+	content: string,
+	options: AtomicWriteOptions = {},
+): void {
+	const mode = existsSync(filePath) ? statSync(filePath).mode & 0o777 : options.mode;
+	const nonce = randomBytes(6).toString("hex");
+	const tmpPath = join(dirname(filePath), `.${basename(filePath)}.${process.pid}.${nonce}.tmp`);
+	try {
+		writeFileSync(tmpPath, content, {
+			encoding: "utf8",
+			flag: "wx",
+			...(mode === undefined ? {} : { mode }),
+		});
+		if (mode !== undefined) chmodSync(tmpPath, mode);
+		renameSync(tmpPath, filePath);
+	} finally {
+		if (existsSync(tmpPath)) rmSync(tmpPath);
+	}
 }

@@ -119,13 +119,22 @@ vars.DATABASE_URL.unwrap() // actual value (explicit opt-in)
 ```bash
 vars init              # initialize project
 vars gen <file>        # generate TypeScript types
-vars show / hide       # decrypt / encrypt
+vars show / hide       # human whole-file editing workflow
+vars add / set / remove# targeted locked-file edits for agents
+vars apply             # atomically apply a .vars fragment from stdin
 vars run --env <env>   # run with injected env vars
 vars check             # validate schemas + checks
 vars ls                # list files and variables
 vars export --env prod # export as dotenv/json/k8s-secret
 vars key init          # create encryption key
 vars doctor            # diagnose setup
+
+# Trusted automation: keep the PIN out of argv and files locked
+vars init --pin-file /run/secrets/vars-pin
+vars add stripe.SECRET_KEY --value-file /run/secrets/stripe-key \
+  --pin-file /run/secrets/vars-pin
+# Explicit envelope credentials override ambient VARS_KEY compatibility credentials.
+# Trusted lifecycle commands re-encrypt in memory and never create *.unlocked.vars.
 ```
 
 </details>

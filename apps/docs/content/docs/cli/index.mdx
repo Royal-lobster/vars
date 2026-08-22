@@ -14,22 +14,47 @@ icon: Terminal
 | `vars hide` | Encrypt all unlocked .vars files |
 | `vars run --env <env> -- cmd` | Run a command with decrypted env vars injected |
 | `vars check [-f file]` | Validate schemas and run check blocks |
-| `vars add <name>` | Interactively add a variable |
-| `vars remove <name>` | Remove a variable from a .vars file |
+| `vars add <name>` | Add a variable directly to a locked file |
+| `vars set <name>` | Update a variable directly in a locked file |
+| `vars remove <name>` | Remove a variable directly from a locked file |
 | `vars ls` | List all .vars files with lock state and var count |
 | `vars ls <file>` | List variables in a file with metadata |
 | `vars export --env <env>` | Export as dotenv, json, or k8s-secret format |
+| `vars apply` | Atomically upsert a `.vars` fragment from stdin without unlocking |
 | `vars key init` | Create a new encryption key |
-| `vars key rotate` | Rotate the encryption key |
-| `vars key fingerprint` | Print the key fingerprint |
-| `vars key export` | Print base64 master key for CI |
+| `vars rotate` | Rotate the encryption key |
+| `vars key export` | Print the raw base64 master key as a compatibility escape hatch |
 | `vars doctor` | Diagnose your vars setup |
 
 ## Environment
 
 | Variable | Description |
 |----------|-------------|
-| `VARS_KEY` | Base64-encoded master key — bypasses PIN prompt. Required for CI/CD. Get it with `vars key export`. |
+| `VARS_KEY` | Raw base64 master key compatibility escape hatch for CI systems that cannot provision an envelope. |
+| `VARS_PIN` | PIN for trusted non-interactive use. Overridden by `--pin`; may expose all secrets available to that PIN. |
+| `VARS_PIN_FILE` | Path to a PIN file. Recommended instead of `VARS_PIN` for trusted automation; `VARS_PIN` wins if both are set. |
+| `VARS_KEY_FILE` | Path to an encrypted key envelope. Defaults to the nearest `.varskey`. |
+
+## Trusted automation
+
+Commands that set or unlock a PIN accept `--pin <pin>` or the safer `--pin-file <path>`. Commands also accept `--key-file <path>` when the encrypted key envelope is provisioned outside the project:
+
+```bash
+vars init --pin-file /run/secrets/vars-pin
+vars run --env dev \
+  --key-file /run/secrets/project.varskey \
+  --pin-file /run/secrets/vars-pin \
+  -- npm start
+
+# Existing package scripts
+VARS_KEY_FILE=/run/secrets/project.varskey \
+VARS_PIN_FILE=/run/secrets/vars-pin \
+pnpm start
+```
+
+Trusted agents should mutate locked files with `vars add`, `vars set`, `vars remove`, or `vars apply`. `vars show` and `vars hide` are the human editor workflow.
+
+<Callout type="warn">`--pin` can appear in process listings, shell history, agent transcripts, and command logs. Prefer `--pin-file` with a mode-0600 file. The PIN and encrypted key envelope are both required; vars does not derive the master key directly from the PIN.</Callout>
 
 ## Guides
 

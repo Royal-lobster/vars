@@ -12,9 +12,15 @@ When you run `vars init`, two things are created:
 
 The PIN is never stored anywhere. It goes through **Argon2id** — a memory-hard, brute-force-resistant KDF — to derive a wrapping key. That wrapping key decrypts the master key, the master key decrypts your values, and then the wrapping key is discarded.
 
-The master key never touches disk in plaintext. Knowing the PIN is the only way to get it.
+The master key never touches disk in plaintext. The PIN does not derive or recreate it: decryption requires both the PIN and the project-specific encrypted key envelope.
 
-The PIN is prompted at the terminal every time vars needs to decrypt (`vars show`, `vars hide`, `vars run`). Not cached. Not stored in an env var. Not passed as a flag. You type it, it unlocks, done.
+By default, vars prompts for the PIN at the terminal every time it needs to decrypt (`vars show`, `vars hide`, `vars run`). The PIN is not cached or stored by vars.
+
+For trusted automation, PIN-taking commands accept `--pin-file <path>` and `VARS_PIN_FILE`; these are preferred because only the file path appears in process arguments or the environment. `--key-file <path>` and `VARS_KEY_FILE` select an externally provisioned encrypted envelope.
+
+`--pin` takes precedence over `--pin-file`, followed by `VARS_PIN` and `VARS_PIN_FILE`. `--key-file` takes precedence over `VARS_KEY_FILE`, then vars finds the nearest `.varskey`. Any PIN or key-file source makes the encrypted envelope take precedence over the raw `VARS_KEY` compatibility fallback — for ambient PINs, `VARS_KEY` remains a fallback if the PIN fails to unlock the envelope (vars warns when this happens); explicit `--pin`/`--pin-file` failures always surface as errors. Every non-interactive unlock prints its credential source (e.g. `vars: unlocked via --pin-file`) to stderr so the active source is never invisible; `vars doctor` reports which ambient credentials are set.
+
+<Callout type="warn">A PIN passed with `--pin` is visible in process arguments and may be recorded in shell history, agent transcripts, and command logs. Use a mode-0600 PIN file and an owner-scoped PIN whenever possible.</Callout>
 
 This two-layer design means changing your PIN only re-encrypts the 32-byte master key — not every secret in the file.
 
@@ -46,4 +52,4 @@ Each line is self-contained. You can delete lines to create scoped key files for
 vars rotate
 ```
 
-Generates a new master key, re-encrypts all values, and prompts for a new PIN. If owner PIN entries exist, `vars rotate` warns that they'll be invalidated and asks for confirmation. After rotation, re-run `vars pin create` for each owner.
+Generates a new master key, re-encrypts all values in memory, and prompts for a new PIN. Locked files are replaced atomically, and any open `*.unlocked.vars` editing session is encrypted and closed. During rotation, `.varskey` temporarily contains encrypted entries for both the old and new master keys so an interruption cannot lose the key needed by either file state. If owner PIN entries exist, `vars rotate` warns that they'll be invalidated and asks for confirmation. After rotation, re-run `vars pin create` for each owner.

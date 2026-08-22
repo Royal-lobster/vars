@@ -4,10 +4,9 @@ description: Day-to-day workflow for adding, editing, and removing variables.
 icon: Settings
 ---
 
-## Decrypt & Encrypt
+## Human editor workflow
 
-The core loop: `show` to decrypt, edit the file, `hide` to encrypt.
-
+Use `show` when a human wants to edit the whole file, then `hide` immediately afterward. Agents and automation should use the targeted locked-file commands below instead.
 ```bash
 # Unlock (config.vars → config.unlocked.vars)
 vars show
@@ -65,80 +64,79 @@ vars hide -f staging.vars
 
 ---
 
-## Quick Edits
+## Locked-file edits
 
-For when you'd rather not open the file at all.
+`add`, `set`, `remove`, and `apply` modify a locked `config.vars` directly. Secret inputs are encrypted before replacement, and these commands never create `config.unlocked.vars`. If a human has already opened the file with `vars show`, locked mutations stop and ask you to run `vars hide` first rather than writing new plaintext. If matching generated TypeScript output exists, vars regenerates it before completing; a regeneration failure restores both files.
+
+Qualified names keep public and secret values together by integration:
+
+```bash
+vars add stripe.PUBLISHABLE_KEY --public --value "pk_test_..."
+vars add stripe.SECRET_KEY --value-file /run/secrets/stripe-key \
+  --pin-file /run/secrets/vars-pin
+```
+
+This creates or updates a group containing both repository-readable and encrypted values.
 
 <Accordions type="single">
 <Accordion title="add — add a variable">
 
 ```bash
 vars add NAME
+vars add integration.NAME
 ```
 
-Adds a variable without opening the file. vars prompts for a Zod schema, then asks for a value per environment (`default`, `dev`, `staging`, `prod`). Skip any env you don't need yet.
-
-The variable is encrypted and written straight into `config.vars`.
-
-Names must be `UPPER_SNAKE_CASE`. Prefix a variable with `public` to store it in plaintext; public variables don't require a key to read.
+Names must be `UPPER_SNAKE_CASE`. `--public` keeps the value plaintext; without it, values written to a locked file are encrypted.
 
 **Flags**
 
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--schema <zod>` | `-s` | Skip the schema prompt |
-| `--file <path>` | `-f` | Use a different vars file |
-
-```bash
-vars add STRIPE_KEY --schema "z.string().startsWith('sk_')"
-```
+| Flag | Description |
+|------|-------------|
+| `--public` | Keep the value repository-readable |
+| `--schema <zod>` | Set the Zod schema |
+| `--value <value>` | Set a value directly |
+| `--value-file <path>` | Read a value from a file |
+| `--dev`, `--staging`, `--prod` | Set environment values |
+| `--dev-file`, `--staging-file`, `--prod-file` | Read environment values from files |
+| `--pin-file <path>` | Read the PIN without exposing it in process arguments |
+| `--key-file <path>` | Use an externally provisioned encrypted key envelope |
 
 </Accordion>
 <Accordion title="remove — delete a variable">
 
 ```bash
 vars remove NAME
+vars remove integration.NAME
 ```
 
-Deletes the variable, its env values, and all metadata. Prompts for confirmation first.
-
-**Flags**
-
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--yes` | `-y` | Skip the confirmation prompt |
-| `--file <path>` | `-f` | Use a different vars file |
-
-```bash
-vars remove OLD_API_URL --yes
-```
+Deletes the variable, its environment values, and metadata directly from the locked file. Removing ciphertext does not require a PIN.
 
 </Accordion>
 <Accordion title="set — update a value">
 
 ```bash
 vars set NAME --value "new-value"
+vars set integration.SECRET --value-file /run/secrets/new-value \
+  --pin-file /run/secrets/vars-pin
 ```
 
-Updates a variable's value without opening the file. Use `--dev`, `--staging`, `--prod` to set per-environment values. If the variable is flat and you set env-specific values, it converts to an env block.
+Updates a variable without unlocking the file. Environment flags and their `-file` variants update individual environment values.
 
-**Flags**
+</Accordion>
+<Accordion title="apply — atomically upsert an integration">
 
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--value <val>` | `-v` | Set value for all envs (or default) |
-| `--dev <val>` | | Set dev value |
-| `--staging <val>` | | Set staging value |
-| `--prod <val>` | | Set prod value |
-| `--file <path>` | `-f` | Use a different vars file |
+`apply` reads variable and group declarations from stdin. Omitted variables remain unchanged. Environment declarations, imports, params, checks, conditionals, and duplicate qualified names are rejected:
 
 ```bash
-# Update a single value
-vars set DATABASE_URL --dev "postgres://localhost/mydb"
-
-# Set different values per environment
-vars set API_URL --dev "http://localhost:3000" --prod "https://api.example.com"
+vars apply --pin-file /run/secrets/vars-pin <<'VARS'
+group stripe {
+  public PUBLISHABLE_KEY = "pk_test_..."
+  SECRET_KEY = "sk_test_..."
+}
+VARS
 ```
+
+The plaintext fragment exists only in the command input. Secret declarations are encrypted before `config.vars` is replaced. Existing declaration order is preserved; new declarations append to their exact target scope: `NAME` is top-level and `group.NAME` is grouped. Existing metadata, including `owner`, is preserved when the patch omits metadata; metadata supplied by the patch replaces the existing metadata.
 
 </Accordion>
 <Accordion title="ls — list variables">

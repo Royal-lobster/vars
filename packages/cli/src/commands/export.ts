@@ -1,8 +1,14 @@
 import { resolve } from "node:path";
-import { type KeyScope, getKeyFromEnv, resolveUseChain } from "@dotvars/node";
+import { type KeyScope, resolveUseChain } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findKeyFile, findVarsFile, requireKey, resolveEnv } from "../utils/context.js";
+import {
+	KEY_CREDENTIAL_ARGUMENTS,
+	findVarsFile,
+	requireKey,
+	resolveEnv,
+	resolveKeyFile,
+} from "../utils/context.js";
 import { resolveEnvValue } from "../utils/resolve-env-value.js";
 
 export default defineCommand({
@@ -16,6 +22,7 @@ export default defineCommand({
 		},
 		file: { type: "positional", required: false },
 		param: { type: "string" },
+		...KEY_CREDENTIAL_ARGUMENTS,
 	},
 	async run({ args }) {
 		const env = resolveEnv(args.env);
@@ -46,12 +53,16 @@ export default defineCommand({
 			process.exit(1);
 		}
 
-		let key: Buffer | null = getKeyFromEnv();
+		let key: Buffer | null = null;
 		let scope: KeyScope = "master";
 		const getKey = async () => {
 			if (!key) {
-				const keyFile = findKeyFile(file);
-				({ key, scope } = await requireKey(keyFile, `vars export --env ${env}`));
+				const keyFile = resolveKeyFile(file, args["key-file"]);
+				({ key, scope } = await requireKey(keyFile, `vars export --env ${env}`, {
+					pin: args.pin,
+					pinFile: args["pin-file"],
+					preferEnvelope: typeof args["key-file"] === "string",
+				}));
 			}
 			return { key, scope };
 		};

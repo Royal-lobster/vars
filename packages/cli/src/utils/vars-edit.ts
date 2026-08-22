@@ -45,6 +45,7 @@ function isArrayLiteral(value: string): boolean {
 /** Return the final balanced metadata block without reformatting it. */
 export function trailingMetadata(source: string): string | null {
 	let start = -1;
+	let end = -1;
 	let depth = 0;
 	let quote = "";
 	let escaped = false;
@@ -63,9 +64,15 @@ export function trailingMetadata(source: string): string | null {
 		} else if (ch === "(") {
 			if (depth === 0) start = i;
 			depth++;
-		} else if (ch === ")") depth--;
+		} else if (ch === ")") {
+			depth--;
+			if (depth === 0) end = i;
+		}
 	}
-	return start >= 0 && depth === 0 ? source.slice(start).trim() : null;
+	const suffix = source.slice(end + 1);
+	return start >= 0 && depth === 0 && /^(?:\s|#[^\n]*(?:\n|$))*$/.test(suffix)
+		? source.slice(start).trim()
+		: null;
 }
 
 /** Find the last line occupied by a variable declaration and its metadata. */

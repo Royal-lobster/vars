@@ -2,27 +2,43 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import * as prompts from "@clack/prompts";
 import {
 	createMasterKey,
+	decryptVarsContent,
 	encryptMasterKey,
-	hideFile,
+	encryptVarsContent,
 	isUnlockedPath,
 	parseKeyFile,
-	showFile,
 	toLockedPath,
 	toUnlockedPath,
 } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
-import { findAllVarsFiles, findKeyFile, getProjectRoot, requireKey } from "../utils/context.js";
+import { atomicWriteFileSync } from "../utils/atomic-write.js";
+import {
+	KEY_CREDENTIAL_ARGUMENTS,
+	NEW_PIN_ARGUMENT,
+	NEW_PIN_FILE_ARGUMENT,
+	findAllVarsFiles,
+	getProjectRoot,
+	requireKey,
+	resolveExplicitPin,
+	resolveKeyFile,
+} from "../utils/context.js";
 
 export default defineCommand({
 	meta: { name: "rotate", description: "Rotate the encryption key" },
-	args: {},
-	async run() {
-		if (!process.stdin.isTTY) {
-			console.error("This command requires an interactive terminal.");
+	args: {
+		...KEY_CREDENTIAL_ARGUMENTS,
+		"new-pin": NEW_PIN_ARGUMENT,
+		"new-pin-file": NEW_PIN_FILE_ARGUMENT,
+		yes: { type: "boolean", description: "Confirm owner PIN invalidation" },
+	},
+	async run({ args }) {
+		const newPin = resolveExplicitPin({ pin: args["new-pin"], pinFile: args["new-pin-file"] });
+		if (!newPin && !process.stdin.isTTY) {
+			console.error("Provide --new-pin or --new-pin-file for non-interactive use.");
 			process.exit(1);
 		}
-		const keyFile = findKeyFile(process.cwd());
+		const keyFile = resolveKeyFile(process.cwd(), args["key-file"]);
 		if (!keyFile) {
 			console.error(pc.red("No key found"));
 			process.exit(1);
@@ -42,31 +58,45 @@ export default defineCommand({
 			console.log(
 				pc.dim("  You'll need to re-run `vars pin create` for each owner after rotation."),
 			);
-			const proceed = await prompts.confirm({ message: "Continue?" });
-			if (prompts.isCancel(proceed) || !proceed) process.exit(0);
+			if (!args.yes) {
+				if (!process.stdin.isTTY) {
+					console.error(pc.red("Pass --yes to confirm owner PIN invalidation."));
+					process.exit(1);
+				}
+				const proceed = await prompts.confirm({ message: "Continue?" });
+				if (prompts.isCancel(proceed) || !proceed) process.exit(0);
+			}
 		}
 
 		// Decrypt with old key (must be master)
-		const { key: oldKey, scope } = await requireKey(keyFile, "vars rotate");
+		const { key: oldKey, scope } = await requireKey(keyFile, "vars rotate", {
+			pin: args.pin,
+			pinFile: args["pin-file"],
+			preferEnvelope: typeof args["key-file"] === "string",
+		});
 		if (scope !== "master") {
 			console.error(pc.red("  Only the master PIN can rotate keys."));
 			process.exit(1);
 		}
 
 		// Create new key + PIN
-		const pin = await prompts.password({ message: "Set new PIN:" });
-		if (prompts.isCancel(pin)) process.exit(0);
-		const confirm = await prompts.password({ message: "Confirm new PIN:" });
-		if (prompts.isCancel(confirm)) process.exit(0);
-		if (pin !== confirm) {
-			console.error(pc.red("PINs do not match"));
-			process.exit(1);
+		let replacementPin = newPin;
+		if (!replacementPin) {
+			const promptedPin = await prompts.password({ message: "Set new PIN:" });
+			if (prompts.isCancel(promptedPin)) process.exit(0);
+			const confirm = await prompts.password({ message: "Confirm new PIN:" });
+			if (prompts.isCancel(confirm)) process.exit(0);
+			if (promptedPin !== confirm) {
+				console.error(pc.red("PINs do not match"));
+				process.exit(1);
+			}
+			replacementPin = promptedPin as string;
 		}
 
 		const newKey = await createMasterKey();
 		const root = getProjectRoot();
 		const files = findAllVarsFiles(root);
-		const encryptedKey = await encryptMasterKey(newKey, pin as string);
+		const encryptedKey = await encryptMasterKey(newKey, replacementPin);
 		await rotateFiles(files, keyFile, oldKey, newKey, encryptedKey);
 		console.log(pc.green("\n  ✓ Key rotated. Share the new .varskey + PIN with teammates."));
 	},
@@ -80,31 +110,51 @@ export async function rotateFiles(
 	encryptedKey: string,
 ): Promise<void> {
 	const originals = new Map<string, Buffer>();
-	for (const path of files) {
-		originals.set(path, readFileSync(path));
-		const counterpart = isUnlockedPath(path) ? toLockedPath(path) : toUnlockedPath(path);
+	const updates = new Map<string, { source: string; content: string }>();
+	for (const file of files) {
+		const destination = isUnlockedPath(file) ? toLockedPath(file) : file;
+		const counterpart = isUnlockedPath(file) ? destination : toUnlockedPath(file);
+		originals.set(file, readFileSync(file));
 		if (existsSync(counterpart)) originals.set(counterpart, readFileSync(counterpart));
+
+		const content = readFileSync(file, "utf8");
+		const plaintext = content.includes("enc:v2:")
+			? await decryptVarsContent(content, oldKey, "master")
+			: content;
+		updates.set(destination, {
+			source: file,
+			content: await encryptVarsContent(plaintext, newKey, "master", destination),
+		});
 	}
 	const originalKey = readFileSync(keyFile);
+	const originalEnvelope = originalKey.toString("utf8").trimEnd();
+	const transitionalEnvelope = `${originalEnvelope}\n${encryptedKey}\n`;
+
 	try {
-		// Save the recoverable new key before any file uses it.
-		writeFileSync(keyFile, `${encryptedKey}\n`);
-		for (const f of files) {
-			if (readFileSync(f, "utf8").includes("enc:v2:")) {
-				const unlocked = await showFile(f, oldKey, "master");
-				await hideFile(unlocked, newKey, "master");
-				console.log(pc.green(`  ✓ Re-encrypted ${f}`));
-			}
+		// Persist both keys before any file changes. A hard interruption can never lose
+		// the key required by either the old or newly re-encrypted files.
+		atomicWriteFileSync(keyFile, transitionalEnvelope);
+		for (const [destination, update] of updates) {
+			atomicWriteFileSync(destination, update.content);
+			if (update.source !== destination && existsSync(update.source)) rmSync(update.source);
+			console.log(pc.green(`  ✓ Re-encrypted ${destination}`));
 		}
+		atomicWriteFileSync(keyFile, `${encryptedKey}\n`);
 	} catch (error) {
-		writeFileSync(keyFile, originalKey);
-		for (const path of files) {
-			const counterpart = isUnlockedPath(path) ? toLockedPath(path) : toUnlockedPath(path);
-			if (!originals.has(counterpart) && existsSync(counterpart)) rmSync(counterpart);
+		for (const [destination, update] of updates) {
+			if (!originals.has(destination) && existsSync(destination)) rmSync(destination);
+			if (
+				update.source !== destination &&
+				!originals.has(update.source) &&
+				existsSync(update.source)
+			) {
+				rmSync(update.source);
+			}
 		}
 		for (const [path, content] of originals) {
 			writeFileSync(path, content);
 		}
+		writeFileSync(keyFile, originalKey);
 		throw error;
 	}
 }

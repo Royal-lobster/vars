@@ -12,7 +12,7 @@ export {
 	parseKeyFile,
 } from "./key-manager.js";
 export type { KeyEntry } from "./key-manager.js";
-export { showFile, hideFile } from "./show-hide.js";
+export { showFile, hideFile, decryptVarsContent, encryptVarsContent } from "./show-hide.js";
 export type { KeyScope } from "./show-hide.js";
 export { storeKey, retrieveKey, clearKey } from "./keychain.js";
 export {

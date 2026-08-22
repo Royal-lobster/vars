@@ -3,17 +3,20 @@ import type { KeyScope } from "@dotvars/node";
 import { defineCommand } from "citty";
 import pc from "picocolors";
 import {
-	findKeyFile,
+	KEY_CREDENTIAL_ARGUMENTS,
 	findUnlockedVarsFiles,
 	getProjectRoot,
 	requireKey,
+	resolveKeyFile,
 } from "../utils/context.js";
-import { detectGeneratedPlatform, generateForFileOrThrow } from "./gen.js";
+import { detectGeneratedPlatform, generateForFileOrThrow } from "../utils/generated-output.js";
 
 export default defineCommand({
-	meta: { name: "hide", description: "Encrypt all unlocked .vars files" },
-	args: {},
-	async run() {
+	meta: { name: "hide", description: "Human workflow: encrypt files opened with vars show" },
+	args: {
+		...KEY_CREDENTIAL_ARGUMENTS,
+	},
+	async run({ args }) {
 		const root = getProjectRoot();
 		const unlocked = findUnlockedVarsFiles(root);
 
@@ -22,8 +25,12 @@ export default defineCommand({
 			return;
 		}
 
-		const keyFile = findKeyFile(process.cwd());
-		const { key, scope } = await requireKey(keyFile, "vars hide");
+		const keyFile = resolveKeyFile(process.cwd(), args["key-file"]);
+		const { key, scope } = await requireKey(keyFile, "vars hide", {
+			pin: args.pin,
+			pinFile: args["pin-file"],
+			preferEnvelope: typeof args["key-file"] === "string",
+		});
 		const regenerationFailures = await hideUnlockedFiles(unlocked, key, scope);
 		if (regenerationFailures > 0) {
 			console.error(
@@ -60,9 +67,11 @@ export function regenerateGeneratedForLockedFile(filePath: string): void {
 	const existingPlatform = detectGeneratedPlatform(filePath);
 	if (existingPlatform) {
 		try {
-			generateForFileOrThrow(filePath, existingPlatform);
-		} catch (err: any) {
-			throw new Error(`regeneration failed for ${filePath}: ${err.message}`);
+			const generatedPath = generateForFileOrThrow(filePath, existingPlatform);
+			console.log(pc.green(`  ✓ ${generatedPath}`));
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			throw new Error(`regeneration failed for ${filePath}: ${message}`);
 		}
 	}
 }
