@@ -1,6 +1,6 @@
 {
 	"name": "dotvars",
-	"version": "1.0.6",
+	"version": "1.1.0",
 	"type": "module",
 	"repository": {
 		"type": "git",
@@ -11,7 +11,9 @@
 		"dotvars": "./dist/index.js",
 		"vars": "./dist/index.js"
 	},
-	"files": ["dist"],
+	"files": [
+		"dist"
+	],
 	"scripts": {
 		"build": "tsup",
 		"test": "vitest run",
