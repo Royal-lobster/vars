@@ -60,6 +60,11 @@ function requestApprovalMacOS(command: string): string | null {
 }
 
 function requestApprovalLinux(command: string): string | null {
+	// No display server → zenity/kdialog can only fail with GTK/Qt noise.
+	// Fail fast so the caller's actionable error (--pin-file / VARS_PIN_FILE)
+	// is the first thing a headless user sees.
+	if (!process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) return null;
+
 	const message = `An AI agent is requesting access to encrypted vars.\n\nCommand:\n  ${command}\n\nEnter your PIN to approve:`;
 
 	// Try zenity (GTK)
@@ -67,7 +72,7 @@ function requestApprovalLinux(command: string): string | null {
 		const result = execFileSync(
 			"zenity",
 			["--password", "--title=vars — approve command", `--text=${message}`],
-			{ encoding: "utf8", timeout: 120_000 },
+			{ encoding: "utf8", timeout: 120_000, stdio: ["pipe", "pipe", "pipe"] },
 		);
 		return result.trim() || null;
 	} catch {
@@ -79,7 +84,7 @@ function requestApprovalLinux(command: string): string | null {
 		const result = execFileSync(
 			"kdialog",
 			["--password", message, "--title", "vars — approve command"],
-			{ encoding: "utf8", timeout: 120_000 },
+			{ encoding: "utf8", timeout: 120_000, stdio: ["pipe", "pipe", "pipe"] },
 		);
 		return result.trim() || null;
 	} catch {

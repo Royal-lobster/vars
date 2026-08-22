@@ -7,7 +7,7 @@ import { runCommand } from "citty";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import initCommand, { publishInitialization } from "../commands/init.js";
 import keyCommand from "../commands/key.js";
-import { getProjectRoot, requireKey, resolveKeyFile } from "../utils/context.js";
+import { findKeyFile, getProjectRoot, requireKey, resolveKeyFile } from "../utils/context.js";
 
 function makeTmpDir(): string {
 	const dir = join(tmpdir(), `vars-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -73,6 +73,66 @@ describe("getProjectRoot", () => {
 		// repo has no package.json anywhere; getProjectRoot must stop at the git
 		// root instead of returning outerPkg.
 		expect(getProjectRoot(subdir)).toBe(repo);
+	});
+});
+
+describe("findKeyFile in linked git worktrees", () => {
+	let tmp: string;
+
+	beforeEach(() => {
+		tmp = makeTmpDir();
+	});
+
+	afterEach(() => {
+		rmSync(tmp, { recursive: true, force: true });
+	});
+
+	function makeRepoWithWorktree(): { primary: string; worktree: string } {
+		const primary = join(tmp, "primary");
+		const nested = join(primary, "apps", "web");
+		mkdirSync(nested, { recursive: true });
+		writeFileSync(join(primary, ".gitignore"), ".varskey\n");
+		writeFileSync(join(nested, "config.vars"), "env(dev)\n");
+		const git = (cmd: string, cwd: string) => execSync(`git ${cmd}`, { cwd, stdio: "pipe" });
+		git("init --quiet", primary);
+		git("add -A", primary);
+		git("-c user.email=t@t -c user.name=t commit --quiet -m init", primary);
+		const worktree = join(tmp, "linked");
+		git(`worktree add --quiet ${worktree}`, primary);
+		return { primary, worktree };
+	}
+
+	it("falls back to the mirrored path in the primary checkout", () => {
+		const { primary, worktree } = makeRepoWithWorktree();
+		const keyPath = join(primary, "apps", "web", ".varskey");
+		writeFileSync(keyPath, "pin:v1:aes256gcm:master:a:b:c:d\n");
+		expect(findKeyFile(join(worktree, "apps", "web"))).toBe(keyPath);
+	});
+
+	it("falls back when given a .vars file path, as vars run does", () => {
+		const { primary, worktree } = makeRepoWithWorktree();
+		const keyPath = join(primary, ".varskey");
+		writeFileSync(keyPath, "pin:v1:aes256gcm:master:a:b:c:d\n");
+		expect(findKeyFile(join(worktree, "apps", "web", "config.vars"))).toBe(keyPath);
+	});
+	it("walks up to the primary checkout root when the key lives there", () => {
+		const { primary, worktree } = makeRepoWithWorktree();
+		const keyPath = join(primary, ".varskey");
+		writeFileSync(keyPath, "pin:v1:aes256gcm:master:a:b:c:d\n");
+		expect(findKeyFile(join(worktree, "apps", "web"))).toBe(keyPath);
+	});
+
+	it("returns null when the primary checkout has no key either", () => {
+		const { worktree } = makeRepoWithWorktree();
+		expect(findKeyFile(join(worktree, "apps", "web"))).toBeNull();
+	});
+
+	it("does not fall back outside a linked worktree", () => {
+		// A plain repo with no key anywhere on the walk must stay null.
+		const repo = join(tmp, "plain");
+		mkdirSync(repo, { recursive: true });
+		execSync("git init --quiet", { cwd: repo });
+		expect(findKeyFile(repo)).toBeNull();
 	});
 });
 

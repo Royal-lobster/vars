@@ -42,10 +42,23 @@ export default defineCommand({
 		const root = getProjectRoot();
 		let issues = 0;
 
-		// Check key
+		// Check key. When locked files already exist, `vars key init` would mint a
+		// key that cannot decrypt them — point at `vars key import` instead.
 		const keyFile = findKeyFile(root);
 		if (keyFile) {
-			console.log(pc.green("  ✓ Key file found"));
+			const relKeyFile = relative(root, keyFile);
+			if (relKeyFile.startsWith("..")) {
+				console.log(pc.green(`  ✓ Key file found (primary checkout: ${keyFile})`));
+			} else {
+				console.log(pc.green("  ✓ Key file found"));
+			}
+		} else if (findAllVarsFiles(root).some((f) => !isUnlockedPath(f))) {
+			console.log(
+				pc.red(
+					"  ✗ No key file, but locked .vars files exist. Run `vars key import <envelope>` with the project's existing .varskey",
+				),
+			);
+			issues++;
 		} else {
 			console.log(pc.red("  ✗ No key file. Run `vars key init`"));
 			issues++;

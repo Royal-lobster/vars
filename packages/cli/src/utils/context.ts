@@ -1,6 +1,6 @@
-import { execSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import * as prompts from "@clack/prompts";
 import type { KeyScope } from "@dotvars/node";
 import { decryptMasterKey, getKeyFromEnv, parseKeyFile } from "@dotvars/node";
@@ -153,15 +153,63 @@ export function findUnlockedVarsFiles(rootDir: string): string[] {
 	return findAllVarsFiles(rootDir).filter((f) => isUnlockedPath(f));
 }
 
-/** Find .varskey file, walking up from startDir */
+/** Find .varskey file, walking up from startDir. In a linked git worktree the
+ *  walk cannot succeed (.varskey is gitignored, so worktrees never receive it);
+ *  fall back to the corresponding path in the primary checkout. */
 export function findKeyFile(startDir: string): string | null {
 	let dir = resolve(startDir);
 	while (true) {
 		const keyPath = join(dir, ".varskey");
 		if (existsSync(keyPath)) return keyPath;
 		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+	return findKeyFileInPrimaryWorktree(startDir);
+}
+
+/** Map startDir into the primary checkout of a linked git worktree and search
+ *  for .varskey from the mirrored directory up to the primary root. Returns
+ *  null when startDir is not inside a linked worktree.
+ *
+ *  Safety invariant: read-through discovery grants no new capability because
+ *  every .varskey entry is PIN-encrypted. All writers (init, key init/import,
+ *  rotate, pin) emit only encryptMasterKey output (argon2id-wrapped `pin:`
+ *  lines), and all readers unwrap via decryptMasterKey, which requires the
+ *  PIN. Raw key material is only ever carried by VARS_KEY in the environment,
+ *  never written to a .varskey. If an unencrypted envelope format is ever
+ *  introduced, this fallback must be revisited. */
+function findKeyFileInPrimaryWorktree(startDir: string): string | null {
+	let start = existsSync(startDir) ? realpathSync(resolve(startDir)) : resolve(startDir);
+	// Callers pass either a directory or a .vars file path; git needs a directory.
+	if (!existsSync(start) || !statSync(start).isDirectory()) start = dirname(start);
+	const top = gitOutput(["rev-parse", "--show-toplevel"], start);
+	const commonDir = gitOutput(["rev-parse", "--git-common-dir"], start);
+	if (!top || !commonDir) return null;
+	const primaryRoot = dirname(resolve(top, commonDir));
+	if (primaryRoot === top) return null; // primary checkout — nothing to mirror
+	const rel = relative(top, start);
+	if (rel.startsWith("..")) return null;
+	let dir = resolve(primaryRoot, rel);
+	while (true) {
+		const keyPath = join(dir, ".varskey");
+		if (existsSync(keyPath)) return keyPath;
+		if (dir === primaryRoot) return null;
+		const parent = dirname(dir);
 		if (parent === dir) return null;
 		dir = parent;
+	}
+}
+
+function gitOutput(args: string[], cwd: string): string | null {
+	try {
+		return execFileSync("git", args, {
+			cwd,
+			encoding: "utf8",
+			stdio: ["pipe", "pipe", "pipe"],
+		}).trim();
+	} catch {
+		return null;
 	}
 }
 
@@ -300,13 +348,5 @@ export function getProjectRoot(startDir?: string): string {
 /** Get the git repository root for git-scoped operations (e.g. hooks).
  *  Returns null if not in a git repository. */
 export function getGitRoot(startDir?: string): string | null {
-	try {
-		return execSync("git rev-parse --show-toplevel", {
-			cwd: startDir ?? process.cwd(),
-			encoding: "utf8",
-			stdio: ["pipe", "pipe", "pipe"],
-		}).trim();
-	} catch {
-		return null;
-	}
+	return gitOutput(["rev-parse", "--show-toplevel"], startDir ?? process.cwd());
 }
