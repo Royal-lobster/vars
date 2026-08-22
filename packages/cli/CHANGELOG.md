@@ -1,5 +1,17 @@
 # dotvars
 
+## 1.1.0
+
+### Minor Changes
+
+- [#89](https://github.com/Royal-lobster/vars/pull/89) [`0773d6b`](https://github.com/Royal-lobster/vars/commit/0773d6bf7577c57a4bf1c999f7947064c53e178e) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Add an agent-first workflow for trusted automation: PIN files and external encrypted key envelopes, non-interactive owner PIN creation and key rotation, targeted locked-file `add`/`set`/`remove` mutations with integration-qualified names, and atomic `vars apply`. Explicit credentials override environment credentials while interactive approval remains the human default.
+
+### Patch Changes
+
+- [#89](https://github.com/Royal-lobster/vars/pull/89) [`0773d6b`](https://github.com/Royal-lobster/vars/commit/0773d6bf7577c57a4bf1c999f7947064c53e178e) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Make credential precedence observable and align it with the documented contract: any PIN source now makes the encrypted envelope take precedence over ambient `VARS_KEY` (previously `VARS_KEY` silently won over ambient PINs), with `VARS_KEY` remaining a warned fallback when an ambient PIN fails to unlock the envelope. Explicit `--pin`/`--pin-file` failures always surface as errors. Non-interactive unlocks report their credential source on stderr, and `vars doctor` lists ambient credential sources, flagging `VARS_KEY`+PIN combinations and nudging `VARS_PIN` users toward `VARS_PIN_FILE`.
+
+- [#89](https://github.com/Royal-lobster/vars/pull/89) [`0773d6b`](https://github.com/Royal-lobster/vars/commit/0773d6bf7577c57a4bf1c999f7947064c53e178e) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Discover `.varskey` from linked git worktrees by falling back to the mirrored path in the primary checkout (the envelope is gitignored, so worktrees never receive it). `vars doctor` now reports the primary-checkout key and recommends `vars key import` instead of `vars key init` when locked files already exist. On headless Linux, the agent PIN dialog is skipped when no display server is available so the actionable `--pin-file` error surfaces immediately.
+
 ## 1.0.6
 
 ### Patch Changes

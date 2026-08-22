@@ -1,5 +1,11 @@
 # @dotvars/node
 
+## 0.6.0
+
+### Minor Changes
+
+- [#89](https://github.com/Royal-lobster/vars/pull/89) [`0773d6b`](https://github.com/Royal-lobster/vars/commit/0773d6bf7577c57a4bf1c999f7947064c53e178e) Thanks [@Royal-lobster](https://github.com/Royal-lobster)! - Add an agent-first workflow for trusted automation: PIN files and external encrypted key envelopes, non-interactive owner PIN creation and key rotation, targeted locked-file `add`/`set`/`remove` mutations with integration-qualified names, and atomic `vars apply`. Explicit credentials override environment credentials while interactive approval remains the human default.
+
 ## 0.5.3
 
 ### Patch Changes
